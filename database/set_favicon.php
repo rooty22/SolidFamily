@@ -10,9 +10,9 @@ $pdo = new PDO(
 
 $pdo->exec("
     INSERT INTO settings (`key`, value) 
-    VALUES ('site_favicon', 'uploads/branding/favicon.png') 
+    VALUES ('site_favicon', 'uploads/branding/favicon.jpg') 
     ON DUPLICATE KEY UPDATE 
-    value = IF(value IS NULL OR value = '', 'uploads/branding/favicon.png', value)
+    value = 'uploads/branding/favicon.jpg'
 ");
 
-echo "Done: favicon.png saved in settings table.\n";
+echo "Done: favicon.jpg saved in settings table.\n";

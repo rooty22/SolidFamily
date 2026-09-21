@@ -8,9 +8,7 @@ if (!empty($settings['navigation_menu_json'])) {
 }
 $siteLogo    = site_logo_url();
 $siteFavicon = \App\Models\Setting::get('site_favicon');
-$siteFaviconUrl = $siteFavicon
-    ? (str_starts_with($siteFavicon, 'http') ? $siteFavicon : asset($siteFavicon))
-    : null;
+$siteFaviconUrl = site_favicon_url();
 ?>
 
 <div x-data="settingsManager()" class="space-y-6">

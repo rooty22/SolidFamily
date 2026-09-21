@@ -422,6 +422,31 @@ function site_logo_url(): ?string
     return url($logo);
 }
 
+/** Favicon URL: external links pass through, uploads resolve like the logo (site root, not /assets). */
+function site_favicon_url(): ?string
+{
+    $favicon = site_setting('site_favicon');
+    if (empty($favicon)) {
+        return null;
+    }
+    if (str_starts_with($favicon, 'http://') || str_starts_with($favicon, 'https://')) {
+        return $favicon;
+    }
+    return url($favicon);
+}
+
+function site_favicon_mime(): string
+{
+    $ext = strtolower(pathinfo((string) parse_url((string) site_setting('site_favicon'), PHP_URL_PATH), PATHINFO_EXTENSION));
+    return [
+        'svg'  => 'image/svg+xml',
+        'ico'  => 'image/x-icon',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+    ][$ext] ?? 'image/png';
+}
+
 function site_phone(): string
 {
     return site_setting('official_phone', '+966500000000');
