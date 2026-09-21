@@ -171,7 +171,7 @@ $siteFaviconUrl = $siteFavicon
                         <div class="md:col-span-8 space-y-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1">رفع ملف Favicon جديد (ICO, PNG, SVG, WebP)</label>
-                                <input type="file" name="favicon_file" accept=".ico,image/x-icon,image/png,image/svg+xml,image/webp" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 border border-slate-300 rounded-xl p-1 bg-white">
+                                <input type="file" name="favicon_file" accept=".ico,.jpg,.jpeg,image/x-icon,image/png,image/jpeg,image/svg+xml,image/webp" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 border border-slate-300 rounded-xl p-1 bg-white">
                                 <p class="text-[11px] text-slate-400 mt-1">الحجم الأقصى 512KB — يُنصح باستخدام PNG بحجم 32×32 أو 64×64 بكسل.</p>
                             </div>
                             <div>

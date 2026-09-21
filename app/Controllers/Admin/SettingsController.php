@@ -251,11 +251,13 @@ class SettingsController extends Controller
         $mimeByExt = [
             'ico'  => ['image/x-icon', 'image/vnd.microsoft.icon', 'application/octet-stream'],
             'png'  => ['image/png'],
+            'jpg'  => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
             'svg'  => ['image/svg+xml', 'text/xml', 'text/plain', 'application/xml'],
             'webp' => ['image/webp'],
         ];
         if (!isset($mimeByExt[$ext])) {
-            return 'صيغة ملف الـ Favicon غير مقبولة (المسموح: ico, png, svg, webp).';
+            return 'صيغة ملف الـ Favicon غير مقبولة (المسموح: ico, png, jpg, svg, webp).';
         }
 
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
