@@ -47,25 +47,13 @@ $isSingleLang = is_single_language();
 
         <!-- Actions: Language & Auth -->
         <div class="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
-            <!-- Language Switcher (hidden if single-language mode is active) -->
+            <!-- Language Toggle Button (same as Home; hidden if single-language mode is active) -->
             <?php if (!$isSingleLang): ?>
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" type="button" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors">
-                        <i class="bi bi-translate text-brand-600"></i>
-                        <span><?= $isEn ? 'English' : 'العربية' ?></span>
-                        <i class="bi bi-chevron-down text-[10px] text-slate-400"></i>
-                    </button>
-                    <div x-show="open" @click.outside="open = false" x-transition class="absolute <?= is_rtl() ? 'left-0' : 'right-0' ?> mt-1.5 w-32 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50 text-xs font-medium">
-                        <a href="<?= url('lang/ar') ?>" class="flex items-center justify-between px-3 py-2 hover:bg-slate-50 <?= !$isEn ? 'text-brand-600 font-bold bg-brand-50/50' : 'text-slate-700' ?>">
-                            <span>العربية</span>
-                            <?php if (!$isEn): ?><i class="bi bi-check2 text-brand-600"></i><?php endif; ?>
-                        </a>
-                        <a href="<?= url('lang/en') ?>" class="flex items-center justify-between px-3 py-2 hover:bg-slate-50 <?= $isEn ? 'text-brand-600 font-bold bg-brand-50/50' : 'text-slate-700' ?>">
-                            <span>English</span>
-                            <?php if ($isEn): ?><i class="bi bi-check2 text-brand-600"></i><?php endif; ?>
-                        </a>
-                    </div>
-                </div>
+                <a href="<?= url('lang/' . ($isEn ? 'ar' : 'en')) ?>"
+                   class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 border border-slate-200 transition-all shrink-0">
+                    <i class="bi bi-translate text-brand-600"></i>
+                    <span><?= $isEn ? 'العربية' : 'English' ?></span>
+                </a>
             <?php endif; ?>
 
             <!-- Login / Member Portal -->
