@@ -16,7 +16,16 @@ $customFooterScripts = site_setting('seo_custom_footer_scripts');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $metaTitle ?></title>
 
-    <!-- SEO Meta Tags -->
+    <!-- Favicon -->
+    <?php $__favicon = site_setting('site_favicon'); ?>
+    <?php if ($__favicon): ?>
+        <?php $__faviconUrl = (str_starts_with($__favicon, 'http') ? $__favicon : asset($__favicon)); ?>
+        <?php $__faviconExt = strtolower(pathinfo($__favicon, PATHINFO_EXTENSION)); ?>
+        <?php $__faviconMime = ($__faviconExt === 'svg' ? 'image/svg+xml' : ($__faviconExt === 'ico' ? 'image/x-icon' : 'image/png')); ?>
+        <link rel="icon" type="<?= $__faviconMime ?>" href="<?= e($__faviconUrl) ?>">
+        <link rel="shortcut icon" href="<?= e($__faviconUrl) ?>">
+    <?php endif; ?>
+
     <?php if ($metaDesc): ?><meta name="description" content="<?= $metaDesc ?>"><?php endif; ?>
     <?php if ($metaKeywords): ?><meta name="keywords" content="<?= $metaKeywords ?>"><?php endif; ?>
     <link rel="canonical" href="<?= e($canonicalUrl) ?>">

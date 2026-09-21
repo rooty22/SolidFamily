@@ -6,7 +6,11 @@ if (!empty($settings['navigation_menu_json'])) {
         $currentMenu = $decoded;
     }
 }
-$siteLogo = site_logo_url();
+$siteLogo    = site_logo_url();
+$siteFavicon = \App\Models\Setting::get('site_favicon');
+$siteFaviconUrl = $siteFavicon
+    ? (str_starts_with($siteFavicon, 'http') ? $siteFavicon : asset($siteFavicon))
+    : null;
 ?>
 
 <div x-data="settingsManager()" class="space-y-6">
@@ -123,6 +127,56 @@ $siteLogo = site_logo_url();
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1">أو رابط الشعار عبر الإنترنت (URL)</label>
                                 <input type="text" name="site_logo_url" placeholder="https://example.com/logo.png" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 bg-white">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Favicon Uploader Card -->
+                <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">أيقونة التبويب (Favicon)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">تظهر في تبويب المتصفح وعند إضافة الموقع للشاشة الرئيسية — يُفضل PNG أو ICO بحجم 32×32 أو 64×64</p>
+                        </div>
+                        <?php if ($siteFavicon): ?>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Favicon مفعل حالياً
+                            </span>
+                        <?php else: ?>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-200 text-slate-600">
+                                لا يوجد Favicon
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                        <!-- Current Favicon Preview -->
+                        <div class="md:col-span-4 flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 min-h-[100px]">
+                            <?php if ($siteFaviconUrl): ?>
+                                <img src="<?= e($siteFaviconUrl) ?>" alt="Favicon Preview" class="w-12 h-12 object-contain mb-2 rounded">
+                                <label class="flex items-center gap-1.5 text-xs text-rose-600 cursor-pointer hover:text-rose-700 mt-1">
+                                    <input type="checkbox" name="remove_favicon" value="1" class="rounded text-rose-600">
+                                    <span>حذف الـ Favicon الحالي</span>
+                                </label>
+                            <?php else: ?>
+                                <div class="w-12 h-12 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-2xl mb-1">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                                <span class="text-xs text-slate-400">لا توجد أيقونة مرفوعة</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Upload Input -->
+                        <div class="md:col-span-8 space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">رفع ملف Favicon جديد (ICO, PNG, SVG, WebP)</label>
+                                <input type="file" name="favicon_file" accept=".ico,image/x-icon,image/png,image/svg+xml,image/webp" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 border border-slate-300 rounded-xl p-1 bg-white">
+                                <p class="text-[11px] text-slate-400 mt-1">الحجم الأقصى 512KB — يُنصح باستخدام PNG بحجم 32×32 أو 64×64 بكسل.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">أو رابط Favicon عبر الإنترنت (URL)</label>
+                                <input type="text" name="site_favicon_url" placeholder="https://example.com/favicon.ico" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 bg-white">
                             </div>
                         </div>
                     </div>

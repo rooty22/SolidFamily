@@ -39,6 +39,8 @@ class SettingsController extends Controller
         'otp_mode', 'otp_resend_seconds', 'otp_length', 'otp_expiry_minutes',
         'sms_provider', 'sms_sender_name', 'sms_api_key', 'sms_app_sid',
         'sms_username', 'sms_password', 'sms_custom_url',
+        // Favicon (URL-based fallback; file upload handled separately)
+        'site_favicon_url',
     ];
 
     /** Financial settings drive every calculation in the system: they can never be blank once submitted. */
@@ -96,6 +98,12 @@ class SettingsController extends Controller
             $this->redirect('admin/settings');
         }
 
+        $faviconError = $this->validateFaviconUpload();
+        if ($faviconError !== null) {
+            Session::flash('error', $faviconError);
+            $this->redirect('admin/settings');
+        }
+
         [$menuJson, $menuError] = $this->sanitizeMenu($data['navigation_menu_json'] ?? '');
         if ($menuError !== null) {
             Session::flash('error', $menuError);
@@ -123,6 +131,24 @@ class SettingsController extends Controller
             }
         } elseif (($data['site_logo_url'] ?? '') !== '') {
             Setting::set('site_logo', $data['site_logo_url']);
+        }
+
+        // ---- 2b. Favicon file upload / removal / URL ----
+        if (($data['remove_favicon'] ?? '') === '1') {
+            Setting::set('site_favicon', '');
+        } elseif (!empty($_FILES['favicon_file']['name']) && $_FILES['favicon_file']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['favicon_file'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $uploadDir = base_dir() . '/public/uploads/branding';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $filename = 'favicon_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            if (move_uploaded_file($file['tmp_name'], $uploadDir . '/' . $filename)) {
+                Setting::set('site_favicon', 'uploads/branding/' . $filename);
+            }
+        } elseif (($data['site_favicon_url'] ?? '') !== '') {
+            Setting::set('site_favicon', $data['site_favicon_url']);
         }
 
         // ---- 3. Text & configuration fields ----
@@ -199,6 +225,52 @@ class SettingsController extends Controller
             }
         } elseif (@getimagesize($file['tmp_name']) === false) {
             return 'ملف الشعار ليس صورة صالحة.';
+        }
+
+        return null;
+    }
+
+    /** Returns an error message, or null when there is no upload or the uploaded favicon is acceptable. */
+    private function validateFaviconUpload(): ?string
+    {
+        $file = $_FILES['favicon_file'] ?? null;
+        if (!$file || empty($file['name'])) {
+            return null;
+        }
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return 'فشل رفع ملف الـ Favicon، الرجاء المحاولة مرة أخرى.';
+        }
+        if (!is_uploaded_file($file['tmp_name'])) {
+            return 'ملف الـ Favicon غير صالح.';
+        }
+        if ($file['size'] > 512 * 1024) {
+            return 'حجم ملف الـ Favicon يجب ألا يزيد عن 512 كيلوبايت.';
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $mimeByExt = [
+            'ico'  => ['image/x-icon', 'image/vnd.microsoft.icon', 'application/octet-stream'],
+            'png'  => ['image/png'],
+            'svg'  => ['image/svg+xml', 'text/xml', 'text/plain', 'application/xml'],
+            'webp' => ['image/webp'],
+        ];
+        if (!isset($mimeByExt[$ext])) {
+            return 'صيغة ملف الـ Favicon غير مقبولة (المسموح: ico, png, svg, webp).';
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($mime, $mimeByExt[$ext], true)) {
+            return 'محتوى ملف الـ Favicon لا يطابق صيغته، الملف مرفوض.';
+        }
+
+        if ($ext === 'svg') {
+            $svg = (string) file_get_contents($file['tmp_name']);
+            if (stripos($svg, '<svg') === false
+                || preg_match('/<\s*(script|iframe|object|embed|foreignObject)|\son[a-z]+\s*=|javascript:|data:text\/html/i', $svg)) {
+                return 'ملف SVG الـ Favicon يحتوي على عناصر غير آمنة، الملف مرفوض.';
+            }
+        } elseif ($ext !== 'ico' && @getimagesize($file['tmp_name']) === false) {
+            return 'ملف الـ Favicon ليس صورة صالحة.';
         }
 
         return null;
