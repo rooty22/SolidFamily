@@ -1,0 +1,31 @@
+# ======================================================================
+# صندوق عائلي - إعدادات التوجيه المباشر بدون /public وحماية الملفات
+# Sandouk Root .htaccess: Direct Clean URLs, Asset Routing & Security
+# ======================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # منع استعراض المجلدات
+    Options -Indexes
+
+    # 1. حماية المجلدات والملفات الحساسة من الوصول المباشر عبر المتصفح
+    RewriteRule ^(\.git|\.env|app|bin|config|database|resources|routes|scratch)(\/|$) - [F,L,NC]
+    RewriteRule \.(sql|md|json|lock|yml|yaml|log)$ - [F,L,NC]
+
+    # 2. تحويل أي طلب مباشر يحتوي على /public في شريط العنوان إلى الرابط النظيف (301 Redirect)
+    RewriteCond %{THE_REQUEST} \s/+(.*?)/public(?:/([^\s?]*))?(\?[^\s]*)?\s [NC]
+    RewriteRule ^ /%1/%2%3 [R=301,L,NE]
+
+    RewriteCond %{THE_REQUEST} \s/+public(?:/([^\s?]*))?(\?[^\s]*)?\s [NC]
+    RewriteRule ^ /%1%2 [R=301,L,NE]
+
+    # 3. إذا كان الملف موجوداً كملف حقيقي (مثل مجلد الأصول assets أو uploads)، خدمته مباشرة
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 4. توجيه جميع الطلبات الأخرى تلقائياً إلى مجلد public/ دون تكرار الحلقات
+    RewriteRule ^$ public/ [L]
+    RewriteRule ^((?!public/).*)$ public/$1 [L]
+</IfModule>
