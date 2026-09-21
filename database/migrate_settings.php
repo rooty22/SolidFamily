@@ -79,6 +79,7 @@ $defaultSettings = [
     'site_slogan' => 'المنظومة المالية والتكافلية للأسرة',
     'site_slogan_en' => 'Family Financial & Solidarity Ecosystem',
     'site_logo' => '',
+    'site_favicon' => 'uploads/branding/favicon.png',
     'logo_icon' => 'safe2-fill',
 
     // Contact & Social
