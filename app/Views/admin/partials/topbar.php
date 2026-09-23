@@ -5,6 +5,9 @@
         <div class="page-title"><?= e($pageTitle ?? __('overview')) ?></div>
     </div>
     <div class="topbar-actions d-flex align-items-center gap-2 sm:gap-3">
+        <!-- Live Translate: turns Translate mode on/off (and shows/hides the Translate button of the site) -->
+        <?= \App\LiveTranslate\LiveTranslate::adminButton() ?>
+
         <!-- View Public Website -->
         <a href="<?= url('/') ?>" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all" title="<?= __('home') ?>">
             <i class="bi bi-globe text-sky-600"></i>

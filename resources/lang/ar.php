@@ -627,6 +627,7 @@ return [
     'confirm_and_complete_register' => 'تأكيد الرمز وإكمال التسجيل',
     'confirm_code' => 'تأكيد الرمز',
     'otp_verification' => 'التحقق برمز التحقق OTP',
+    'otp_security_locked' => 'تم إيقاف إعادة الإرسال والتحقق مؤقتاً بسبب محاولات كثيرة، الرجاء الانتظار حتى ينتهي العداد بالأسفل قبل المحاولة مرة أخرى.',
     'reset_password' => 'تعيين كلمة المرور الجديدة',
     'switch_to_arabic' => 'التحويل إلى العربية',
     'switch_to_english' => 'Switch to English',

@@ -131,5 +131,6 @@ $customFooterScripts = site_setting('seo_custom_footer_scripts');
     <?php if (!empty($customFooterScripts)): ?>
         <?= $customFooterScripts ?>
     <?php endif; ?>
+    <?= \App\LiveTranslate\LiveTranslate::scripts() ?>
 </body>
 </html>

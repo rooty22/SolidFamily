@@ -63,6 +63,13 @@ class AuthController extends Controller
             'password' => password_hash($data['password'], PASSWORD_DEFAULT),
         ];
 
+        if (otp_is_disabled()) {
+            $memberId = $this->createMember($pending);
+            Auth::loginMember(Member::find($memberId));
+            Session::flash('success', 'تم إنشاء حسابك بنجاح.');
+            $this->redirect('home');
+        }
+
         $code = OtpCode::generate($pending['mobile'], 'member_register');
         if ($code === null) {
             Session::flash('error', self::OTP_THROTTLED);
@@ -114,14 +121,20 @@ class AuthController extends Controller
             $this->redirect('register');
         }
 
-        $memberId = Member::create(array_merge($pending, ['shares_count' => 0, 'status' => 'active']));
-        FoundingAmount::ensureForMember($memberId);
+        $memberId = $this->createMember($pending);
 
         Session::remove('pending_registration');
         Auth::loginMember(Member::find($memberId));
 
         Session::flash('success', 'تم إنشاء حسابك بنجاح.');
         $this->redirect('home');
+    }
+
+    private function createMember(array $pending): int
+    {
+        $memberId = Member::create(array_merge($pending, ['shares_count' => 0, 'status' => 'active']));
+        FoundingAmount::ensureForMember($memberId);
+        return $memberId;
     }
 
     public function resendRegisterOtp(): void
@@ -204,13 +217,19 @@ class AuthController extends Controller
             $this->redirect('forgot-password');
         }
 
+        Session::set('reset_mobile', $mobile);
+
+        if (otp_is_disabled()) {
+            Session::set('reset_verified', true);
+            $this->redirect('forgot-password/reset');
+        }
+
         $code = OtpCode::generate($mobile, 'member_reset');
         if ($code === null) {
             Session::flash('error', self::OTP_THROTTLED);
             $this->redirect('forgot-password');
         }
 
-        Session::set('reset_mobile', $mobile);
         Session::flash('success', otp_notice('تم إرسال رمز التحقق.', $code));
         $this->redirect('forgot-password/verify');
     }

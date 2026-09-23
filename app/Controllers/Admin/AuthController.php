@@ -75,13 +75,19 @@ class AuthController extends Controller
             $this->redirect('admin/forgot-password');
         }
 
+        Session::set('admin_reset_email', $email);
+
+        if (otp_is_disabled()) {
+            Session::set('admin_reset_verified', true);
+            $this->redirect('admin/forgot-password/reset');
+        }
+
         $code = OtpCode::generate($email, 'admin_reset');
         if ($code === null) {
             Session::flash('error', self::OTP_THROTTLED);
             $this->redirect('admin/forgot-password');
         }
 
-        Session::set('admin_reset_email', $email);
         Session::flash('success', otp_notice('تم إرسال رمز التحقق.', $code));
         $this->redirect('admin/forgot-password/verify');
     }

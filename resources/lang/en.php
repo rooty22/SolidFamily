@@ -629,6 +629,7 @@ return [
     'confirm_and_complete_register' => 'Verify & Complete Registration',
     'confirm_code' => 'Verify Code',
     'otp_verification' => 'OTP Verification',
+    'otp_security_locked' => 'Resending and verifying is temporarily disabled due to too many attempts. Please wait for the counter below to finish before trying again.',
     'reset_password' => 'Reset Password',
     'switch_to_arabic' => 'التحويل إلى العربية',
     'switch_to_english' => 'Switch to English',

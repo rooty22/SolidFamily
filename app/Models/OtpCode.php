@@ -114,6 +114,24 @@ class OtpCode extends Model
         return $row;
     }
 
+    /**
+     * Real seconds remaining before this identifier can successfully request or verify a code again,
+     * across every throttle that could be blocking it (wrong-code lock, per-identifier and per-IP issue limits).
+     * 0 means nothing is blocking it right now.
+     */
+    public static function retryAfterSeconds(string $identifier, string $purpose): int
+    {
+        $verifyRetry = RateLimiter::retryAfter(self::verifyKey($identifier, $purpose), self::MAX_FAILED_VERIFICATIONS, self::VERIFY_LOCK_SECONDS);
+
+        $issueKey = "otp_issue:{$purpose}:" . mb_strtolower($identifier);
+        $issueRetry = RateLimiter::retryAfter($issueKey, self::MAX_ISSUED_PER_IDENTIFIER, self::ISSUE_WINDOW);
+
+        $ipKey = 'otp_issue_ip:' . client_ip();
+        $ipRetry = RateLimiter::retryAfter($ipKey, self::MAX_ISSUED_PER_IP, self::ISSUE_WINDOW);
+
+        return max($verifyRetry, $issueRetry, $ipRetry);
+    }
+
     private static function verifyKey(string $identifier, string $purpose): string
     {
         return "otp_verify:{$purpose}:" . mb_strtolower($identifier);

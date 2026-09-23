@@ -2,7 +2,8 @@
 $isEn = is_en();
 $demoCode = \App\Core\Session::get('demo_otp_code');
 $isDemo = otp_is_demo();
-$cooldown = otp_resend_seconds();
+$cooldown = otp_cooldown_seconds($mobile, 'member_register');
+$isLocked = $cooldown > otp_resend_seconds();
 ?>
 <div class="auth-card" style="max-width: 480px; margin: 0 auto;">
     <div class="text-center">
@@ -14,6 +15,10 @@ $cooldown = otp_resend_seconds();
     <?php $success = flash('success'); $error = flash('error'); ?>
     <?php if ($success): ?><div class="alert-modern alert-success-modern mb-3"><i class="bi bi-info-circle-fill"></i> <?= e($success) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert-modern alert-danger-modern mb-3"><i class="bi bi-exclamation-circle-fill"></i> <?= e($error) ?></div><?php endif; ?>
+
+    <?php if ($isLocked): ?>
+        <div class="alert-modern alert-danger-modern mb-3"><i class="bi bi-shield-lock-fill"></i> <?= __('otp_security_locked') ?></div>
+    <?php endif; ?>
 
     <?php if ($isDemo && $demoCode): ?>
         <div class="otp-demo-card flex items-center justify-between gap-2">
@@ -30,13 +35,13 @@ $cooldown = otp_resend_seconds();
 
     <form method="post" action="<?= url('register/verify') ?>">
         <?= csrf_field() ?>
-        <div class="otp-inputs" dir="ltr">
+        <div class="otp-inputs" dir="ltr" <?= $isLocked ? 'data-locked="1"' : '' ?>>
             <?php for ($i = 0; $i < otp_length(); $i++): ?>
-                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" class="otp-digit" required>
+                <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" class="otp-digit" required <?= $isLocked ? 'disabled' : '' ?>>
             <?php endfor; ?>
         </div>
         <input type="hidden" name="code" id="otp-code">
-        <button type="submit" class="btn btn-primary w-100 py-3 font-bold shadow-md shadow-brand-500/20" onclick="document.getElementById('otp-code').value = Array.from(document.querySelectorAll('.otp-inputs input')).map(i => i.value).join('')">
+        <button type="submit" id="otp-submit-btn" class="btn btn-primary w-100 py-3 font-bold shadow-md shadow-brand-500/20" <?= $isLocked ? 'disabled' : '' ?> onclick="document.getElementById('otp-code').value = Array.from(document.querySelectorAll('.otp-inputs input')).map(i => i.value).join('')">
             <?= __('confirm_and_complete_register') ?>
         </button>
     </form>

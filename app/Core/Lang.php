@@ -149,7 +149,8 @@ class Lang
             }
         }
 
-        $line = self::$translations[$locale][$key] ?? null;
+        // A text edited from the dashboard (Live Translate) wins over the language file.
+        $line = self::override($locale, $key) ?? (self::$translations[$locale][$key] ?? null);
 
         // Fallback to Arabic if key not found in English
         if ($line === null && $locale !== 'ar') {
@@ -157,7 +158,7 @@ class Lang
                 $arPath = base_dir() . "/resources/lang/ar.php";
                 self::$translations['ar'] = file_exists($arPath) ? require $arPath : [];
             }
-            $line = self::$translations['ar'][$key] ?? null;
+            $line = self::override('ar', $key) ?? (self::$translations['ar'][$key] ?? null);
         }
 
         if ($line === null) {
@@ -169,5 +170,22 @@ class Lang
         }
 
         return $line;
+    }
+
+    /**
+     * Text of a key saved from the dashboard by Live Translate: the setting "trans_<locale>_<key>"
+     * (see App\LiveTranslate\Resolver::overrideKey()). Null when there is none.
+     */
+    private static function override(string $locale, string $key): ?string
+    {
+        if (!function_exists('site_setting')) {
+            return null;
+        }
+        try {
+            $value = site_setting('trans_' . $locale . '_' . $key, '');
+        } catch (\Throwable $e) {
+            return null; // before the database exists
+        }
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

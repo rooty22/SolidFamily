@@ -41,6 +41,28 @@ class RateLimiter
         $stmt->execute([self::hash($key)]);
     }
 
+    /**
+     * Seconds until $key drops back under $max hits within the trailing $windowSeconds; 0 when already under it.
+     * Used to show a real countdown instead of a fixed UI cooldown that may expire long before the throttle does.
+     */
+    public static function retryAfter(string $key, int $max, int $windowSeconds): int
+    {
+        if (!self::tooMany($key, $max, $windowSeconds)) {
+            return 0;
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT created_at FROM rate_limits WHERE rkey = ? ORDER BY created_at DESC LIMIT 1 OFFSET ?'
+        );
+        $stmt->execute([self::hash($key), max(0, $max - 1)]);
+        $createdAt = $stmt->fetchColumn();
+        if (!$createdAt) {
+            return 0;
+        }
+
+        return max(0, strtotime($createdAt) + $windowSeconds - time());
+    }
+
     // ---- Login throttling: per account and per client IP -------------------------------------------------
 
     public static function loginBlocked(string $scope, string $identifier): bool

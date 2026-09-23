@@ -172,20 +172,31 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     });
 
-    // 50-Second Resend Countdown Timer
+    // Resend/verify countdown timer. data-cooldown is server-computed and already accounts for the real
+    // security throttle (which can run into minutes), not just the cosmetic default wait.
     const resendBtn = document.getElementById('resend-btn');
     const resendTimerEl = document.getElementById('resend-timer');
+    const otpLockedWrap = document.querySelector('.otp-inputs[data-locked]');
+    const otpSubmitBtn = document.getElementById('otp-submit-btn');
+
+    function formatRemaining(seconds) {
+        if (seconds < 60) return String(seconds);
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
     if (resendBtn && resendTimerEl) {
         const cooldownSeconds = parseInt(resendBtn.getAttribute('data-cooldown') || '50', 10);
         const storageKey = 'otp_resend_until_' + window.location.pathname;
+        const now = Math.floor(Date.now() / 1000);
+        const freshUntil = now + cooldownSeconds;
 
         let until = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
-        const now = Math.floor(Date.now() / 1000);
-
-        if (!until || until <= now || (until - now) > cooldownSeconds) {
-            until = now + cooldownSeconds;
-            sessionStorage.setItem(storageKey, until);
+        if (!until || Math.abs(freshUntil - until) > 2) {
+            until = freshUntil;
         }
+        sessionStorage.setItem(storageKey, until);
 
         function updateTimer() {
             const current = Math.floor(Date.now() / 1000);
@@ -195,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 resendBtn.disabled = true;
                 resendBtn.classList.add('is-locked');
                 resendBtn.classList.remove('is-ready');
-                resendTimerEl.textContent = remaining;
+                resendTimerEl.textContent = formatRemaining(remaining);
                 setTimeout(updateTimer, 1000);
             } else {
                 resendBtn.disabled = false;
@@ -203,6 +214,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 resendBtn.classList.add('is-ready');
                 resendBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> <span>إعادة إرسال الرمز الآن</span>';
                 sessionStorage.removeItem(storageKey);
+
+                if (otpLockedWrap) {
+                    otpLockedWrap.querySelectorAll('input').forEach(function (i) { i.disabled = false; });
+                    otpLockedWrap.removeAttribute('data-locked');
+                }
+                if (otpSubmitBtn) otpSubmitBtn.disabled = false;
             }
         }
         updateTimer();

@@ -81,6 +81,10 @@ $newMessages = \App\Models\ContactMessage::count(['status' => 'new']);
             <i class="bi bi-file-earmark-richtext-fill"></i>
             <span><?= __('manage_content') ?></span>
         </a>
+        <a href="<?= url('admin/live-translate') ?>" class="sidebar-link <?= is_active('/admin/live-translate') ?>">
+            <i class="bi bi-translate"></i>
+            <span><?= is_rtl() ? 'الترجمة الفورية' : 'Live Translate' ?></span>
+        </a>
 
         <div class="sidebar-section-title"><?= is_rtl() ? 'النظام' : 'System' ?></div>
         <a href="<?= url('admin/settings') ?>" class="sidebar-link <?= is_active('/admin/settings') ?>">

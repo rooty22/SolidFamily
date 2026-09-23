@@ -16,6 +16,7 @@ use App\Controllers\Admin\NotificationsController as AdminNotificationsControlle
 use App\Controllers\Admin\MessagesController;
 use App\Controllers\Admin\ContentController;
 use App\Controllers\Admin\SettingsController;
+use App\Controllers\Admin\LiveTranslateController;
 
 use App\Controllers\Site\AuthController as SiteAuthController;
 use App\Controllers\Site\HomeController;
@@ -41,6 +42,11 @@ $router->get('/lang/{locale}', function ($locale) {
 $router->get('/admin', function () {
     redirect_to('admin/dashboard');
 });
+
+// Live Translate JSON endpoints. They are called from the site as well as from the dashboard and answer JSON
+// errors (403 / 419) themselves, so they stay out of the 'adminAuth' group whose middleware redirects to the login.
+$router->post('/admin/live-translate/resolve', [LiveTranslateController::class, 'resolve']);
+$router->post('/admin/live-translate/save', [LiveTranslateController::class, 'save']);
 
 $router->get('/admin/lang/{locale}', function ($locale) {
     \App\Core\Lang::setAdminLocale($locale);
@@ -182,6 +188,13 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/content', [ContentController::class, 'index']);
     $router->get('/content/{slug}/edit', [ContentController::class, 'edit']);
     $router->post('/content/{slug}', [ContentController::class, 'update']);
+
+    // Live Translate: on/off switch and site-wide translations
+    $router->get('/live-translate', [LiveTranslateController::class, 'index']);
+    $router->post('/live-translate/toggle', [LiveTranslateController::class, 'toggle']);
+    $router->get('/live-translate/export', [LiveTranslateController::class, 'export']);
+    $router->post('/live-translate/import', [LiveTranslateController::class, 'import']);
+    $router->post('/live-translate/{id}/delete', [LiveTranslateController::class, 'deleteEntry']);
 
     $router->get('/settings', [SettingsController::class, 'index']);
     $router->post('/settings', [SettingsController::class, 'update']);

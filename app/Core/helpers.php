@@ -291,6 +291,15 @@ function otp_resend_seconds(): int
     return (int) site_setting('otp_resend_seconds', 50);
 }
 
+/**
+ * The real number of seconds an OTP resend/verify button must stay disabled for: the longer of the
+ * cosmetic UI cooldown and any actual security throttle (wrong-code lock, issue-rate limit) still in effect.
+ */
+function otp_cooldown_seconds(string $identifier, string $purpose): int
+{
+    return max(otp_resend_seconds(), \App\Models\OtpCode::retryAfterSeconds($identifier, $purpose));
+}
+
 function otp_expiry_minutes(): int
 {
     return (int) site_setting('otp_expiry_minutes', config('app.otp_expiry_minutes', 10));
