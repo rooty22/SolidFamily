@@ -30,6 +30,7 @@ CREATE TABLE members (
     bank_name VARCHAR(100) NULL,
     password VARCHAR(255) NOT NULL,
     shares_count INT UNSIGNED NOT NULL DEFAULT 0,
+    subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28); NULL falls back to the site setting',
     status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

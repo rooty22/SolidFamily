@@ -84,16 +84,18 @@ class DashboardController extends Controller
         $disbursed = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category = 'loan_disbursement'")->fetch()['s'];
         $fundBalance = $collected - $disbursed;
 
-        $currentMonthOverdue = month_due_date($currentMonth, $dueDay) < $today ? 1 : 0;
+        // A member with no row yet for the current month (nobody has opened their dashboard to lazily create it)
+        // is judged against their OWN due day (falling back to the site default), not a single day for everyone.
         $lateStmt = $db->prepare("SELECT COUNT(*) AS c
             FROM members m
             LEFT JOIN monthly_subscriptions cur ON cur.member_id = m.id AND cur.month = :cm
             WHERE m.status = 'active' AND (
                 EXISTS (SELECT 1 FROM monthly_subscriptions s
                         WHERE s.member_id = m.id AND s.status <> 'paid' AND s.amount_due > 0 AND s.due_date < :today)
-                OR (m.shares_count > 0 AND :overdue = 1 AND (cur.id IS NULL OR cur.status <> 'paid'))
+                OR (m.shares_count > 0 AND (cur.id IS NULL OR cur.status <> 'paid')
+                    AND STR_TO_DATE(CONCAT(:cm2, '-', LPAD(COALESCE(m.subscription_due_day, :dd), 2, '0')), '%Y-%m-%d') < :today2)
             )");
-        $lateStmt->execute(['cm' => $currentMonth, 'today' => $today, 'overdue' => $currentMonthOverdue]);
+        $lateStmt->execute(['cm' => $currentMonth, 'cm2' => $currentMonth, 'today' => $today, 'today2' => $today, 'dd' => $dueDay]);
         $lateMembers = (int) $lateStmt->fetch()['c'];
 
         $monthlyTrend = $db->query("SELECT month, SUM(amount_paid) as paid, SUM(amount_due) as due

@@ -13,11 +13,17 @@ class MonthlySubscription extends Model
         return self::where(['member_id' => $memberId], 'month DESC');
     }
 
+    /** The member's own due day if the admin set one, otherwise the site-wide default. */
+    public static function dueDayFor(array $member): int
+    {
+        return (int) ($member['subscription_due_day'] ?? Setting::get('subscription_due_day', 10));
+    }
+
     public static function ensureMonthExists(int $memberId, string $month): array
     {
         $member = Member::find($memberId);
         $shareValue = (float) Setting::get('share_value', 0);
-        $dueDay = (int) Setting::get('subscription_due_day', 10);
+        $dueDay = self::dueDayFor($member);
         $sharesCount = (int) ($member['shares_count'] ?? 0);
         $amountDue = round($sharesCount * $shareValue, 2);
 
@@ -36,6 +42,7 @@ class MonthlySubscription extends Model
                     'amount_due' => $amountDue,
                     // A member with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
                     'status' => $amountDue > 0 ? 'unpaid' : 'paid',
+                    'due_date' => month_due_date($month, $dueDay),
                 ]);
                 return self::find($existing['id']);
             }

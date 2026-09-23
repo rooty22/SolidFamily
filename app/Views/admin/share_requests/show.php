@@ -97,6 +97,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                             <form method="post" action="<?= url('admin/share-requests/' . $request['id'] . '/approve') ?>" data-confirm="تأكيد الموافقة على الطلب؟">
                                 <?= csrf_field() ?>
                                 <input type="text" name="admin_note" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white mb-2" placeholder="ملاحظة اعتماد (اختياري)...">
+                                <input type="number" name="subscription_due_day" min="1" max="28" value="<?= e($member['subscription_due_day'] ?? '') ?>" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white mb-2 font-numeric" placeholder="يوم استحقاق مخصص لهذا العضو (اختياري، 1-28)...">
                                 <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2">
                                     <i class="bi bi-check-lg text-base"></i>
                                     <span>الموافقة والاعتماد</span>

@@ -20,7 +20,6 @@ class SubscriptionsController extends Controller
         $currentMonth = date('Y-m');
         $today = date('Y-m-d');
         $shareValue = (float) Setting::get('share_value', 0);
-        $currentOverdue = month_due_date($currentMonth, (int) Setting::get('subscription_due_day', 10)) < $today;
 
         // Paid / overdue months per member in one query instead of one per row.
         $counts = [];
@@ -38,8 +37,9 @@ class SubscriptionsController extends Controller
         foreach ($members as $m) {
             $current = MonthlySubscription::first(['member_id' => $m['id'], 'month' => $currentMonth]);
             $late = (int) ($counts[(int) $m['id']]['late_months'] ?? 0);
-            // The current month has no row until somebody opens it: it still counts as overdue once its due date passed.
-            if (!$current && (int) $m['shares_count'] > 0 && $currentOverdue) {
+            // The current month has no row until somebody opens it: it still counts as overdue once its own due
+            // date (the member's own override, or the site default) has passed.
+            if (!$current && (int) $m['shares_count'] > 0 && month_due_date($currentMonth, MonthlySubscription::dueDayFor($m)) < $today) {
                 $late++;
             }
             $rows[] = [

@@ -61,6 +61,16 @@ class ShareRequestsController extends Controller
             $this->redirect('admin/share-requests');
         }
 
+        $dueDayInput = trim((string) $this->input('subscription_due_day', ''));
+        $dueDay = null;
+        if ($dueDayInput !== '') {
+            if (!preg_match('/^\d{1,2}$/', $dueDayInput) || (int) $dueDayInput < 1 || (int) $dueDayInput > 28) {
+                Session::flash('error', 'يوم الاستحقاق يجب أن يكون رقماً بين 1 و28.');
+                $this->redirect('admin/share-requests');
+            }
+            $dueDay = (int) $dueDayInput;
+        }
+
         $member = Member::find($request['member_id']);
         $newCount = (int) $member['shares_count'];
 
@@ -75,7 +85,11 @@ class ShareRequestsController extends Controller
             $newCount = max(0, $newCount - (int) $request['shares_count']);
         }
 
-        Member::update($member['id'], ['shares_count' => $newCount]);
+        $memberUpdate = ['shares_count' => $newCount];
+        if ($dueDay !== null) {
+            $memberUpdate['subscription_due_day'] = $dueDay;
+        }
+        Member::update($member['id'], $memberUpdate);
         \App\Models\MonthlySubscription::ensureMonthExists((int) $member['id'], date('Y-m'));
 
         ShareRequest::update((int) $id, [

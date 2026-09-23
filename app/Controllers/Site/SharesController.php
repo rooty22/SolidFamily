@@ -15,7 +15,7 @@ class SharesController extends Controller
         MonthlySubscription::ensureMonthExists($member['id'], date('Y-m'));
         $history = MonthlySubscription::forMember($member['id']);
         $shareValue = (float) Setting::get('share_value', 0);
-        $dueDay = (int) Setting::get('subscription_due_day', 10);
+        $dueDay = MonthlySubscription::dueDayFor($member);
 
         $this->view('site/shares/index', [
             'pageTitle' => __('shares_and_subscriptions'),
