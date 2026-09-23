@@ -10,14 +10,17 @@ class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            $cfg = config('session');
+            // Config keys with defaults: an environment's config.php (gitignored, so it can lag behind
+            // new keys added here) must never throw a warning that prints before session_start() and
+            // breaks every header the app tries to send afterwards.
             // Admin and member each get their own cookie, so signing into one never signs the other out
             // in the same browser (they used to share a single session and one login would clear the other).
-            session_name(is_admin_path() ? $cfg['admin_name'] : $cfg['name']);
+            $name = is_admin_path() ? config('session.admin_name', 'sandouk_admin_session') : config('session.name', 'sandouk_session');
+            session_name($name);
             // HttpOnly keeps the cookie away from injected scripts; SameSite=Lax blocks cross-site POSTs.
             ini_set('session.use_strict_mode', '1');
             session_set_cookie_params([
-                'lifetime' => $cfg['lifetime'],
+                'lifetime' => config('session.lifetime', 60 * 60 * 8),
                 'path' => '/',
                 'secure' => is_https(),
                 'httponly' => true,
