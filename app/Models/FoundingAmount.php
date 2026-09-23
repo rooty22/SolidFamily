@@ -25,12 +25,14 @@ class FoundingAmount extends Model
         }
 
         $feePerShare = (float) Setting::get('founding_fee_per_share', 0);
+        $total = round($sharesCount * $feePerShare, 2);
         $id = self::create([
             'member_id' => $memberId,
             'shares_count_linked' => $sharesCount,
-            'total_required' => round($sharesCount * $feePerShare, 2),
+            'total_required' => $total,
             'amount_paid' => 0,
-            'status' => 'unpaid',
+            // A member with no shares owes nothing: that is trivially "paid", not an unpaid debt.
+            'status' => $total > 0 ? 'unpaid' : 'paid',
         ]);
 
         return self::find($id);
@@ -40,7 +42,8 @@ class FoundingAmount extends Model
     {
         $total = round($sharesCount * (float) Setting::get('founding_fee_per_share', 0), 2);
         $paid = (float) $row['amount_paid'];
-        $status = ($total > 0 && $paid >= $total) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+        // A member with no shares owes nothing: that is trivially "paid", not an unpaid debt.
+        $status = $total <= 0 || $paid >= $total ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
 
         self::update($row['id'], [
             'shares_count_linked' => $sharesCount,

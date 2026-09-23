@@ -24,8 +24,9 @@ class MonthlySubscription extends Model
         $existing = self::first(['member_id' => $memberId, 'month' => $month]);
         if ($existing) {
             // A current/future month nobody has paid anything on follows the member's latest share count / share value;
-            // otherwise a member who received shares after the row was created would get that month for free.
-            $untouched = $existing['status'] === 'unpaid' && (float) $existing['amount_paid'] == 0.0 && $month >= date('Y-m');
+            // otherwise a member who received shares after the row was created would get that month for free (or a
+            // member whose shares dropped to zero would stay flagged as owing a debt they no longer have).
+            $untouched = (float) $existing['amount_paid'] == 0.0 && $month >= date('Y-m');
             if ($untouched && ((int) $existing['shares_count_snapshot'] !== $sharesCount
                     || (float) $existing['share_value_snapshot'] !== $shareValue
                     || (float) $existing['amount_due'] !== $amountDue)) {
@@ -33,6 +34,8 @@ class MonthlySubscription extends Model
                     'shares_count_snapshot' => $sharesCount,
                     'share_value_snapshot' => $shareValue,
                     'amount_due' => $amountDue,
+                    // A member with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
+                    'status' => $amountDue > 0 ? 'unpaid' : 'paid',
                 ]);
                 return self::find($existing['id']);
             }
@@ -46,7 +49,8 @@ class MonthlySubscription extends Model
             'share_value_snapshot' => $shareValue,
             'amount_due' => $amountDue,
             'amount_paid' => 0,
-            'status' => 'unpaid',
+            // A member with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
+            'status' => $amountDue > 0 ? 'unpaid' : 'paid',
             'due_date' => month_due_date($month, $dueDay),
         ]);
 
