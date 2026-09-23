@@ -20,7 +20,7 @@ $isLocked = $cooldown > otp_resend_seconds();
         <div class="alert-modern alert-danger-modern mb-3"><i class="bi bi-shield-lock-fill"></i> <?= __('otp_security_locked') ?></div>
     <?php endif; ?>
 
-    <?php if ($isDemo && $demoCode): ?>
+    <?php if ($isDemo && $demoCode && !$isLocked): ?>
         <div class="otp-demo-card flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold text-[10.5px]"><?= __('demo_mode') ?></span>
@@ -48,7 +48,7 @@ $isLocked = $cooldown > otp_resend_seconds();
 
     <form method="post" action="<?= url('register/resend') ?>" class="mt-3">
         <?= csrf_field() ?>
-        <button type="submit" id="resend-btn" data-cooldown="<?= $cooldown ?>" class="btn btn-resend btn-soft w-100 py-2.5 is-locked" disabled>
+        <button type="submit" id="resend-btn" data-cooldown="<?= $cooldown ?>" data-auto-resend="<?= ($isLocked && $isDemo) ? '1' : '0' ?>" class="btn btn-resend btn-soft w-100 py-2.5 is-locked" disabled>
             <i class="bi bi-clock-history"></i>
             <span><?= __('resend_code_in_seconds', ['sec' => '<strong id="resend-timer" class="font-numeric">' . $cooldown . '</strong>']) ?></span>
         </button>

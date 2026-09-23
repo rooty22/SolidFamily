@@ -209,11 +209,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 resendTimerEl.textContent = formatRemaining(remaining);
                 setTimeout(updateTimer, 1000);
             } else {
+                sessionStorage.removeItem(storageKey);
+
+                // A real security lock (not just the cosmetic wait) just expired in demo mode: fetch a
+                // fresh code automatically instead of leaving the user staring at one that's now invalid.
+                if (resendBtn.dataset.autoResend === '1') {
+                    resendBtn.closest('form')?.requestSubmit();
+                    return;
+                }
+
                 resendBtn.disabled = false;
                 resendBtn.classList.remove('is-locked');
                 resendBtn.classList.add('is-ready');
                 resendBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> <span>إعادة إرسال الرمز الآن</span>';
-                sessionStorage.removeItem(storageKey);
 
                 if (otpLockedWrap) {
                     otpLockedWrap.querySelectorAll('input').forEach(function (i) { i.disabled = false; });
