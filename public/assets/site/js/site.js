@@ -189,6 +189,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Demo mode: once the current code's own validity period runs out (independent of the resend
+    // cooldown above), fetch a fresh one automatically so the user is never left holding a dead code.
+    const otpExpiryWrap = document.querySelector('.otp-inputs[data-expires-in]');
+    if (otpExpiryWrap) {
+        const expiresIn = parseInt(otpExpiryWrap.getAttribute('data-expires-in') || '0', 10);
+        if (expiresIn > 0) {
+            setTimeout(function () {
+                document.getElementById('resend-btn')?.closest('form')?.requestSubmit();
+            }, expiresIn * 1000);
+        }
+    }
+
     // Copy to clipboard helper (useful for IBAN / Account numbers)
     document.querySelectorAll('[data-copy]').forEach(function (el) {
         el.addEventListener('click', function () {

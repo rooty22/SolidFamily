@@ -10,8 +10,6 @@ class Auth
     public static function loginAdmin(array $admin): void
     {
         Session::regenerate();
-        Session::remove('member_id');
-        Session::remove('member_name');
         Session::set('admin_id', $admin['id']);
         Session::set('admin_name', $admin['name']);
     }
@@ -36,8 +34,6 @@ class Auth
     public static function loginMember(array $member): void
     {
         Session::regenerate();
-        Session::remove('admin_id');
-        Session::remove('admin_name');
         Session::set('member_id', $member['id']);
         Session::set('member_name', $member['name']);
     }

@@ -46,6 +46,27 @@ function base_path(): string
     return $path;
 }
 
+/**
+ * Whether the current request targets an /admin/* route, used to give the admin panel and the member
+ * site separate session cookies so being logged into one never signs the other out in the same browser.
+ */
+function is_admin_path(): bool
+{
+    $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+    $basePath = base_path();
+    if ($basePath !== '' && str_starts_with($uri, $basePath)) {
+        $uri = substr($uri, strlen($basePath));
+    }
+    if ($uri === '/public' || str_starts_with($uri, '/public/')) {
+        $uri = substr($uri, 7);
+    }
+    if ($uri === '/index.php' || str_starts_with($uri, '/index.php/')) {
+        $uri = substr($uri, 10);
+    }
+    $uri = rtrim($uri, '/');
+    return $uri === '/admin' || str_starts_with($uri, '/admin/');
+}
+
 function url(string $path = ''): string
 {
     $base = base_path();

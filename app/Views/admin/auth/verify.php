@@ -3,6 +3,8 @@ $demoCode = \App\Core\Session::get('demo_otp_code');
 $isDemo = otp_is_demo();
 $cooldown = otp_cooldown_seconds($email, 'admin_reset');
 $isLocked = $cooldown > otp_resend_seconds();
+$demoExpiresAt = \App\Core\Session::get('demo_otp_expires_at');
+$codeExpiresIn = ($isDemo && !$isLocked && $demoExpiresAt) ? max(0, strtotime($demoExpiresAt) - time()) : 0;
 ?>
 <div class="auth-card" style="max-width: 480px; margin: 0 auto;">
     <div class="text-center">
@@ -34,7 +36,7 @@ $isLocked = $cooldown > otp_resend_seconds();
 
     <form method="post" action="<?= url('admin/forgot-password/verify') ?>">
         <?= csrf_field() ?>
-        <div class="otp-inputs" dir="ltr" <?= $isLocked ? 'data-locked="1"' : '' ?>>
+        <div class="otp-inputs" dir="ltr" <?= $isLocked ? 'data-locked="1"' : '' ?> <?= $codeExpiresIn > 0 ? 'data-expires-in="' . $codeExpiresIn . '"' : '' ?>>
             <?php for ($i = 0; $i < otp_length(); $i++): ?>
                 <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" class="otp-digit" required <?= $isLocked ? 'disabled' : '' ?>>
             <?php endfor; ?>

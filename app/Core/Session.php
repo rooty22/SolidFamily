@@ -11,7 +11,9 @@ class Session
     {
         if (session_status() === PHP_SESSION_NONE) {
             $cfg = config('session');
-            session_name($cfg['name']);
+            // Admin and member each get their own cookie, so signing into one never signs the other out
+            // in the same browser (they used to share a single session and one login would clear the other).
+            session_name(is_admin_path() ? $cfg['admin_name'] : $cfg['name']);
             // HttpOnly keeps the cookie away from injected scripts; SameSite=Lax blocks cross-site POSTs.
             ini_set('session.use_strict_mode', '1');
             session_set_cookie_params([

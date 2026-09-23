@@ -21,6 +21,7 @@ return [
     ],
     'session' => [
         'name' => 'sandouk_session',
+        'admin_name' => 'sandouk_admin_session',
         'lifetime' => 60 * 60 * 8,
     ],
 ];

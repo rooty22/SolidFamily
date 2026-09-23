@@ -82,7 +82,7 @@ class OtpCode extends Model
             'expires_at' => $expiresAt,
         ]);
 
-        self::deliver($identifier, $purpose, $code);
+        self::deliver($identifier, $purpose, $code, $expiresAt);
 
         return $code;
     }
@@ -90,11 +90,12 @@ class OtpCode extends Model
     /**
      * Deliver OTP via SMS Gateway in Live mode, or store in session in Demo mode.
      */
-    private static function deliver(string $identifier, string $purpose, string $code): void
+    private static function deliver(string $identifier, string $purpose, string $code, string $expiresAt): void
     {
         if (otp_is_demo()) {
             \App\Core\Session::set('demo_otp_code', $code);
             \App\Core\Session::set('demo_otp_identifier', $identifier);
+            \App\Core\Session::set('demo_otp_expires_at', $expiresAt);
             return;
         }
 
