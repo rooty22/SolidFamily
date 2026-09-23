@@ -17,6 +17,11 @@ $defaultFee = (float)($feePercent ?? 0);
         let a = parseFloat(this.amount) || 0;
         let f = parseFloat(this.feePercent) || 0;
         return ((a * f) / 100).toFixed(2);
+    },
+    get totalWithFee() {
+        let a = parseFloat(this.amount) || 0;
+        let fee = parseFloat(this.adminFeeAmount) || 0;
+        return (a + fee).toFixed(2);
     }
 }">
     <!-- Header Banner -->
@@ -170,9 +175,13 @@ $defaultFee = (float)($feePercent ?? 0);
                         <span class="text-slate-400"><?= $isEn ? 'Administrative Fee:' : 'رسوم إدارية رمزية:' ?></span>
                         <span class="font-bold font-numeric text-amber-400"><span x-text="adminFeeAmount"></span> <?= __('currency') ?> (<span x-text="feePercent"></span>%)</span>
                     </div>
-                    <div class="flex justify-between py-2">
+                    <div class="flex justify-between py-2 border-b border-slate-800">
                         <span class="text-slate-400"><?= $isEn ? 'Total Borrower Repayment:' : 'إجمالي السداد المطلوب:' ?></span>
                         <span class="font-bold font-numeric text-emerald-300"><span x-text="amount"></span> <?= __('currency') ?></span>
+                    </div>
+                    <div class="flex justify-between py-2">
+                        <span class="text-slate-400"><?= $isEn ? 'Total Installments + Admin Fee:' : 'إجمالي الأقساط مع المصاريف الإدارية:' ?></span>
+                        <span class="font-bold font-numeric text-white"><span x-text="totalWithFee"></span> <?= __('currency') ?></span>
                     </div>
                 </div>
 
