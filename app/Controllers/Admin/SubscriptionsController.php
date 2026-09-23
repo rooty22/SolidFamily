@@ -108,7 +108,7 @@ class SubscriptionsController extends Controller
 
             for ($i = 0; $i < $count; $i++) {
                 $month = date('Y-m', strtotime("+{$i} month", $ts));
-                $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month);
+                $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month, false);
                 if ($sub['status'] !== 'paid') {
                     $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
@@ -137,7 +137,7 @@ class SubscriptionsController extends Controller
 
             $month = $data['partial_month'];
             $amount = round((float) $data['partial_amount'], 2);
-            $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month);
+            $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month, false);
             $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
 
             if ($remaining <= 0) {

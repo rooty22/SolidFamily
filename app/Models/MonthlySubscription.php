@@ -19,13 +19,26 @@ class MonthlySubscription extends Model
         return (int) ($member['subscription_due_day'] ?? Setting::get('subscription_due_day', 10));
     }
 
-    public static function ensureMonthExists(int $memberId, string $month): array
+    /**
+     * @param bool $applyGracePeriod Whether a just-(re)computed current-month row whose due date has already
+     *     passed gets waived instead of instantly counted as overdue (see below). Callers that are explicitly
+     *     recording a payment for a specific month (which may itself already be in the past on purpose) pass
+     *     false, since silently marking that row "paid" without an actual payment would make them skip it.
+     */
+    public static function ensureMonthExists(int $memberId, string $month, bool $applyGracePeriod = true): array
     {
         $member = Member::find($memberId);
         $shareValue = (float) Setting::get('share_value', 0);
         $dueDay = self::dueDayFor($member);
         $sharesCount = (int) ($member['shares_count'] ?? 0);
         $amountDue = round($sharesCount * $shareValue, 2);
+        $dueDate = month_due_date($month, $dueDay);
+
+        // A member approved (or given a new due day) mid-cycle, after this month's due day already passed,
+        // shouldn't be flagged overdue the instant their row is created/recalculated. Waive this one period;
+        // billing starts cleanly next month with its own (future) due date.
+        $waived = $applyGracePeriod && $month === date('Y-m') && $dueDate < date('Y-m-d');
+        $status = ($amountDue > 0 && !$waived) ? 'unpaid' : 'paid';
 
         $existing = self::first(['member_id' => $memberId, 'month' => $month]);
         if ($existing) {
@@ -40,9 +53,8 @@ class MonthlySubscription extends Model
                     'shares_count_snapshot' => $sharesCount,
                     'share_value_snapshot' => $shareValue,
                     'amount_due' => $amountDue,
-                    // A member with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
-                    'status' => $amountDue > 0 ? 'unpaid' : 'paid',
-                    'due_date' => month_due_date($month, $dueDay),
+                    'status' => $status,
+                    'due_date' => $dueDate,
                 ]);
                 return self::find($existing['id']);
             }
@@ -56,9 +68,8 @@ class MonthlySubscription extends Model
             'share_value_snapshot' => $shareValue,
             'amount_due' => $amountDue,
             'amount_paid' => 0,
-            // A member with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
-            'status' => $amountDue > 0 ? 'unpaid' : 'paid',
-            'due_date' => month_due_date($month, $dueDay),
+            'status' => $status,
+            'due_date' => $dueDate,
         ]);
 
         return self::find($id);
