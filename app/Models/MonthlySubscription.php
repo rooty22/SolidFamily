@@ -39,6 +39,14 @@ class MonthlySubscription extends Model
             return [self::ensureLotMonth($member, null, 0, null, $month, $applyGracePeriod)];
         }
 
+        // A member who had no lots yet (or had them cancelled to zero) can have a leftover lot-less
+        // trivial row from back then. Now that real lots exist for this month, that row is just a stale
+        // duplicate -- drop it rather than leave it cluttering the history next to the real ones.
+        $stale = self::first(['member_id' => $memberId, 'month' => $month, 'lot_id' => null]);
+        if ($stale && (float) $stale['amount_paid'] == 0.0) {
+            self::delete($stale['id']);
+        }
+
         $rows = [];
         foreach ($lots as $lot) {
             $rows[] = self::ensureLotMonth($member, (int) $lot['id'], (int) $lot['shares_count'], $lot['subscription_due_day'], $month, $applyGracePeriod);
