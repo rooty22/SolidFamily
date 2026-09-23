@@ -162,6 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 const isEn = document.documentElement.lang === 'en';
                 resendBtn.disabled = false;
+                resendBtn.classList.remove('is-locked');
+                resendBtn.classList.add('is-ready');
                 resendBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> <span>' + (isEn ? 'Resend Code Now' : 'إعادة إرسال الرمز الآن') + '</span>';
                 sessionStorage.removeItem(storageKey);
 

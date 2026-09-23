@@ -37,6 +37,7 @@ class SettingsController extends Controller
         'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day',
         // OTP & SMS Gateway Integration
         'otp_mode', 'otp_resend_seconds', 'otp_length', 'otp_expiry_minutes',
+        'otp_max_failed_attempts', 'otp_verify_lock_minutes', 'otp_max_issued_per_identifier', 'otp_issue_window_minutes',
         'sms_provider', 'sms_sender_name', 'sms_api_key', 'sms_app_sid',
         'sms_username', 'sms_password', 'sms_custom_url',
         // Favicon (URL-based fallback; file upload handled separately)
@@ -83,6 +84,10 @@ class SettingsController extends Controller
             ->integer('otp_resend_seconds', 'مهلة إعادة الإرسال', 10, 300)
             ->in('otp_length', ['4', '6'], 'طول رمز التحقق')
             ->integer('otp_expiry_minutes', 'صلاحية رمز التحقق', 1, 60)
+            ->integer('otp_max_failed_attempts', 'أقصى عدد محاولات خاطئة', 3, 20)
+            ->integer('otp_verify_lock_minutes', 'مدة قفل التحقق', 1, 120)
+            ->integer('otp_max_issued_per_identifier', 'أقصى عدد طلبات إرسال', 3, 30)
+            ->integer('otp_issue_window_minutes', 'مدة نافذة طلبات الإرسال', 1, 120)
             ->in('sms_provider', ['taqnyat', 'unifonic', '4jawaly', 'msegat', 'twilio', 'custom'], 'مزود خدمة الرسائل SMS')
             ->max('sms_sender_name', 50, 'اسم المرسل')
             ->url('site_logo_url', 'الشعار', true);

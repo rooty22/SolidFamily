@@ -9,11 +9,32 @@ class OtpCode extends Model
 {
     protected static string $table = 'otp_codes';
 
-    private const MAX_FAILED_VERIFICATIONS = 5;
-    private const VERIFY_LOCK_SECONDS = 1800; // 30 minutes
-    private const MAX_ISSUED_PER_IDENTIFIER = 5;
+    /** Anti-abuse throttle knobs, editable from Admin Settings > OTP & SMS Gateway; these are just the fallbacks. */
+    private const MAX_FAILED_VERIFICATIONS_DEFAULT = 5;
+    private const VERIFY_LOCK_MINUTES_DEFAULT = 30;
+    private const MAX_ISSUED_PER_IDENTIFIER_DEFAULT = 5;
+    private const ISSUE_WINDOW_MINUTES_DEFAULT = 15;
     private const MAX_ISSUED_PER_IP = 15;
-    private const ISSUE_WINDOW = 900; // 15 minutes
+
+    private static function maxFailedVerifications(): int
+    {
+        return max(1, (int) site_setting('otp_max_failed_attempts', self::MAX_FAILED_VERIFICATIONS_DEFAULT));
+    }
+
+    private static function verifyLockSeconds(): int
+    {
+        return max(60, (int) site_setting('otp_verify_lock_minutes', self::VERIFY_LOCK_MINUTES_DEFAULT) * 60);
+    }
+
+    private static function maxIssuedPerIdentifier(): int
+    {
+        return max(1, (int) site_setting('otp_max_issued_per_identifier', self::MAX_ISSUED_PER_IDENTIFIER_DEFAULT));
+    }
+
+    private static function issueWindowSeconds(): int
+    {
+        return max(60, (int) site_setting('otp_issue_window_minutes', self::ISSUE_WINDOW_MINUTES_DEFAULT) * 60);
+    }
 
     /** Quick format check so obviously malformed input never reaches the database lookup. */
     public static function isWellFormed(string $code): bool
@@ -24,7 +45,7 @@ class OtpCode extends Model
     /** True while too many wrong codes were entered for this identifier: no code can be verified or issued. */
     public static function isLocked(string $identifier, string $purpose): bool
     {
-        return RateLimiter::tooMany(self::verifyKey($identifier, $purpose), self::MAX_FAILED_VERIFICATIONS, self::VERIFY_LOCK_SECONDS);
+        return RateLimiter::tooMany(self::verifyKey($identifier, $purpose), self::maxFailedVerifications(), self::verifyLockSeconds());
     }
 
     /**
@@ -35,10 +56,11 @@ class OtpCode extends Model
     {
         $issueKey = "otp_issue:{$purpose}:" . mb_strtolower($identifier);
         $ipKey = 'otp_issue_ip:' . client_ip();
+        $issueWindow = self::issueWindowSeconds();
 
         if (self::isLocked($identifier, $purpose)
-            || RateLimiter::tooMany($issueKey, self::MAX_ISSUED_PER_IDENTIFIER, self::ISSUE_WINDOW)
-            || RateLimiter::tooMany($ipKey, self::MAX_ISSUED_PER_IP, self::ISSUE_WINDOW)) {
+            || RateLimiter::tooMany($issueKey, self::maxIssuedPerIdentifier(), $issueWindow)
+            || RateLimiter::tooMany($ipKey, self::MAX_ISSUED_PER_IP, $issueWindow)) {
             return null;
         }
         RateLimiter::hit($issueKey);
@@ -121,13 +143,15 @@ class OtpCode extends Model
      */
     public static function retryAfterSeconds(string $identifier, string $purpose): int
     {
-        $verifyRetry = RateLimiter::retryAfter(self::verifyKey($identifier, $purpose), self::MAX_FAILED_VERIFICATIONS, self::VERIFY_LOCK_SECONDS);
+        $issueWindow = self::issueWindowSeconds();
+
+        $verifyRetry = RateLimiter::retryAfter(self::verifyKey($identifier, $purpose), self::maxFailedVerifications(), self::verifyLockSeconds());
 
         $issueKey = "otp_issue:{$purpose}:" . mb_strtolower($identifier);
-        $issueRetry = RateLimiter::retryAfter($issueKey, self::MAX_ISSUED_PER_IDENTIFIER, self::ISSUE_WINDOW);
+        $issueRetry = RateLimiter::retryAfter($issueKey, self::maxIssuedPerIdentifier(), $issueWindow);
 
         $ipKey = 'otp_issue_ip:' . client_ip();
-        $ipRetry = RateLimiter::retryAfter($ipKey, self::MAX_ISSUED_PER_IP, self::ISSUE_WINDOW);
+        $ipRetry = RateLimiter::retryAfter($ipKey, self::MAX_ISSUED_PER_IP, $issueWindow);
 
         return max($verifyRetry, $issueRetry, $ipRetry);
     }

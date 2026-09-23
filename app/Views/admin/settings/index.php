@@ -745,6 +745,57 @@ $siteFaviconUrl = site_favicon_url();
                     </div>
                 </div>
 
+                <!-- Anti-Abuse Throttle Controls -->
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="bi bi-shield-exclamation text-rose-600"></i>
+                        <span>ضوابط الحماية من إساءة الاستخدام</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 -mt-2">لو حد جرّب رمز خطأ أو طلب إعادة إرسال كتير، بيتقفل مؤقتاً عشان نمنع تخمين الرمز أو إغراق بوابة SMS. اضبط المدد دي حسب احتياجك (المدد الطويلة تحمي أكتر، القصيرة تريّح التجربة/الاختبار).</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Max failed verification attempts -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">أقصى عدد محاولات رمز خاطئة</label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="3" max="20" name="otp_max_failed_attempts" value="<?= e($settings['otp_max_failed_attempts'] ?? '5') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">محاولات</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">بعد الوصول للعدد ده، يتقفل التحقق للرقم/الإيميل ده مؤقتاً.</p>
+                        </div>
+
+                        <!-- Verify lock duration -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">مدة قفل التحقق (بالدقائق)</label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="1" max="120" name="otp_verify_lock_minutes" value="<?= e($settings['otp_verify_lock_minutes'] ?? '30') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">دقيقة</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">المدة اللي المستخدم يستناها بعد ما يوصل لأقصى عدد محاولات.</p>
+                        </div>
+
+                        <!-- Max issue requests -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">أقصى عدد طلبات إرسال رمز</label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="3" max="30" name="otp_max_issued_per_identifier" value="<?= e($settings['otp_max_issued_per_identifier'] ?? '5') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">طلبات</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">عدد مرات "إعادة الإرسال" المسموحة لنفس الرقم/الإيميل داخل النافذة الزمنية بالأسفل.</p>
+                        </div>
+
+                        <!-- Issue window duration -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">مدة نافذة طلبات الإرسال (بالدقائق)</label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="1" max="120" name="otp_issue_window_minutes" value="<?= e($settings['otp_issue_window_minutes'] ?? '15') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">دقيقة</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">لو الحد الأقصى اتحقق خلال المدة دي، يتقفل الإرسال لحد ما تعدي.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SMS Provider Gateway Configuration -->
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
