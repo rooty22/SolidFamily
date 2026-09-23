@@ -550,6 +550,7 @@ return [
     'before_day_of_month' => 'Before day :day of each month',
     'adjust_your_shares' => 'Adjust Your Shares',
     'adjust_shares_desc' => 'You can request to add, merge, or cancel shares. Changes take effect the following month after management review and approval.',
+    'unmerged_lots_notice' => 'Your shares are split across separate batches with different due dates. Request "merge shares" to combine them into one.',
 
     // Share Requests Client Views
     'share_requests_subtitle' => 'Request to add, merge, or cancel shares, and track your request status.',

@@ -18,13 +18,18 @@ class HomeController extends Controller
         $shareValue = (float) Setting::get('share_value', 0);
         $monthlyAmount = $member['shares_count'] * $shareValue;
 
-        MonthlySubscription::ensureMonthExists($member['id'], date('Y-m'));
+        MonthlySubscription::ensureMonthExistsForMember($member['id'], date('Y-m'));
         $subscriptions = MonthlySubscription::forMember($member['id']);
+        // A member can have several unmerged share lots at once now, each with its own row this
+        // month: show the worst status among them rather than an arbitrary single one.
         $currentSub = null;
         foreach ($subscriptions as $s) {
-            if ($s['month'] === date('Y-m')) {
+            if ($s['month'] !== date('Y-m')) {
+                continue;
+            }
+            if ($currentSub === null || $s['status'] === 'unpaid'
+                || ($s['status'] === 'partial' && $currentSub['status'] === 'paid')) {
                 $currentSub = $s;
-                break;
             }
         }
         $paidMonths = count(array_filter($subscriptions, fn($s) => $s['status'] === 'paid'));

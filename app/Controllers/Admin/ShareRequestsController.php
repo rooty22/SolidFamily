@@ -6,6 +6,9 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Models\Member;
+use App\Models\MonthlySubscription;
+use App\Models\Notification;
+use App\Models\ShareLot;
 use App\Models\ShareRequest;
 
 class ShareRequestsController extends Controller
@@ -79,10 +82,39 @@ class ShareRequestsController extends Controller
             $this->redirect('admin/share-requests');
         }
 
+        // members.shares_count stays the single total used everywhere else (loans, founding amount, ...).
+        // share_lots is the separate, finer-grained record that actually drives monthly subscription billing:
+        // each "add" is its own lot with its own due date until a "merge" request folds every lot into one.
         if ($request['type'] === 'add') {
             $newCount += (int) $request['shares_count'];
+            ShareLot::create([
+                'member_id' => $member['id'],
+                'shares_count' => (int) $request['shares_count'],
+                'subscription_due_day' => $dueDay,
+                'source_request_id' => (int) $id,
+            ]);
         } elseif ($request['type'] === 'cancel') {
             $newCount = max(0, $newCount - (int) $request['shares_count']);
+            ShareLot::cancelShares($member['id'], (int) $request['shares_count']);
+        } elseif ($request['type'] === 'merge') {
+            // Capture what was already paid on each lot's current-month row before merging, so it can be
+            // carried onto the new combined row instead of lost or, worse, charged for again.
+            $oldLotIds = array_column(ShareLot::activeFor($member['id']), 'id');
+            $carriedPaid = 0.0;
+            foreach ($oldLotIds as $oldLotId) {
+                $oldRow = MonthlySubscription::first(['member_id' => $member['id'], 'month' => date('Y-m'), 'lot_id' => $oldLotId]);
+                $carriedPaid += (float) ($oldRow['amount_paid'] ?? 0);
+            }
+
+            ShareLot::mergeAllFor($member['id'], $dueDay, (int) $id);
+
+            // Void the old lots' own current-month rows: that obligation now lives on the new merged row.
+            foreach ($oldLotIds as $oldLotId) {
+                MonthlySubscription::updateWhere(
+                    ['member_id' => $member['id'], 'month' => date('Y-m'), 'lot_id' => $oldLotId],
+                    ['status' => 'paid']
+                );
+            }
         }
 
         $memberUpdate = ['shares_count' => $newCount];
@@ -90,7 +122,21 @@ class ShareRequestsController extends Controller
             $memberUpdate['subscription_due_day'] = $dueDay;
         }
         Member::update($member['id'], $memberUpdate);
-        \App\Models\MonthlySubscription::ensureMonthExists((int) $member['id'], date('Y-m'));
+        $newRows = MonthlySubscription::ensureMonthExistsForMember((int) $member['id'], date('Y-m'));
+
+        if ($request['type'] === 'merge' && $carriedPaid > 0) {
+            $activeLot = ShareLot::activeFor($member['id'])[0] ?? null;
+            foreach ($newRows as $row) {
+                if ($activeLot && (int) $row['lot_id'] === (int) $activeLot['id']) {
+                    $paid = min((float) $row['amount_due'], $carriedPaid);
+                    MonthlySubscription::update($row['id'], [
+                        'amount_paid' => $paid,
+                        'status' => $paid >= (float) $row['amount_due'] ? 'paid' : ($paid > 0 ? 'partial' : $row['status']),
+                    ]);
+                    break;
+                }
+            }
+        }
 
         ShareRequest::update((int) $id, [
             'status' => 'approved',
@@ -99,7 +145,7 @@ class ShareRequestsController extends Controller
             'admin_note' => $note,
         ]);
 
-        \App\Models\Notification::systemNotify($member['id'], 'تحديث طلب الأسهم', 'تمت الموافقة على طلب ' . ($this->typeLabels[$request['type']] ?? '') . ' الخاص بك.');
+        Notification::systemNotify($member['id'], 'تحديث طلب الأسهم', 'تمت الموافقة على طلب ' . ($this->typeLabels[$request['type']] ?? '') . ' الخاص بك.');
 
         Session::flash('success', 'تمت الموافقة على الطلب وتحديث أسهم المشترك.');
         $this->redirect('admin/share-requests');

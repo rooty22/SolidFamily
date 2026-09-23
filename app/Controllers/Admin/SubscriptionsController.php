@@ -8,6 +8,7 @@ use App\Core\Validator;
 use App\Models\Member;
 use App\Models\MonthlySubscription;
 use App\Models\Setting;
+use App\Models\ShareLot;
 use App\Models\Transaction;
 use App\Models\Notification;
 
@@ -35,18 +36,28 @@ class SubscriptionsController extends Controller
 
         $rows = [];
         foreach ($members as $m) {
-            $current = MonthlySubscription::first(['member_id' => $m['id'], 'month' => $currentMonth]);
+            // A member can have several unmerged share lots at once, each with its own row this month:
+            // the summary status here is the worst status among them.
+            $currentRows = MonthlySubscription::where(['member_id' => $m['id'], 'month' => $currentMonth]);
+            $currentStatus = null;
+            foreach ($currentRows as $r) {
+                if ($currentStatus === null || $r['status'] === 'unpaid'
+                    || ($r['status'] === 'partial' && $currentStatus === 'paid')) {
+                    $currentStatus = $r['status'];
+                }
+            }
             $late = (int) ($counts[(int) $m['id']]['late_months'] ?? 0);
-            // The current month has no row until somebody opens it: it still counts as overdue once its own due
-            // date (the member's own override, or the site default) has passed.
-            if (!$current && (int) $m['shares_count'] > 0 && month_due_date($currentMonth, MonthlySubscription::dueDayFor($m)) < $today) {
+            // A lot with no row yet this month (nobody has opened it) still counts as overdue once its
+            // own due date (its own override, the member's, or the site default) has passed.
+            if (empty($currentRows) && (int) $m['shares_count'] > 0 && month_due_date($currentMonth, MonthlySubscription::dueDayFor($m)) < $today) {
                 $late++;
+                $currentStatus = 'unpaid';
             }
             $rows[] = [
                 'member' => $m,
                 'share_value' => $shareValue,
                 'amount' => $m['shares_count'] * $shareValue,
-                'current_status' => $current['status'] ?? 'unpaid',
+                'current_status' => $currentStatus ?? 'unpaid',
                 'paid_months' => (int) ($counts[(int) $m['id']]['paid_months'] ?? 0),
                 'late_months' => $late,
             ];
@@ -67,16 +78,40 @@ class SubscriptionsController extends Controller
             $this->redirect('admin/subscriptions');
         }
 
-        MonthlySubscription::ensureMonthExists((int) $memberId, date('Y-m'));
+        MonthlySubscription::ensureMonthExistsForMember((int) $memberId, date('Y-m'));
         $history = MonthlySubscription::forMember((int) $memberId);
         $shareValue = (float) Setting::get('share_value', 0);
+        $lots = ShareLot::activeFor((int) $memberId);
 
         $this->view('admin/subscriptions/show', [
             'pageTitle' => __('subscriptions_for', ['name' => $member['name']]),
             'member' => $member,
             'history' => $history,
             'shareValue' => $shareValue,
+            'lots' => $lots,
         ], 'admin/layout');
+    }
+
+    /**
+     * The subscription row a payment should apply to: the specific lot the admin picked, or -- when
+     * the member has at most one row for that month -- that one row with no picking needed. Null when
+     * the member has several lots this month and none was specified (the caller must ask the admin to pick).
+     */
+    private function resolveLotSubscription(int $memberId, string $month, string $lotIdInput): ?array
+    {
+        $rows = MonthlySubscription::ensureMonthExistsForMember($memberId, $month, false);
+
+        if ($lotIdInput !== '') {
+            $lotId = (int) $lotIdInput;
+            foreach ($rows as $r) {
+                if ((int) ($r['lot_id'] ?? 0) === $lotId) {
+                    return $r;
+                }
+            }
+            return null;
+        }
+
+        return count($rows) === 1 ? $rows[0] : null;
     }
 
     public function recordPayment(string $memberId): void
@@ -90,6 +125,7 @@ class SubscriptionsController extends Controller
         $back = 'admin/subscriptions/' . $memberId;
         $data = $this->all();
         $action = $data['action'] ?? 'bulk_pay';
+        $lotIdInput = trim((string) ($data['lot_id'] ?? ''));
 
         if ($action === 'bulk_pay') {
             $data += ['start_month' => date('Y-m'), 'months_count' => '1'];
@@ -108,7 +144,11 @@ class SubscriptionsController extends Controller
 
             for ($i = 0; $i < $count; $i++) {
                 $month = date('Y-m', strtotime("+{$i} month", $ts));
-                $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month, false);
+                $sub = $this->resolveLotSubscription((int) $memberId, $month, $lotIdInput);
+                if ($sub === null) {
+                    Session::flash('error', 'المشترك عنده أكتر من دفعة أسهم منفصلة — حدّد أنهي دفعة تسدّدها.');
+                    $this->redirect($back);
+                }
                 if ($sub['status'] !== 'paid') {
                     $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
@@ -137,7 +177,11 @@ class SubscriptionsController extends Controller
 
             $month = $data['partial_month'];
             $amount = round((float) $data['partial_amount'], 2);
-            $sub = MonthlySubscription::ensureMonthExists((int) $memberId, $month, false);
+            $sub = $this->resolveLotSubscription((int) $memberId, $month, $lotIdInput);
+            if ($sub === null) {
+                Session::flash('error', 'المشترك عنده أكتر من دفعة أسهم منفصلة — حدّد أنهي دفعة تسدّدها.');
+                $this->redirect($back);
+            }
             $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
 
             if ($remaining <= 0) {

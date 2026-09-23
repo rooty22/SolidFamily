@@ -16,11 +16,18 @@ class NotificationsController extends Controller
         $notifications = Notification::forMember($member['id']);
 
         // What the member has to pay next: shown next to the notifications so the page is useful even when it is empty.
+        // A member can have several unmerged share lots at once, each billed separately this month.
         $subscription = null;
         if ((int) $member['shares_count'] > 0) {
-            $row = MonthlySubscription::ensureMonthExists((int) $member['id'], date('Y-m'));
-            if ((float) $row['amount_due'] > 0) {
-                $subscription = $row;
+            $rows = array_filter(
+                MonthlySubscription::ensureMonthExistsForMember((int) $member['id'], date('Y-m')),
+                fn($r) => (float) $r['amount_due'] - (float) $r['amount_paid'] > 0
+            );
+            if (!empty($rows)) {
+                usort($rows, fn($a, $b) => $a['due_date'] <=> $b['due_date']);
+                $subscription = $rows[0];
+                $subscription['amount_due'] = array_sum(array_column($rows, 'amount_due'));
+                $subscription['amount_paid'] = array_sum(array_column($rows, 'amount_paid'));
             }
         }
         $nextInstallment = LoanInstallment::rawOne(

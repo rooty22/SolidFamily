@@ -56,8 +56,9 @@ foreach (Member::where(['status' => 'active']) as $member) {
     }
     $memberId = (int) $member['id'];
 
-    // Make sure this month's row exists (it is what the member is asked to pay).
-    $current = MonthlySubscription::ensureMonthExists($memberId, $currentMonth);
+    // Make sure this month's row exists for every one of the member's active (unmerged) share lots
+    // -- each bills separately -- before the query below picks them up.
+    MonthlySubscription::ensureMonthExistsForMember($memberId, $currentMonth);
 
     $rows = MonthlySubscription::raw(
         "SELECT * FROM monthly_subscriptions
@@ -70,12 +71,14 @@ foreach (Member::where(['status' => 'active']) as $member) {
         if ($remaining <= 0) {
             continue;
         }
+        // The dedupe key includes the lot's own row id: two separate unmerged lots overdue in the
+        // same month are two separate debts, each needing its own reminder.
         if ($sub['due_date'] < $today) {
-            $notify($memberId, 'sub_late', "sub-late:{$sub['month']}",
+            $notify($memberId, 'sub_late', "sub-late:{$sub['month']}:{$sub['id']}",
                 'تنبيه: تأخر في سداد الاشتراك الشهري',
                 "لم يتم سداد اشتراك شهر {$sub['month']} (المتبقي " . $fmt($remaining) . ") وكان موعده {$sub['due_date']}. الرجاء السداد في أقرب وقت.");
         } elseif ($sub['due_date'] <= $horizon) {
-            $notify($memberId, 'sub_due', "sub-due:{$sub['month']}",
+            $notify($memberId, 'sub_due', "sub-due:{$sub['month']}:{$sub['id']}",
                 'تذكير باقتراب موعد الاشتراك الشهري',
                 "يستحق اشتراك شهر {$sub['month']} بقيمة " . $fmt($remaining) . " بتاريخ {$sub['due_date']}. الرجاء السداد قبل الموعد.");
         }

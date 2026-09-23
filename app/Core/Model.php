@@ -162,6 +162,9 @@ abstract class Model
             if (is_array($value) && isset($value[0]) && in_array(strtoupper($value[0]), ['>', '<', '>=', '<=', '!=', 'LIKE'])) {
                 $parts[] = "$column {$value[0]} :$key";
                 $params[$key] = $value[1];
+            } elseif ($value === null) {
+                // "column = NULL" never matches in SQL, even when the column genuinely holds NULL.
+                $parts[] = "$column IS NULL";
             } else {
                 $parts[] = "$column = :$key";
                 $params[$key] = $value;

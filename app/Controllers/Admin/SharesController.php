@@ -37,6 +37,12 @@ class SharesController extends Controller
         $this->redirect('admin/shares');
     }
 
+    /**
+     * Direct manual override of a member's total shares, bypassing the share-request/approval flow.
+     * NOTE: unlike ShareRequestsController::approve(), this does not touch share_lots, so it can leave
+     * members.shares_count out of sync with the sum of their lots (which drive monthly subscription
+     * billing). Prefer approving a share request when the distinction matters.
+     */
     public function updateMemberShares(string $id): void
     {
         $this->verifyCsrf();

@@ -10,6 +10,16 @@
             <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="bulk_pay">
+                <?php if (count($lots) > 1): ?>
+                    <div class="mb-2">
+                        <label class="form-label">الدفعة (لوطة الأسهم)</label>
+                        <select name="lot_id" class="form-select" required>
+                            <?php foreach ($lots as $lot): ?>
+                                <option value="<?= $lot['id'] ?>"><?= number_format($lot['shares_count']) ?> سهم — يوم <?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> من الشهر</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="row g-2">
                     <div class="col-6">
                         <label class="form-label">الشهر الأول</label>
@@ -30,6 +40,16 @@
             <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="partial_pay">
+                <?php if (count($lots) > 1): ?>
+                    <div class="mb-2">
+                        <label class="form-label">الدفعة (لوطة الأسهم)</label>
+                        <select name="lot_id" class="form-select" required>
+                            <?php foreach ($lots as $lot): ?>
+                                <option value="<?= $lot['id'] ?>"><?= number_format($lot['shares_count']) ?> سهم — يوم <?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> من الشهر</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="row g-2">
                     <div class="col-6">
                         <label class="form-label">الشهر</label>
@@ -49,11 +69,12 @@
 <div class="card-panel">
     <div class="panel-head"><h3><i class="bi bi-clock-history"></i> سجل الاشتراكات</h3></div>
     <table class="table-modern">
-        <thead><tr><th>الشهر</th><th>موعد الاستحقاق</th><th>المستحق</th><th>المسدد</th><th>الحالة</th></tr></thead>
+        <thead><tr><th>الشهر</th><th>الدفعة</th><th>موعد الاستحقاق</th><th>المستحق</th><th>المسدد</th><th>الحالة</th></tr></thead>
         <tbody>
         <?php foreach ($history as $h): [$l, $v] = status_badge($h['status']); ?>
             <tr>
                 <td class="fw-bold"><?= e($h['month']) ?></td>
+                <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?></td>
                 <td><?= date_ar($h['due_date']) ?></td>
                 <td><?= money($h['amount_due']) ?></td>
                 <td><?= money($h['amount_paid']) ?></td>
@@ -61,7 +82,7 @@
             </tr>
         <?php endforeach; ?>
         <?php if (empty($history)): ?>
-            <tr><td colspan="5"><div class="empty-state"><i class="bi bi-calendar-x"></i>لا يوجد سجل بعد</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state"><i class="bi bi-calendar-x"></i>لا يوجد سجل بعد</div></td></tr>
         <?php endif; ?>
         </tbody>
     </table>

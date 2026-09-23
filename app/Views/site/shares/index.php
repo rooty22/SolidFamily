@@ -2,12 +2,12 @@
 $shares = (int) $member['shares_count'];
 $monthly = $shares * $shareValue;
 $currentMonth = date('Y-m');
-$current = null;
+$currentRows = [];
 $paidCount = 0;
 $lateCount = 0;
 foreach ($history as $h) {
     if ($h['month'] === $currentMonth) {
-        $current = $h;
+        $currentRows[] = $h;
     }
     if ($h['status'] === 'paid') {
         $paidCount++;
@@ -15,7 +15,18 @@ foreach ($history as $h) {
         $lateCount++;
     }
 }
-[$curLabel, $curVariant] = status_badge($current['status'] ?? 'unpaid');
+// One or more lots can be unpaid this month at once now: the summary badge shows the worst status among them.
+$curStatus = 'paid';
+foreach ($currentRows as $r) {
+    if ($r['status'] === 'unpaid') {
+        $curStatus = 'unpaid';
+        break;
+    }
+    if ($r['status'] === 'partial') {
+        $curStatus = 'partial';
+    }
+}
+[$curLabel, $curVariant] = status_badge($curStatus);
 ?>
 <div class="page-head">
     <div>
@@ -70,10 +81,22 @@ foreach ($history as $h) {
                 <div class="f-box f-total"><b class="font-num"><?= number_format($monthly) ?></b><small><?= __('monthly_subscription') ?></small></div>
             </div>
             <div class="info-list mt-2">
-                <div class="info-row"><span><?= __('due_time') ?></span><b><?= __('before_day_of_month', ['day' => (int) $dueDay]) ?></b></div>
+                <?php if (count($lots) > 1): ?>
+                    <?php foreach ($lots as $lot): ?>
+                        <div class="info-row">
+                            <span><?= __('shares_count') ?>: <b class="font-num"><?= number_format($lot['shares_count']) ?></b></span>
+                            <b><?= __('before_day_of_month', ['day' => (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot)]) ?></b>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="info-row"><span><?= __('due_time') ?></span><b><?= __('before_day_of_month', ['day' => (int) $dueDay]) ?></b></div>
+                <?php endif; ?>
                 <div class="info-row"><span><?= __('paid_months') ?></span><b class="font-num text-success"><?= $paidCount ?></b></div>
                 <div class="info-row"><span><?= __('late_months') ?></span><b class="font-num <?= $lateCount > 0 ? 'text-danger' : '' ?>"><?= $lateCount ?></b></div>
             </div>
+            <?php if (count($lots) > 1): ?>
+                <p class="text-muted small mt-2 mb-0"><?= __('unmerged_lots_notice') ?></p>
+            <?php endif; ?>
         </div>
 
         <div class="card-panel">

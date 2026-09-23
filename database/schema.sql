@@ -69,11 +69,29 @@ CREATE TABLE share_requests (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
--- Monthly subscriptions
+-- Share lots: each approved "add" request stays its own lot (own due day) until
+-- a "merge" request is approved and combines every active lot into one.
+-- =========================================================
+CREATE TABLE share_lots (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    member_id INT UNSIGNED NOT NULL,
+    shares_count INT UNSIGNED NOT NULL,
+    subscription_due_day TINYINT UNSIGNED NULL COMMENT 'NULL falls back to the site default',
+    status ENUM('active','merged') NOT NULL DEFAULT 'active',
+    source_request_id INT UNSIGNED NULL COMMENT 'the share_request that created/merged this lot, for traceability',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lots_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================================================
+-- Monthly subscriptions: one row per active share lot per month (or one lot-less
+-- row for a member with no shares yet), so unmerged lots bill on their own due dates.
 -- =========================================================
 CREATE TABLE monthly_subscriptions (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     member_id INT UNSIGNED NOT NULL,
+    lot_id INT UNSIGNED NULL,
     month CHAR(7) NOT NULL COMMENT 'YYYY-MM',
     shares_count_snapshot INT UNSIGNED NOT NULL,
     share_value_snapshot DECIMAL(12,2) NOT NULL,
@@ -83,8 +101,9 @@ CREATE TABLE monthly_subscriptions (
     due_date DATE NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_member_month (member_id, month),
-    CONSTRAINT fk_subscriptions_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+    UNIQUE KEY uniq_member_month_lot (member_id, month, lot_id),
+    CONSTRAINT fk_subscriptions_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_subscriptions_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
