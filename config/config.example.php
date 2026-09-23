@@ -1,5 +1,8 @@
 <?php
 
+// Copy this file to config/config.php and fill in real values for your environment.
+// config/config.php is gitignored on purpose — it holds database credentials and per-server settings.
+
 return [
     'app' => [
         'name' => 'صندوق عائلي',
