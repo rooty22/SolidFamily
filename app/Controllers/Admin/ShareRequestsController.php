@@ -85,6 +85,7 @@ class ShareRequestsController extends Controller
         // members.shares_count stays the single total used everywhere else (loans, founding amount, ...).
         // share_lots is the separate, finer-grained record that actually drives monthly subscription billing:
         // each "add" is its own lot with its own due date until a "merge" request folds every lot into one.
+        $carriedPaid = 0.0;
         if ($request['type'] === 'add') {
             $newCount += (int) $request['shares_count'];
             ShareLot::create([
@@ -95,25 +96,33 @@ class ShareRequestsController extends Controller
             ]);
         } elseif ($request['type'] === 'cancel') {
             $newCount = max(0, $newCount - (int) $request['shares_count']);
+            $before = array_column(ShareLot::activeFor($member['id']), 'id');
             ShareLot::cancelShares($member['id'], (int) $request['shares_count']);
+            $after = array_column(ShareLot::activeFor($member['id']), 'id');
+            // A lot cancelled down to zero disappears from the active list: its own current-month row would
+            // otherwise be left behind still showing as owed for shares the member no longer holds. A row
+            // with a real payment already on it is left alone -- cancelling doesn't erase money paid.
+            $this->voidStaleLotRows((int) $member['id'], array_diff($before, $after), false);
         } elseif ($request['type'] === 'merge') {
+            $before = array_column(ShareLot::activeFor($member['id']), 'id');
+
             // Capture what was already paid on each lot's current-month row before merging, so it can be
             // carried onto the new combined row instead of lost or, worse, charged for again.
-            $oldLotIds = array_column(ShareLot::activeFor($member['id']), 'id');
-            $carriedPaid = 0.0;
-            foreach ($oldLotIds as $oldLotId) {
+            foreach ($before as $oldLotId) {
                 $oldRow = MonthlySubscription::first(['member_id' => $member['id'], 'month' => date('Y-m'), 'lot_id' => $oldLotId]);
                 $carriedPaid += (float) ($oldRow['amount_paid'] ?? 0);
             }
 
-            ShareLot::mergeAllFor($member['id'], $dueDay, (int) $id);
+            $mergedLot = ShareLot::mergeAllFor($member['id'], $dueDay, (int) $id);
 
-            // Void the old lots' own current-month rows: that obligation now lives on the new merged row.
-            foreach ($oldLotIds as $oldLotId) {
-                MonthlySubscription::updateWhere(
-                    ['member_id' => $member['id'], 'month' => date('Y-m'), 'lot_id' => $oldLotId],
-                    ['status' => 'paid']
-                );
+            // mergeAllFor() is a no-op (returns the same lot untouched) when there was nothing -- or only
+            // one lot -- to merge; only a genuinely new lot means old rows were actually superseded. When it
+            // is real, every old row is voided regardless of what was paid on it -- that amount was already
+            // captured into $carriedPaid above and gets applied to the new merged row further down.
+            if ($mergedLot && !in_array((int) $mergedLot['id'], $before, true)) {
+                $this->voidStaleLotRows((int) $member['id'], $before, true);
+            } else {
+                $carriedPaid = 0.0;
             }
         }
 
@@ -149,6 +158,22 @@ class ShareRequestsController extends Controller
 
         Session::flash('success', 'تمت الموافقة على الطلب وتحديث أسهم المشترك.');
         $this->redirect('admin/share-requests');
+    }
+
+    /**
+     * Marks lots that just became inactive (merged away or cancelled to zero) as no longer separately owed
+     * this month. With $force false (cancel), a row that already has a real payment on it is left alone --
+     * cancelling doesn't erase money paid and there's no new lot to carry it onto. With $force true (merge),
+     * every row is voided regardless, since the caller has already carried its amount onto the new merged row.
+     */
+    private function voidStaleLotRows(int $memberId, array $staleLotIds, bool $force): void
+    {
+        foreach ($staleLotIds as $lotId) {
+            $row = MonthlySubscription::first(['member_id' => $memberId, 'month' => date('Y-m'), 'lot_id' => $lotId]);
+            if ($row && $row['status'] !== 'paid' && ($force || (float) $row['amount_paid'] == 0.0)) {
+                MonthlySubscription::update($row['id'], ['status' => 'paid']);
+            }
+        }
     }
 
     public function reject(string $id): void
