@@ -91,12 +91,15 @@ class ShareRequestsController extends Controller
         // share_lots is the separate, finer-grained record that actually drives monthly subscription billing:
         // each "add" is its own lot with its own due date until a "merge" request folds every lot into one.
         $carriedPaid = 0.0;
+        // No due day typed by the admin: the new/merged lot pins the day the member already has, so it does not
+        // drift if that day changes later. A member with no day yet keeps following the site setting.
+        $lotDueDay = $dueDay ?? ($member['subscription_due_day'] !== null ? (int) $member['subscription_due_day'] : null);
         if ($request['type'] === 'add') {
             $newCount += (int) $request['shares_count'];
             ShareLot::create([
                 'member_id' => $member['id'],
                 'shares_count' => (int) $request['shares_count'],
-                'subscription_due_day' => $dueDay,
+                'subscription_due_day' => $lotDueDay,
                 'source_request_id' => (int) $id,
             ]);
         } elseif ($request['type'] === 'cancel') {
@@ -118,7 +121,7 @@ class ShareRequestsController extends Controller
                 $carriedPaid += (float) ($oldRow['amount_paid'] ?? 0);
             }
 
-            $mergedLot = ShareLot::mergeAllFor($member['id'], $dueDay, (int) $id);
+            $mergedLot = ShareLot::mergeAllFor($member['id'], $lotDueDay, (int) $id);
 
             // mergeAllFor() is a no-op (returns the same lot untouched) when there was nothing -- or only
             // one lot -- to merge; only a genuinely new lot means old rows were actually superseded. When it
