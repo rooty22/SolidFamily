@@ -90,6 +90,7 @@ $router->group('', [Middleware::memberAuth()], function ($router) {
     $router->post('/share-requests', [SiteShareRequestsController::class, 'store']);
 
     $router->get('/founding', [SiteFoundingController::class, 'index']);
+    $router->post('/founding/plan', [SiteFoundingController::class, 'setPlan']);
 
     $router->get('/loans', [LoanController::class, 'index']);
     $router->get('/loans/request', [LoanController::class, 'createRequest']);

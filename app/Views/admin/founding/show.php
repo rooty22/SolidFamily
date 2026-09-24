@@ -15,6 +15,8 @@
             </div>
             <div class="progress-modern"><div style="width:<?= $pct ?>%"></div></div>
             <div class="text-muted small mt-2"><?= $pct ?>% مكتمل</div>
+            <div class="mt-3 small"><span class="text-muted">خطة السداد التي اختارها المشترك:</span>
+                <b><?= empty($founding['plan_start']) ? 'لم يختر بعد' : ((int) $founding['plan_months'] === 1 ? 'مرة واحدة' : 'على ' . (int) $founding['plan_months'] . ' أشهر') ?></b></div>
         </div>
     </div>
     <div class="col-lg-5">
@@ -22,7 +24,8 @@
             <div class="panel-head"><h3><i class="bi bi-plus-circle"></i> تسجيل دفعة</h3></div>
             <form method="post" action="<?= url('admin/founding/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
-                <div class="mb-2"><label class="form-label">المبلغ</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">المبلغ</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control" value="<?= $remaining > 0 ? ($nextInstallment ? $nextInstallment['remaining'] : $remaining) : '' ?>" required>
+                    <?php if ($nextInstallment): ?><div class="text-muted small mt-1">القسط القادم رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>)</div><?php endif; ?></div>
                 <div class="mb-2"><label class="form-label">تاريخ الدفع</label><input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>"></div>
                 <div class="mb-3"><label class="form-label">ملاحظات</label><input type="text" name="notes" class="form-control"></div>
                 <button type="submit" class="btn btn-primary w-100">تسجيل الدفعة</button>
@@ -30,6 +33,26 @@
         </div>
     </div>
 </div>
+
+<?php if (!empty($schedule)): ?>
+<div class="card-panel mb-3">
+    <div class="panel-head"><h3><i class="bi bi-list-ol"></i> جدول أقساط التأسيس</h3><span class="text-muted small"><?= count($schedule) ?></span></div>
+    <table class="table-modern">
+        <thead><tr><th>#</th><th>الاستحقاق</th><th>القيمة</th><th>المسدد</th><th>الحالة</th></tr></thead>
+        <tbody>
+        <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['late'] ? 'unpaid' : $i['status']); ?>
+            <tr <?= $i['late'] ? 'style="background:#fef2f2;"' : '' ?>>
+                <td class="fw-bold"><?= (int) $i['number'] ?></td>
+                <td><?= date_ar($i['due_date']) ?></td>
+                <td><?= money($i['amount']) ?></td>
+                <td><?= money($i['paid']) ?></td>
+                <td><span class="badge-status badge-<?= $sv ?>"><?= $i['late'] ? 'متأخر' : status_badge($i['status'])[0] ?></span></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 
 <div class="card-panel">
     <div class="panel-head"><h3><i class="bi bi-receipt"></i> سجل الدفعات</h3></div>

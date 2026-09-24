@@ -20,20 +20,29 @@ class HomeController extends Controller
 
         MonthlySubscription::ensureMonthExistsForMember($member['id'], date('Y-m'));
         $subscriptions = MonthlySubscription::forMember($member['id']);
-        // A member can have several unmerged share lots at once now, each with its own row this
-        // month: show the worst status among them rather than an arbitrary single one.
-        $currentSub = null;
+        // Several unmerged share lots can each have a row this month: summarise by what is due vs what is paid.
+        $currentRows = array_values(array_filter($subscriptions, fn($s) => $s['month'] === date('Y-m')));
+        $currentSub = $currentRows ? MonthlySubscription::summarize($currentRows) : null;
+
+        // Count MONTHS (a month with two lots is one month), paid only when the whole month is collected.
+        $byMonth = [];
         foreach ($subscriptions as $s) {
-            if ($s['month'] !== date('Y-m')) {
-                continue;
+            $byMonth[$s['month']][] = $s;
+        }
+        $paidMonths = 0;
+        $lateMonths = 0;
+        foreach ($byMonth as $rows) {
+            $sum = MonthlySubscription::summarize($rows);
+            if ((float) $sum['amount_due'] > 0 && $sum['status'] === 'paid') {
+                $paidMonths++;
             }
-            if ($currentSub === null || $s['status'] === 'unpaid'
-                || ($s['status'] === 'partial' && $currentSub['status'] === 'paid')) {
-                $currentSub = $s;
+            foreach ($rows as $r) {
+                if ((float) $r['amount_due'] > (float) $r['amount_paid'] && strtotime($r['due_date']) < time()) {
+                    $lateMonths++;
+                    break;
+                }
             }
         }
-        $paidMonths = count(array_filter($subscriptions, fn($s) => $s['status'] === 'paid'));
-        $lateMonths = count(array_filter($subscriptions, fn($s) => $s['status'] !== 'paid' && strtotime($s['due_date']) < time()));
 
         $founding = FoundingAmount::ensureForMember($member['id']);
         $loans = Loan::forMember($member['id']);

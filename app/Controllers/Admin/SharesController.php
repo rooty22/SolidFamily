@@ -55,7 +55,10 @@ class SharesController extends Controller
                 Session::flash('error', $validator->firstError());
             } else {
                 Member::update((int) $id, ['shares_count' => (int) $this->input('shares_count')]);
-                \App\Models\MonthlySubscription::ensureMonthExists((int) $id, date('Y-m'));
+                // Billing follows the share lots: keep them in step with the total the admin just set.
+                $emptied = \App\Models\ShareLot::syncToMemberTotal((int) $id);
+                \App\Models\MonthlySubscription::voidRowsOfLots((int) $id, $emptied, false);
+                \App\Models\MonthlySubscription::ensureMonthExistsForMember((int) $id, date('Y-m'));
                 Session::flash('success', 'تم تحديث عدد أسهم المشترك بنجاح.');
             }
         }

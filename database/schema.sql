@@ -30,7 +30,7 @@ CREATE TABLE members (
     bank_name VARCHAR(100) NULL,
     password VARCHAR(255) NOT NULL,
     shares_count INT UNSIGNED NOT NULL DEFAULT 0,
-    subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28); NULL falls back to the site setting',
+    subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28), NULL falls back to the site setting',
     status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -116,6 +116,8 @@ CREATE TABLE founding_amounts (
     total_required DECIMAL(12,2) NOT NULL DEFAULT 0,
     amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0,
     status ENUM('unpaid','partial','paid') NOT NULL DEFAULT 'unpaid',
+    plan_months TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'payment plan chosen by the member, 1 = one payment, N = N monthly installments',
+    plan_start DATE NULL COMMENT 'first day of the month the first installment falls due, NULL until a plan is chosen',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_founding_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE

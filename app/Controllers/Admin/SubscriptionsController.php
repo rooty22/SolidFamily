@@ -22,13 +22,17 @@ class SubscriptionsController extends Controller
         $today = date('Y-m-d');
         $shareValue = (float) Setting::get('share_value', 0);
 
-        // Paid / overdue months per member in one query instead of one per row.
+        // Paid / overdue months per member in one query. Lots of the same month count as ONE month:
+        // paid when everything due that month is collected, late when any part of it is past due.
         $counts = [];
         foreach (MonthlySubscription::raw(
             "SELECT member_id,
-                    SUM(status = 'paid') AS paid_months,
-                    SUM(status <> 'paid' AND amount_due > 0 AND due_date < ?) AS late_months
-             FROM monthly_subscriptions GROUP BY member_id",
+                    SUM(due > 0 AND paid >= due) AS paid_months,
+                    SUM(late) AS late_months
+             FROM (SELECT member_id, month, SUM(amount_due) AS due, SUM(amount_paid) AS paid,
+                          MAX(amount_due > amount_paid AND due_date < ?) AS late
+                   FROM monthly_subscriptions GROUP BY member_id, month) per_month
+             GROUP BY member_id",
             [$today]
         ) as $c) {
             $counts[(int) $c['member_id']] = $c;
@@ -36,16 +40,10 @@ class SubscriptionsController extends Controller
 
         $rows = [];
         foreach ($members as $m) {
-            // A member can have several unmerged share lots at once, each with its own row this month:
-            // the summary status here is the worst status among them.
+            // A member can have several unmerged share lots at once, each with its own row this month: the month's
+            // status is derived from the SUM of what is due and paid (paid / partial / unpaid).
             $currentRows = MonthlySubscription::where(['member_id' => $m['id'], 'month' => $currentMonth]);
-            $currentStatus = null;
-            foreach ($currentRows as $r) {
-                if ($currentStatus === null || $r['status'] === 'unpaid'
-                    || ($r['status'] === 'partial' && $currentStatus === 'paid')) {
-                    $currentStatus = $r['status'];
-                }
-            }
+            $currentStatus = $currentRows ? MonthlySubscription::summarize($currentRows)['status'] : null;
             $late = (int) ($counts[(int) $m['id']]['late_months'] ?? 0);
             // A lot with no row yet this month (nobody has opened it) still counts as overdue once its
             // own due date (its own override, the member's, or the site default) has passed.
@@ -169,8 +167,8 @@ class SubscriptionsController extends Controller
                     Session::flash('error', 'المشترك عنده أكتر من دفعة أسهم منفصلة — حدّد أنهي دفعة تسدّدها.');
                     $this->redirect($back);
                 }
-                if ($sub['status'] !== 'paid') {
-                    $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
+                $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
+                if ($remaining > 0) {
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
                     if ($remaining > 0) {
                         Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month);

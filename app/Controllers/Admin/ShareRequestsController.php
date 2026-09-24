@@ -168,12 +168,7 @@ class ShareRequestsController extends Controller
      */
     private function voidStaleLotRows(int $memberId, array $staleLotIds, bool $force): void
     {
-        foreach ($staleLotIds as $lotId) {
-            $row = MonthlySubscription::first(['member_id' => $memberId, 'month' => date('Y-m'), 'lot_id' => $lotId]);
-            if ($row && $row['status'] !== 'paid' && ($force || (float) $row['amount_paid'] == 0.0)) {
-                MonthlySubscription::update($row['id'], ['status' => 'paid']);
-            }
-        }
+        MonthlySubscription::voidRowsOfLots($memberId, $staleLotIds, $force);
     }
 
     public function reject(string $id): void

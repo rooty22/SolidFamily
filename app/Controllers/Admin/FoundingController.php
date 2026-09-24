@@ -18,7 +18,9 @@ class FoundingController extends Controller
         $members = Member::all('name ASC');
         $rows = [];
         foreach ($members as $m) {
-            $rows[] = FoundingAmount::ensureForMember($m['id']) + ['member' => $m];
+            $f = FoundingAmount::ensureForMember($m['id']);
+            $next = FoundingAmount::nextInstallment(FoundingAmount::schedule($f, $m));
+            $rows[] = $f + ['member' => $m, 'next_installment' => $next];
         }
 
         $this->view('admin/founding/index', [
@@ -35,12 +37,15 @@ class FoundingController extends Controller
         }
         $founding = FoundingAmount::ensureForMember((int) $memberId);
         $payments = FoundingPayment::forMember((int) $memberId);
+        $schedule = FoundingAmount::schedule($founding, $member);
 
         $this->view('admin/founding/show', [
             'pageTitle' => __('founding_for', ['name' => $member['name']]),
             'member' => $member,
             'founding' => $founding,
             'payments' => $payments,
+            'schedule' => $schedule,
+            'nextInstallment' => FoundingAmount::nextInstallment($schedule),
         ], 'admin/layout');
     }
 

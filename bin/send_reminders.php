@@ -19,6 +19,7 @@ if (PHP_SAPI !== 'cli') {
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Models\FoundingAmount;
 use App\Models\LoanInstallment;
 use App\Models\Member;
 use App\Models\MonthlySubscription;
@@ -31,7 +32,7 @@ $currentMonth = date('Y-m');
 $daysBefore = max(0, (int) Setting::get('reminder_days_before', 3));
 $horizon = date('Y-m-d', strtotime("+{$daysBefore} days"));
 
-$sent = ['sub_due' => 0, 'sub_late' => 0, 'inst_due' => 0, 'inst_late' => 0];
+$sent = ['sub_due' => 0, 'sub_late' => 0, 'inst_due' => 0, 'inst_late' => 0, 'found_due' => 0, 'found_late' => 0];
 
 $notify = function (int $memberId, string $type, string $key, string $title, string $body) use (&$sent, $dryRun): void {
     if ($dryRun) {
@@ -110,7 +111,31 @@ foreach ($installments as $inst) {
     }
 }
 
+// ---------- founding amount installments (the payment plan the member chose) ----------
+foreach (FoundingAmount::raw(
+    "SELECT f.* FROM founding_amounts f JOIN members m ON m.id = f.member_id
+     WHERE m.status = 'active' AND f.plan_start IS NOT NULL AND f.total_required > f.amount_paid"
+) as $founding) {
+    $memberId = (int) $founding['member_id'];
+    foreach (FoundingAmount::schedule($founding, Member::find($memberId)) as $item) {
+        if ($item['status'] === 'paid') {
+            continue;
+        }
+        // The key carries the plan, so choosing a different plan later is judged afresh.
+        $planKey = substr($founding['plan_start'], 0, 7) . ':' . (int) $founding['plan_months'] . ':' . $item['number'];
+        if ($item['due_date'] < $today) {
+            $notify($memberId, 'found_late', "found-late:{$planKey}",
+                'تنبيه: تأخر في سداد قسط مبلغ التأسيس',
+                "لم يتم سداد القسط رقم {$item['number']} من مبلغ التأسيس (المتبقي " . $fmt($item['remaining']) . ") وكان موعده {$item['due_date']}.");
+        } elseif ($item['due_date'] <= $horizon) {
+            $notify($memberId, 'found_due', "found-due:{$planKey}",
+                'تذكير باقتراب موعد قسط مبلغ التأسيس',
+                "يستحق القسط رقم {$item['number']} من مبلغ التأسيس بقيمة " . $fmt($item['remaining']) . " بتاريخ {$item['due_date']}.");
+        }
+    }
+}
+
 echo ($dryRun ? '[dry-run] ' : '') . 'subscription reminders: ' . $sent['sub_due']
     . ' | subscription late notices: ' . $sent['sub_late']
     . ' | installment reminders: ' . $sent['inst_due']
-    . ' | installment late notices: ' . $sent['inst_late'] . "\n";
+    . ' | installment late notices: ' . $sent['inst_late'] . ' | founding reminders: ' . $sent['found_due'] . ' | founding late notices: ' . $sent['found_late'] . "\n";

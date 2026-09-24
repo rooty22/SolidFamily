@@ -8,6 +8,35 @@ class MonthlySubscription extends Model
 {
     protected static string $table = 'monthly_subscriptions';
 
+    /** Days a lot added after this month's due day gets before its first payment counts as late. */
+    private const MID_CYCLE_GRACE_DAYS = 7;
+
+    /**
+     * Month-level view of all of a member's lot rows for one month. The month is only "paid" when EVERYTHING due is
+     * collected, "partial" when some money is in but not all, "unpaid" otherwise (never "the worst row wins").
+     */
+    public static function summarize(array $rows): array
+    {
+        $due = round(array_sum(array_map('floatval', array_column($rows, 'amount_due'))), 2);
+        $paid = round(array_sum(array_map('floatval', array_column($rows, 'amount_paid'))), 2);
+        $status = ($due <= 0 || $paid >= $due) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+
+        $openDueDates = [];
+        foreach ($rows as $r) {
+            if ((float) $r['amount_due'] > (float) $r['amount_paid']) {
+                $openDueDates[] = $r['due_date'];
+            }
+        }
+
+        return [
+            'status' => $status,
+            'amount_due' => $due,
+            'amount_paid' => min($paid, $due),
+            'remaining' => max(0.0, round($due - $paid, 2)),
+            'due_date' => $openDueDates ? min($openDueDates) : ($rows[0]['due_date'] ?? null),
+        ];
+    }
+
     public static function forMember(int $memberId): array
     {
         return self::where(['member_id' => $memberId], 'month DESC, lot_id ASC');
@@ -27,8 +56,8 @@ class MonthlySubscription extends Model
      * bill on their own due date), plus a single lot-less trivial row for a member with no active lots.
      * Returns all of that member's rows for $month.
      *
-     * @param bool $applyGracePeriod Whether a just-(re)computed row whose due date has already passed
-     *     this month gets waived instead of instantly counted as overdue (see ensureLotMonth()).
+     * @param bool $applyGracePeriod Whether a lot added this month, after its due day already passed, gets a short
+     *     grace before it counts as overdue (see ensureLotMonth()). Its amount is still owed, never waived.
      */
     public static function ensureMonthExistsForMember(int $memberId, string $month, bool $applyGracePeriod = true): array
     {
@@ -57,7 +86,7 @@ class MonthlySubscription extends Model
 
         $rows = [];
         foreach ($lots as $lot) {
-            $rows[] = self::ensureLotMonth($member, (int) $lot['id'], (int) $lot['shares_count'], $lot['subscription_due_day'], $month, $applyGracePeriod);
+            $rows[] = self::ensureLotMonth($member, (int) $lot['id'], (int) $lot['shares_count'], $lot['subscription_due_day'], $month, $applyGracePeriod && ShareLot::startMonth($lot) === $month);
         }
         return $rows;
     }
@@ -78,12 +107,14 @@ class MonthlySubscription extends Model
         $amountDue = round($sharesCount * $shareValue, 2);
         $dueDate = month_due_date($month, $dueDay);
 
-        // A lot approved (or given a new due day) mid-cycle, after this month's due day already passed,
-        // shouldn't be flagged overdue the instant its row is created/recalculated. Waive this one period;
-        // billing starts cleanly next month with its own (future) due date.
-        $waived = $applyGracePeriod && $month === date('Y-m') && $dueDate < date('Y-m-d');
-        // A lot with no shares owes nothing this month: that is trivially "paid", not an unpaid/late debt.
-        $status = ($amountDue > 0 && !$waived) ? 'unpaid' : 'paid';
+        // A lot approved mid-cycle, after this month's due day already passed, is NOT overdue the instant it is billed:
+        // it falls due a few days later. Its amount is a real debt for this month - the row stays UNPAID until
+        // money is actually recorded (marking it "paid" would hide what the member still owes).
+        if ($applyGracePeriod && $month === date('Y-m') && $dueDate < date('Y-m-d')) {
+            $dueDate = date('Y-m-d', strtotime('+' . self::MID_CYCLE_GRACE_DAYS . ' days'));
+        }
+        // A lot with no shares owes nothing this month: that is trivially "paid".
+        $status = $amountDue > 0 ? 'unpaid' : 'paid';
 
         $existing = self::first(['member_id' => $member['id'], 'month' => $month, 'lot_id' => $lotId]);
         if ($existing) {
@@ -119,5 +150,27 @@ class MonthlySubscription extends Model
         ]);
 
         return self::find($id);
+    }
+
+    /**
+     * Void the current-month rows of lots that no longer exist (cancelled to zero / merged into a new lot).
+     * A voided row owes nothing any more (amount_due = 0), so every total and status computed from amounts stays true.
+     * $force also drops what was collected on it (that money was carried to the merged row); otherwise a row that
+     * already has a real payment is left alone - cancelling shares never erases money that was paid.
+     */
+    public static function voidRowsOfLots(int $memberId, array $lotIds, bool $force, ?string $month = null): void
+    {
+        $month = $month ?? date('Y-m');
+        foreach ($lotIds as $lotId) {
+            $row = self::first(['member_id' => $memberId, 'month' => $month, 'lot_id' => $lotId]);
+            if (!$row) {
+                continue;
+            }
+            if ($force) {
+                self::update($row['id'], ['amount_due' => 0, 'amount_paid' => 0, 'status' => 'paid']);
+            } elseif ((float) $row['amount_paid'] == 0.0) {
+                self::update($row['id'], ['amount_due' => 0, 'status' => 'paid']);
+            }
+        }
     }
 }

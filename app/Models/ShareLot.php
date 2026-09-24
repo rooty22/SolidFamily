@@ -67,4 +67,32 @@ class ShareLot extends Model
 
         return self::find($id);
     }
+
+    /**
+     * Make the active lots add up to members.shares_count (the single total everything else uses). Used when an admin
+     * sets a member's shares directly instead of through an approved request: extra shares become a new lot, removed
+     * shares are taken from the oldest lots first. Returns the ids of lots that ended up emptied.
+     */
+    public static function syncToMemberTotal(int $memberId): array
+    {
+        $member = Member::find($memberId);
+        if (!$member) {
+            return [];
+        }
+        $total = (int) $member['shares_count'];
+        $active = self::activeFor($memberId);
+        $sum = (int) array_sum(array_column($active, 'shares_count'));
+
+        if ($total > $sum) {
+            self::create(['member_id' => $memberId, 'shares_count' => $total - $sum]);
+            return [];
+        }
+        if ($total < $sum) {
+            $before = array_column($active, 'id');
+            self::cancelShares($memberId, $sum - $total);
+            $after = array_column(self::activeFor($memberId), 'id');
+            return array_values(array_diff($before, $after));
+        }
+        return [];
+    }
 }

@@ -21,8 +21,65 @@ $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid']
         <div><div class="stat-label"><?= __('linked_shares') ?></div><div class="stat-value font-num"><?= number_format($founding['shares_count_linked']) ?></div></div></div>
 </div>
 
+<?php
+$chosen = !empty($founding['plan_start']);
+$planMonths = (int) $founding['plan_months'];
+?>
 <div class="split">
     <div class="stack">
+        <?php if ($remaining > 0 && (float) $founding['total_required'] > 0): ?>
+        <div class="card-panel" x-data="{ months: <?= $chosen ? $planMonths : 1 ?>, total: <?= json_encode((float) $founding['total_required']) ?>, get per() { return this.months > 0 ? this.total / this.months : 0; } }">
+            <div class="panel-head">
+                <h3><i class="bi bi-calendar2-range"></i> <?= __('founding_plan_title') ?></h3>
+                <?php if ($chosen): ?><span class="badge-status badge-info"><?= $planMonths === 1 ? __('founding_plan_once') : __('founding_plan_over_months', ['n' => $planMonths]) ?></span><?php endif; ?>
+            </div>
+            <p class="text-muted small"><?= __('founding_plan_intro') ?></p>
+            <form method="post" action="<?= url('founding/plan') ?>">
+                <?= csrf_field() ?>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label"><?= __('founding_plan_title') ?></label>
+                        <select name="plan_months" class="form-select" x-model.number="months">
+                            <option value="1"><?= __('founding_plan_once') ?></option>
+                            <?php for ($n = 2; $n <= $maxPlanMonths; $n++): ?>
+                                <option value="<?= $n ?>"><?= __('founding_plan_over_months', ['n' => $n]) ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><?= __('founding_plan_per_month') ?></label>
+                        <div class="form-control d-flex align-items-center justify-content-between" style="background:var(--body-bg);">
+                            <b class="font-num" x-text="per.toLocaleString('en-US', {maximumFractionDigits: 2})">0</b><span class="text-muted small"><?= is_rtl() ? 'ريال' : 'SAR' ?></span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-check2-circle"></i> <?= __('founding_plan_save') ?></button>
+            </form>
+            <?php if (!$chosen): ?><div class="tip-box mt-3"><i class="bi bi-info-circle-fill"></i> <?= __('founding_plan_not_chosen') ?></div>
+            <?php else: ?><p class="text-muted small mt-3 mb-0"><?= __('founding_plan_note') ?></p><?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($schedule)): ?>
+        <div class="card-panel">
+            <div class="panel-head"><h3><i class="bi bi-list-ol"></i> <?= __('founding_schedule_title') ?></h3><span class="text-muted small font-num"><?= count($schedule) ?></span></div>
+            <table class="table-modern">
+                <thead><tr><th>#</th><th><?= __('due_date') ?></th><th><?= __('amount') ?></th><th><?= __('paid_amount') ?></th><th><?= __('status') ?></th></tr></thead>
+                <tbody>
+                <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['late'] ? 'unpaid' : $i['status']); ?>
+                    <tr <?= $i['late'] ? 'style="background:#fef2f2;"' : '' ?>>
+                        <td class="fw-bold font-num"><?= (int) $i['number'] ?></td>
+                        <td class="font-num"><?= date_ar($i['due_date']) ?></td>
+                        <td class="font-num"><?= money($i['amount']) ?></td>
+                        <td class="font-num"><?= money($i['paid']) ?></td>
+                        <td><span class="badge-status badge-<?= $sv ?>"><?= $i['late'] ? $sl : status_badge($i['status'])[0] ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+
         <div class="card-panel">
             <div class="panel-head"><h3><i class="bi bi-graph-up-arrow"></i> <?= __('progress_ratio') ?></h3><b class="font-num"><?= $pct ?>%</b></div>
             <div class="progress-modern"><div style="width:<?= $pct ?>%"></div></div>

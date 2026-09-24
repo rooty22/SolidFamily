@@ -61,6 +61,7 @@ class MembersController extends Controller
         ]);
 
         FoundingAmount::ensureForMember($id);
+        \App\Models\ShareLot::syncToMemberTotal((int) $id); // shares given at creation bill through a lot
 
         Session::flash('success', 'تم إضافة المشترك بنجاح.');
         $this->redirect('admin/members/' . $id);

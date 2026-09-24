@@ -3,30 +3,31 @@ $shares = (int) $member['shares_count'];
 $monthly = $shares * $shareValue;
 $currentMonth = date('Y-m');
 $currentRows = [];
-$paidCount = 0;
-$lateCount = 0;
+$byMonth = [];
 foreach ($history as $h) {
+    $byMonth[$h['month']][] = $h;
     if ($h['month'] === $currentMonth) {
         $currentRows[] = $h;
     }
-    if ($h['status'] === 'paid') {
+}
+// Months, not lots: a month with two lots is one month, paid only when everything due that month is collected.
+$paidCount = 0;
+$lateCount = 0;
+foreach ($byMonth as $monthRows) {
+    $sum = \App\Models\MonthlySubscription::summarize($monthRows);
+    if ($sum['amount_due'] > 0 && $sum['status'] === 'paid') {
         $paidCount++;
-    } elseif ($h['amount_due'] > 0 && $h['due_date'] < date('Y-m-d')) {
-        $lateCount++;
+    }
+    foreach ($monthRows as $r) {
+        if ((float) $r['amount_due'] > (float) $r['amount_paid'] && $r['due_date'] < date('Y-m-d')) {
+            $lateCount++;
+            break;
+        }
     }
 }
-// One or more lots can be unpaid this month at once now: the summary badge shows the worst status among them.
-$curStatus = 'paid';
-foreach ($currentRows as $r) {
-    if ($r['status'] === 'unpaid') {
-        $curStatus = 'unpaid';
-        break;
-    }
-    if ($r['status'] === 'partial') {
-        $curStatus = 'partial';
-    }
-}
-[$curLabel, $curVariant] = status_badge($curStatus);
+// The month's badge: partial as soon as part of it is collected but not all (e.g. a share added after paying).
+$curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
+[$curLabel, $curVariant] = status_badge($currentRows ? $curSummary['status'] : 'unpaid');
 ?>
 <div class="page-head">
     <div>

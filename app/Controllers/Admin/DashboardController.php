@@ -49,16 +49,25 @@ class DashboardController extends Controller
         $dueDay = (int) Setting::get('subscription_due_day', 10);
         $today = date('Y-m-d');
 
+        // One line per member (several share lots of the same month are summed): paid when everything due is
+        // collected, partial when part of it is, unpaid when nothing is.
         $subStmt = $db->prepare("SELECT
-            COALESCE(SUM(COALESCE(s.amount_due, m.shares_count * :sv1)), 0) AS total_due,
-            COALESCE(SUM(COALESCE(s.amount_paid, 0)), 0) AS total_paid,
-            COALESCE(SUM(s.status = 'paid'), 0) AS paid_count,
-            COALESCE(SUM(s.status = 'partial'), 0) AS partial_count,
-            COALESCE(SUM(s.id IS NULL OR s.status = 'unpaid'), 0) AS unpaid_count
-            FROM members m
-            LEFT JOIN monthly_subscriptions s ON s.member_id = m.id AND s.month = :cm
-            WHERE m.status = 'active' AND COALESCE(s.amount_due, m.shares_count * :sv2) > 0");
-        $subStmt->execute(['sv1' => $shareValue, 'sv2' => $shareValue, 'cm' => $currentMonth]);
+            COALESCE(SUM(due), 0) AS total_due,
+            COALESCE(SUM(LEAST(paid, due)), 0) AS total_paid,
+            COALESCE(SUM(paid >= due), 0) AS paid_count,
+            COALESCE(SUM(paid > 0 AND paid < due), 0) AS partial_count,
+            COALESCE(SUM(paid <= 0), 0) AS unpaid_count
+            FROM (
+                SELECT m.id,
+                       GREATEST(COALESCE(SUM(s.amount_due), 0), m.shares_count * :sv) AS due,
+                       COALESCE(SUM(s.amount_paid), 0) AS paid
+                FROM members m
+                LEFT JOIN monthly_subscriptions s ON s.member_id = m.id AND s.month = :cm
+                WHERE m.status = 'active'
+                GROUP BY m.id, m.shares_count
+                HAVING due > 0
+            ) per_member");
+        $subStmt->execute(['sv' => $shareValue, 'cm' => $currentMonth]);
         $subRow = $subStmt->fetch();
 
         $foundRow = $db->query("SELECT
@@ -86,16 +95,16 @@ class DashboardController extends Controller
 
         // A member with no row yet for the current month (nobody has opened their dashboard to lazily create it)
         // is judged against their OWN due day (falling back to the site default), not a single day for everyone.
-        $lateStmt = $db->prepare("SELECT COUNT(*) AS c
+        $lateStmt = $db->prepare("SELECT COUNT(DISTINCT m.id) AS c
             FROM members m
             LEFT JOIN monthly_subscriptions cur ON cur.member_id = m.id AND cur.month = :cm
             WHERE m.status = 'active' AND (
                 EXISTS (SELECT 1 FROM monthly_subscriptions s
-                        WHERE s.member_id = m.id AND s.status <> 'paid' AND s.amount_due > 0 AND s.due_date < :today)
-                OR (m.shares_count > 0 AND (cur.id IS NULL OR cur.status <> 'paid')
-                    AND STR_TO_DATE(CONCAT(:cm2, '-', LPAD(COALESCE(m.subscription_due_day, :dd), 2, '0')), '%Y-%m-%d') < :today2)
+                        WHERE s.member_id = m.id AND s.amount_due > s.amount_paid AND s.due_date < :today)
+                OR (m.shares_count > 0 AND cur.id IS NULL
+                    AND CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')) < :today2)
             )");
-        $lateStmt->execute(['cm' => $currentMonth, 'cm2' => $currentMonth, 'today' => $today, 'today2' => $today, 'dd' => $dueDay]);
+        $lateStmt->execute(['cm' => $currentMonth, 'cm2' => $currentMonth, 'cm3' => $currentMonth, 'today' => $today, 'today2' => $today, 'dd' => $dueDay]);
         $lateMembers = (int) $lateStmt->fetch()['c'];
 
         $monthlyTrend = $db->query("SELECT month, SUM(amount_paid) as paid, SUM(amount_due) as due
