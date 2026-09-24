@@ -114,6 +114,21 @@ class SubscriptionsController extends Controller
         return count($rows) === 1 ? $rows[0] : null;
     }
 
+    /**
+     * The earliest month a payment can be recorded for: the start month of the lot the admin picked, or --
+     * when none was picked -- of the member's earliest active lot. Null when there is no lot to bound it.
+     */
+    private function earliestPayableMonth(int $memberId, string $lotIdInput): ?string
+    {
+        $starts = [];
+        foreach (ShareLot::activeFor($memberId) as $lot) {
+            if ($lotIdInput === '' || (int) $lot['id'] === (int) $lotIdInput) {
+                $starts[] = ShareLot::startMonth($lot);
+            }
+        }
+        return $starts ? min($starts) : null;
+    }
+
     public function recordPayment(string $memberId): void
     {
         $this->verifyCsrf();
@@ -138,6 +153,11 @@ class SubscriptionsController extends Controller
             }
 
             $startMonth = $data['start_month'];
+            $earliest = $this->earliestPayableMonth((int) $memberId, $lotIdInput);
+            if ($earliest !== null && $startMonth < $earliest) {
+                Session::flash('error', 'لا يمكن تسجيل سداد لشهر قبل بداية الاشتراك (' . $earliest . ').');
+                $this->redirect($back);
+            }
             $count = (int) $data['months_count'];
             $ts = strtotime($startMonth . '-01');
             $paidAny = false;
@@ -176,6 +196,11 @@ class SubscriptionsController extends Controller
             }
 
             $month = $data['partial_month'];
+            $earliest = $this->earliestPayableMonth((int) $memberId, $lotIdInput);
+            if ($earliest !== null && $month < $earliest) {
+                Session::flash('error', 'لا يمكن تسجيل دفعة لشهر قبل بداية الاشتراك (' . $earliest . ').');
+                $this->redirect($back);
+            }
             $amount = round((float) $data['partial_amount'], 2);
             $sub = $this->resolveLotSubscription((int) $memberId, $month, $lotIdInput);
             if ($sub === null) {

@@ -39,10 +39,12 @@ if (!in_array('share_lots', $tables, true)) {
 // ---- 2. Backfill one lot per member who already has shares, so existing members keep billing seamlessly ----
 $backfillCount = (int) $pdo->query("SELECT COUNT(*) FROM share_lots")->fetchColumn();
 if ($backfillCount === 0) {
-    $members = $pdo->query("SELECT id, shares_count, subscription_due_day FROM members WHERE shares_count > 0")->fetchAll();
-    $insert = $pdo->prepare("INSERT INTO share_lots (member_id, shares_count, subscription_due_day, status) VALUES (?, ?, ?, 'active')");
+    // created_at = when the member joined, not now: a lot only bills from its creation month onwards, so
+    // stamping "today" would block recording payments for the member's genuine earlier months.
+    $members = $pdo->query("SELECT id, shares_count, subscription_due_day, created_at FROM members WHERE shares_count > 0")->fetchAll();
+    $insert = $pdo->prepare("INSERT INTO share_lots (member_id, shares_count, subscription_due_day, status, created_at) VALUES (?, ?, ?, 'active', ?)");
     foreach ($members as $m) {
-        $insert->execute([$m['id'], $m['shares_count'], $m['subscription_due_day']]);
+        $insert->execute([$m['id'], $m['shares_count'], $m['subscription_due_day'], $m['created_at']]);
     }
     echo '- backfilled ' . count($members) . " lot(s) for existing members with shares.\n";
 } else {

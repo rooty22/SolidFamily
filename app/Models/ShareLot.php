@@ -17,6 +17,12 @@ class ShareLot extends Model
         return self::where(['member_id' => $memberId, 'status' => 'active'], 'created_at ASC');
     }
 
+    /** The first month (YYYY-MM) a lot bills for: the month it was created. Nothing is owed for earlier months. */
+    public static function startMonth(array $lot): string
+    {
+        return substr((string) $lot['created_at'], 0, 7);
+    }
+
     /** Reduce active lots oldest-first by $sharesToCancel; a lot emptied to 0 is dropped (merged out). Returns the actual total removed. */
     public static function cancelShares(int $memberId, int $sharesToCancel): int
     {

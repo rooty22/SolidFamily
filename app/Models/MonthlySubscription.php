@@ -39,6 +39,14 @@ class MonthlySubscription extends Model
             return [self::ensureLotMonth($member, null, 0, null, $month, $applyGracePeriod)];
         }
 
+        // A lot owes nothing for months before it existed, so it gets no row for them (otherwise an admin
+        // "paying several months" from an earlier start month would record real payments for a period the
+        // member wasn't subscribed to).
+        $lots = array_values(array_filter($lots, fn($lot) => ShareLot::startMonth($lot) <= $month));
+        if (empty($lots)) {
+            return [];
+        }
+
         // A member who had no lots yet (or had them cancelled to zero) can have a leftover lot-less
         // trivial row from back then. Now that real lots exist for this month, that row is just a stale
         // duplicate -- drop it rather than leave it cluttering the history next to the real ones.
@@ -60,7 +68,7 @@ class MonthlySubscription extends Model
      */
     public static function ensureMonthExists(int $memberId, string $month, bool $applyGracePeriod = true): array
     {
-        return self::ensureMonthExistsForMember($memberId, $month, $applyGracePeriod)[0];
+        return self::ensureMonthExistsForMember($memberId, $month, $applyGracePeriod)[0] ?? [];
     }
 
     private static function ensureLotMonth(array $member, ?int $lotId, int $sharesCount, $lotDueDay, string $month, bool $applyGracePeriod): array
