@@ -164,7 +164,9 @@ class Validator
         }
         $d = \DateTime::createFromFormat('!Y-m-d', $value);
         $valid = $d && $d->format('Y-m-d') === $value;
-        if (!$valid || $d < new \DateTime('1900-01-01') || $d > new \DateTime("today +{$maxFutureDays} days")) {
+        if ($valid && $d >= new \DateTime('1900-01-01') && $d > new \DateTime("today +{$maxFutureDays} days")) {
+            $this->fail($field, $maxFutureDays === 0 ? "تاريخ {$label} لا يمكن أن يكون في المستقبل." : "تاريخ {$label} بعيد جداً في المستقبل.");
+        } elseif (!$valid || $d < new \DateTime('1900-01-01')) {
             $this->fail($field, "تاريخ {$label} غير صحيح.");
         }
         return $this;

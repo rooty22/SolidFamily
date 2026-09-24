@@ -44,9 +44,21 @@ class MonthlySubscription extends Model
         ];
     }
 
+    /**
+     * The member's subscription history. Rows that owe nothing and hold no money (voided when a lot was cancelled or merged
+     * away, or the placeholder of a member with no shares) are not transactions, so they are left out. A row with money on
+     * it stays, flagged with lot_status so the screens can show it belongs to a lot that no longer exists.
+     */
     public static function forMember(int $memberId): array
     {
-        return self::where(['member_id' => $memberId], 'month DESC, lot_id ASC');
+        return self::raw(
+            'SELECT s.*, l.status AS lot_status
+             FROM monthly_subscriptions s
+             LEFT JOIN share_lots l ON l.id = s.lot_id
+             WHERE s.member_id = ? AND NOT (s.amount_due = 0 AND s.amount_paid = 0)
+             ORDER BY s.month DESC, s.lot_id ASC',
+            [$memberId]
+        );
     }
 
     /** The lot's own due day if set, else the member's own override, else the site-wide default. */
@@ -142,6 +154,18 @@ class MonthlySubscription extends Model
                     'status' => $status,
                     'due_date' => $dueDate,
                     'grace_until' => $graceUntil,
+                ]);
+                return self::find($existing['id']);
+            }
+            // Shares cancelled from a lot that already has money on this month's row: the row must stop billing the
+            // cancelled shares (what was paid stays on it, it just may now cover the whole month).
+            $shrunk = (float) $existing['amount_paid'] > 0 && $month >= date('Y-m') && (int) $existing['shares_count_snapshot'] > $sharesCount;
+            if ($shrunk) {
+                self::update($existing['id'], [
+                    'shares_count_snapshot' => $sharesCount,
+                    'share_value_snapshot' => $shareValue,
+                    'amount_due' => $amountDue,
+                    'status' => (float) $existing['amount_paid'] >= $amountDue ? 'paid' : 'partial',
                 ]);
                 return self::find($existing['id']);
             }

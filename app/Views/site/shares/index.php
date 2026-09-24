@@ -27,7 +27,7 @@ foreach ($byMonth as $monthRows) {
 }
 // The month's badge: partial as soon as part of it is collected but not all (e.g. a share added after paying).
 $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
-[$curLabel, $curVariant] = status_badge($currentRows ? $curSummary['status'] : 'unpaid');
+[$curLabel, $curVariant] = status_badge($currentRows ? $curSummary['status'] : 'paid');
 ?>
 <div class="page-head">
     <div>

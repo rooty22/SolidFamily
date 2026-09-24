@@ -3,6 +3,28 @@
     <a href="<?= url('admin/members/' . $member['id']) ?>" class="btn btn-sm btn-soft">ملف المشترك</a>
 </div>
 
+<?php
+// Which share lot a payment goes to: shown only when the member has several lots. Lots that are fully paid are left
+// out (unless every lot is settled), and each option says which lot it is (#id) and what it still owes.
+$lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string {
+    if (count($lots) < 2) {
+        return '';
+    }
+    $label = fn($lot) => '#' . $lot['id'] . ' - ' . number_format($lot['shares_count']) . ' سهم - يوم ' . (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot)
+        . ' - ' . ($lot['outstanding'] > 0 ? 'متبقي ' . money($lot['outstanding']) : 'مسددة');
+    if (count($payableLots) === 1) {
+        $only = $payableLots[0];
+        return '<input type="hidden" name="lot_id" value="' . (int) $only['id'] . '"><div class="mb-2"><label class="form-label">الدفعة (لوطة الأسهم)</label>'
+            . '<div class="form-control bg-light">' . e($label($only)) . '</div></div>';
+    }
+    $html = '<div class="mb-2"><label class="form-label">الدفعة (لوطة الأسهم)</label><select name="lot_id" class="form-select" required>';
+    foreach ($payableLots as $lot) {
+        $html .= '<option value="' . (int) $lot['id'] . '">' . e($label($lot)) . '</option>';
+    }
+    $html .= '</select>' . ($allSettled ? '<div class="form-text">كل الدفعات مسددة حالياً، يمكنك السداد مقدماً.</div>' : '') . '</div>';
+    return $html;
+};
+?>
 <div class="row g-3 mb-3">
     <div class="col-lg-6">
         <div class="card-panel h-100">
@@ -10,16 +32,7 @@
             <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="bulk_pay">
-                <?php if (count($lots) > 1): ?>
-                    <div class="mb-2">
-                        <label class="form-label">الدفعة (لوطة الأسهم)</label>
-                        <select name="lot_id" class="form-select" required>
-                            <?php foreach ($lots as $lot): ?>
-                                <option value="<?= $lot['id'] ?>"><?= number_format($lot['shares_count']) ?> سهم — يوم <?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> من الشهر</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
+                <?= $lotPicker() ?>
                 <div class="row g-2">
                     <div class="col-6">
                         <label class="form-label">الشهر الأول</label>
@@ -40,16 +53,7 @@
             <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="partial_pay">
-                <?php if (count($lots) > 1): ?>
-                    <div class="mb-2">
-                        <label class="form-label">الدفعة (لوطة الأسهم)</label>
-                        <select name="lot_id" class="form-select" required>
-                            <?php foreach ($lots as $lot): ?>
-                                <option value="<?= $lot['id'] ?>"><?= number_format($lot['shares_count']) ?> سهم — يوم <?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> من الشهر</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
+                <?= $lotPicker() ?>
                 <div class="row g-2">
                     <div class="col-6">
                         <label class="form-label">الشهر</label>
@@ -74,7 +78,8 @@
         <?php foreach ($history as $h): [$l, $v] = status_badge($h['status']); ?>
             <tr>
                 <td class="fw-bold"><?= e($h['month']) ?></td>
-                <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?></td>
+                <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?>
+                    <?php if (!empty($h['lot_status']) && $h['lot_status'] !== 'active'): ?><small class="d-block text-danger">دفعة ملغاة</small><?php endif; ?></td>
                 <td><?= date_ar($h['due_date']) ?>
                     <?php if (!empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted">مهلة حتى <?= date_ar($h['grace_until']) ?></small><?php endif; ?></td>
                 <td><?= money($h['amount_due']) ?></td>

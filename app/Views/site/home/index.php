@@ -1,5 +1,5 @@
 <?php
-[$subLabel, $subVariant] = status_badge($currentSub['status'] ?? 'unpaid');
+[$subLabel, $subVariant] = status_badge($currentSub['status'] ?? 'paid');
 [$foundLabel, $foundVariant] = status_badge($founding['status']);
 
 $foundingPaid = (float)($founding['amount_paid'] ?? 0);

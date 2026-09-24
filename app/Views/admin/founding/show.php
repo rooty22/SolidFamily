@@ -26,7 +26,7 @@
                 <?= csrf_field() ?>
                 <div class="mb-2"><label class="form-label">المبلغ</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control" value="<?= $remaining > 0 ? ($nextInstallment ? $nextInstallment['remaining'] : $remaining) : '' ?>" required>
                     <?php if ($nextInstallment): ?><div class="text-muted small mt-1">القسط القادم رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>)</div><?php endif; ?></div>
-                <div class="mb-2"><label class="form-label">تاريخ الدفع</label><input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>"></div>
+                <div class="mb-2"><label class="form-label">تاريخ الدفع</label><input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required><div class="text-muted small mt-1">يوم استلام المبلغ (لا يمكن أن يكون في المستقبل). السداد يُحتسب على الأقساط بالترتيب.</div></div>
                 <div class="mb-3"><label class="form-label">ملاحظات</label><input type="text" name="notes" class="form-control"></div>
                 <button type="submit" class="btn btn-primary w-100">تسجيل الدفعة</button>
             </form>

@@ -81,12 +81,28 @@ class SubscriptionsController extends Controller
         $shareValue = (float) Setting::get('share_value', 0);
         $lots = ShareLot::activeFor((int) $memberId);
 
+        // What each lot still owes across its rows. The payment forms only offer lots with something outstanding
+        // (a fully paid lot has nothing to record); when every lot is settled they all stay, so a month can still be paid ahead.
+        $owed = [];
+        foreach ($history as $h) {
+            if ($h['lot_id']) {
+                $owed[(int) $h['lot_id']] = ($owed[(int) $h['lot_id']] ?? 0) + max(0, round((float) $h['amount_due'] - (float) $h['amount_paid'], 2));
+            }
+        }
+        foreach ($lots as &$lot) {
+            $lot['outstanding'] = round($owed[(int) $lot['id']] ?? 0, 2);
+        }
+        unset($lot);
+        $payableLots = array_values(array_filter($lots, fn($l) => $l['outstanding'] > 0));
+
         $this->view('admin/subscriptions/show', [
             'pageTitle' => __('subscriptions_for', ['name' => $member['name']]),
             'member' => $member,
             'history' => $history,
             'shareValue' => $shareValue,
             'lots' => $lots,
+            'payableLots' => $payableLots ?: $lots,
+            'allSettled' => !$payableLots,
         ], 'admin/layout');
     }
 
