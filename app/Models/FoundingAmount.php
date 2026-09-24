@@ -115,6 +115,15 @@ class FoundingAmount extends Model
         return $items;
     }
 
+    /**
+     * True when the founding amount must be paid in one go: the member never chose a payment plan, or chose "at once".
+     * Only a plan of two or more installments allows the admin to record partial payments.
+     */
+    public static function mustPayInFull(array $founding): bool
+    {
+        return empty($founding['plan_start']) || (int) ($founding['plan_months'] ?? 1) <= 1;
+    }
+
     /** First installment that is not fully paid, or null. */
     public static function nextInstallment(array $schedule): ?array
     {

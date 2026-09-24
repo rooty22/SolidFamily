@@ -81,6 +81,10 @@ class FoundingController extends Controller
             Session::flash('error', 'مبلغ التأسيس مسدد بالكامل.');
             $this->redirect('admin/founding/' . $memberId);
         }
+        if (FoundingAmount::mustPayInFull($founding) && $amount !== $remaining) {
+            Session::flash('error', 'مبلغ التأسيس يُسدَّد دفعة واحدة لأن المشترك لم يختر خطة تقسيط، والمبلغ المطلوب ' . money($remaining) . '.');
+            $this->redirect('admin/founding/' . $memberId);
+        }
         if ($amount > $remaining) {
             Session::flash('error', 'المبلغ يتجاوز المتبقي من مبلغ التأسيس (' . money($remaining) . ').');
             $this->redirect('admin/founding/' . $memberId);

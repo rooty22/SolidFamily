@@ -1,4 +1,4 @@
-<?php [$label, $variant] = status_badge($founding['status']); $remaining = $founding['total_required'] - $founding['amount_paid']; $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid'] / $founding['total_required'] * 100)) : 0; ?>
+<?php [$label, $variant] = status_badge($founding['status']); $remaining = round($founding['total_required'] - $founding['amount_paid'], 2); $payInFull = \App\Models\FoundingAmount::mustPayInFull($founding); $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid'] / $founding['total_required'] * 100)) : 0; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><?= e($member['name']) ?></h5>
     <a href="<?= url('admin/members/' . $member['id']) ?>" class="btn btn-sm btn-soft">ملف المشترك</a>
@@ -24,8 +24,9 @@
             <div class="panel-head"><h3><i class="bi bi-plus-circle"></i> تسجيل دفعة</h3></div>
             <form method="post" action="<?= url('admin/founding/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
-                <div class="mb-2"><label class="form-label">المبلغ</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control" value="<?= $remaining > 0 ? ($nextInstallment ? $nextInstallment['remaining'] : $remaining) : '' ?>" required>
-                    <?php if ($nextInstallment): ?><div class="text-muted small mt-1">القسط القادم رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>)</div><?php endif; ?></div>
+                <div class="mb-2"><label class="form-label">المبلغ</label><input type="number" step="0.01" min="0.01" name="amount" class="form-control" value="<?= $remaining > 0 ? ($nextInstallment ? $nextInstallment['remaining'] : $remaining) : '' ?>" required<?= $payInFull && $remaining > 0 ? ' readonly' : '' ?>>
+                    <?php if ($payInFull && $remaining > 0): ?><div class="text-muted small mt-1">لم يختر المشترك خطة تقسيط، فمبلغ التأسيس يُسدَّد دفعة واحدة بكامل المتبقي.</div>
+                    <?php elseif ($nextInstallment): ?><div class="text-muted small mt-1">القسط القادم رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>)</div><?php endif; ?></div>
                 <div class="mb-2"><label class="form-label">تاريخ الدفع</label><input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required><div class="text-muted small mt-1">يوم استلام المبلغ (لا يمكن أن يكون في المستقبل). السداد يُحتسب على الأقساط بالترتيب.</div></div>
                 <div class="mb-3"><label class="form-label">ملاحظات</label><input type="text" name="notes" class="form-control"></div>
                 <button type="submit" class="btn btn-primary w-100">تسجيل الدفعة</button>
