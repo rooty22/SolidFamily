@@ -119,6 +119,7 @@ CREATE TABLE founding_amounts (
     status ENUM('unpaid','partial','paid') NOT NULL DEFAULT 'unpaid',
     plan_months TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'payment plan chosen by the member, 1 = one payment, N = N monthly installments',
     plan_start DATE NULL COMMENT 'first day of the month the first installment falls due, NULL until a plan is chosen',
+    plan_schedule TEXT NULL COMMENT 'JSON list with the amount of every installment, frozen so paid installments never change when shares change',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_founding_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE

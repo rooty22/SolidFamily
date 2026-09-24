@@ -45,11 +45,19 @@ class FoundingAmount extends Model
         // A member with no shares owes nothing: that is trivially "paid", not an unpaid debt.
         $status = $total <= 0 || $paid >= $total ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
 
-        self::update($row['id'], [
+        $update = [
             'shares_count_linked' => $sharesCount,
             'total_required' => $total,
             'status' => $status,
-        ]);
+        ];
+        // With a payment plan, installments that are already paid keep their amount: only the CHANGE in the total
+        // (in either direction) lands on the installments still open, or on a new one when everything was paid.
+        if (!empty($row['plan_start'])) {
+            $amounts = self::planAmounts($row);
+            $update['plan_schedule'] = json_encode(self::adjust($amounts, $paid, $total - array_sum($amounts)));
+        }
+
+        self::update($row['id'], $update);
 
         return self::find($row['id']);
     }
@@ -69,7 +77,11 @@ class FoundingAmount extends Model
             ? date('Y-m')
             : date('Y-m', strtotime('first day of next month'));
 
-        self::update($founding['id'], ['plan_months' => $months, 'plan_start' => $start . '-01']);
+        self::update($founding['id'], [
+            'plan_months' => $months,
+            'plan_start' => $start . '-01',
+            'plan_schedule' => json_encode(self::evenSplit((float) $founding['total_required'], $months)),
+        ]);
         return self::find($founding['id']);
     }
 
@@ -80,22 +92,17 @@ class FoundingAmount extends Model
      */
     public static function schedule(array $founding, array $member): array
     {
-        $months = (int) ($founding['plan_months'] ?? 1);
         $total = round((float) $founding['total_required'], 2);
-        if (empty($founding['plan_start']) || $total <= 0 || $months < 1) {
+        if (empty($founding['plan_start']) || $total <= 0 || (int) ($founding['plan_months'] ?? 1) < 1) {
             return [];
         }
 
         $dueDay = MonthlySubscription::dueDayFor($member);
-        $base = floor($total / $months * 100) / 100;
         $paidLeft = (float) $founding['amount_paid'];
         $today = date('Y-m-d');
-        $allocated = 0.0;
         $items = [];
 
-        for ($k = 0; $k < $months; $k++) {
-            $amount = $k === $months - 1 ? round($total - $allocated, 2) : $base;
-            $allocated = round($allocated + $amount, 2);
+        foreach (self::planAmounts($founding) as $k => $amount) {
             $paid = round(min($amount, max(0.0, $paidLeft)), 2);
             $paidLeft = round($paidLeft - $paid, 2);
             $due = month_due_date(substr(add_months($founding['plan_start'], $k), 0, 7), $dueDay);
@@ -113,6 +120,82 @@ class FoundingAmount extends Model
         }
 
         return $items;
+    }
+
+    /** The amount of every installment of the plan: the frozen split when stored, otherwise an even split of the total. */
+    public static function planAmounts(array $founding): array
+    {
+        $total = round((float) $founding['total_required'], 2);
+        $stored = json_decode((string) ($founding['plan_schedule'] ?? ''), true);
+        if (!is_array($stored) || !$stored) {
+            return self::evenSplit($total, max(1, (int) ($founding['plan_months'] ?? 1)));
+        }
+        $amounts = array_map('floatval', array_values($stored));
+        // Safety net: if the total moved without going through syncWithShares(), reconcile the difference.
+        $diff = round($total - array_sum($amounts), 2);
+        return $diff == 0.0 ? $amounts : self::adjust($amounts, (float) $founding['amount_paid'], $diff);
+    }
+
+    /** $total split into $months installments (the last takes the rounding remainder). */
+    public static function evenSplit(float $total, int $months): array
+    {
+        $cents = (int) round($total * 100);
+        $base = intdiv($cents, $months);
+        $out = array_fill(0, $months, $base);
+        $out[$months - 1] += $cents - $base * $months;
+        return array_map(fn($c) => $c / 100, $out);
+    }
+
+    /**
+     * Move the plan by $delta (positive: more is owed, negative: less) without touching what is already paid.
+     * More owed: split over the installments not fully paid, or appended as a new installment when all are paid.
+     * Less owed: taken evenly from the unpaid part of the installments.
+     */
+    public static function adjust(array $amounts, float $paid, float $delta): array
+    {
+        $a = array_map(fn($x) => (int) round($x * 100), array_values($amounts));
+        $d = (int) round($delta * 100);
+        if ($d === 0 || !$a) {
+            return array_map(fn($c) => $c / 100, $a);
+        }
+
+        $cover = [];
+        $left = (int) round($paid * 100);
+        foreach ($a as $x) {
+            $t = min($x, max(0, $left));
+            $cover[] = $t;
+            $left -= $t;
+        }
+
+        if ($d > 0) {
+            $open = array_keys(array_filter($a, fn($x, $i) => $cover[$i] < $x, ARRAY_FILTER_USE_BOTH));
+            if (!$open) {
+                $a[] = $d;
+            } else {
+                $base = intdiv($d, count($open));
+                foreach ($open as $i) {
+                    $a[$i] += $base;
+                }
+                $a[end($open)] += $d - $base * count($open);
+            }
+        } else {
+            $need = -$d;
+            while ($need > 0) {
+                $room = array_keys(array_filter($a, fn($x, $i) => $x - $cover[$i] > 0, ARRAY_FILTER_USE_BOTH));
+                if (!$room) {
+                    break;
+                }
+                $share = max(1, intdiv($need, count($room)));
+                foreach ($room as $i) {
+                    $take = min($share, $a[$i] - $cover[$i], $need);
+                    $a[$i] -= $take;
+                    $need -= $take;
+                }
+            }
+            $a = array_values(array_filter($a, fn($x) => $x > 0));
+        }
+
+        return array_map(fn($c) => $c / 100, $a);
     }
 
     /**
