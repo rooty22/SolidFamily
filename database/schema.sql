@@ -99,6 +99,7 @@ CREATE TABLE monthly_subscriptions (
     amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0,
     status ENUM('unpaid','partial','paid') NOT NULL DEFAULT 'unpaid',
     due_date DATE NOT NULL,
+    grace_until DATE NULL COMMENT 'short grace for a lot billed after its due day, counts as late only after this date',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_member_month_lot (member_id, month, lot_id),

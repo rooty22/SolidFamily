@@ -71,14 +71,14 @@ $catLabels = transaction_categories();
                 </h3>
             </div>
             <div class="overflow-hidden rounded-2xl border border-slate-200/80">
-                <table class="table-modern w-full">
+                <table class="table-modern table-kv w-full">
                     <tbody>
-                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60 w-1/3"><?= __('email') ?></td><td class="font-bold text-slate-900 text-xs font-numeric"><?= e($member['email']) ?></td></tr>
+                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60 w-2/5 sm:w-1/3"><?= __('email') ?></td><td class="font-bold text-slate-900 text-xs font-numeric break-all"><bdi dir="ltr"><?= e($member['email']) ?></bdi></td></tr>
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('birth_date') ?></td><td class="font-bold text-slate-900 text-xs font-numeric"><?= is_rtl() ? date_ar($member['birth_date']) : date('M d, Y', strtotime($member['birth_date'])) ?></td></tr>
-                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('national_address') ?></td><td class="font-bold text-slate-900 text-xs"><?= e($member['national_address'] ?: '-') ?></td></tr>
+                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('national_address') ?></td><td class="font-bold text-slate-900 text-xs break-words"><?= e($member['national_address'] ?: '-') ?></td></tr>
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('bank_name') ?></td><td class="font-bold text-slate-900 text-xs"><?= e($member['bank_name'] ?: '-') ?></td></tr>
-                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('bank_account_number') ?></td><td class="font-bold text-slate-900 text-xs font-numeric" dir="ltr"><?= e($member['bank_account_number'] ?: '-') ?></td></tr>
-                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('iban') ?></td><td class="font-bold text-slate-900 text-xs font-numeric" dir="ltr"><?= e($member['iban'] ?: '-') ?></td></tr>
+                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('bank_account_number') ?></td><td class="font-bold text-slate-900 text-xs font-numeric break-all"><bdi dir="ltr"><?= e($member['bank_account_number'] ?: '-') ?></bdi></td></tr>
+                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('iban') ?></td><td class="font-bold text-slate-900 text-xs font-numeric break-all"><bdi dir="ltr"><?= e($member['iban'] ?: '-') ?></bdi></td></tr>
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('registration_date') ?></td><td class="font-bold text-slate-900 text-xs font-numeric"><?= is_rtl() ? date_ar($member['created_at']) : date('M d, Y', strtotime($member['created_at'])) ?></td></tr>
                     </tbody>
                 </table>

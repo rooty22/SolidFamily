@@ -643,4 +643,8 @@ return [
     'founding_schedule_title' => 'جدول أقساط التأسيس',
     'founding_installment_n' => 'القسط :n',
     'founding_plan_none' => 'لم تُحدَّد',
+    'share_only_add_hint' => 'ليس لديك أسهم بعد، لذلك يمكنك تقديم طلب إضافة أسهم فقط. الدمج والإلغاء يتاحان بعد امتلاك أسهم.',
+    'share_merge_needs_lots_hint' => 'الدمج يتاح عندما يكون لديك دفعتا أسهم منفصلتان أو أكثر.',
+    'share_merge_pending_hint' => 'لديك طلب دمج قيد المراجعة بالفعل.',
+    'subscription_grace_until' => 'مهلة حتى :date',
 ];

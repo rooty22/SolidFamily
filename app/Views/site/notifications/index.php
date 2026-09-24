@@ -74,7 +74,7 @@ $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(d
                 <div class="note-box"><i class="bi bi-check-circle-fill"></i> <?= __('no_upcoming_dues') ?></div>
             <?php else: ?>
             <div class="info-list">
-                <?php if ($subscription): [$sl, $sv] = status_badge($subscription['status']); $left = $daysLeft($subscription['due_date']); ?>
+                <?php if ($subscription): [$sl, $sv] = status_badge($subscription['status']); $left = $daysLeft(\App\Models\MonthlySubscription::effectiveDue($subscription)); ?>
                 <div class="info-row"><span><?= __('subscription_month', ['month' => e($subscription['month'])]) ?></span><b><span class="badge-status badge-<?= $sv ?>"><?= $sl ?></span></b></div>
                 <div class="info-row"><span><?= __('remaining_amount') ?></span><b class="font-num"><?= money(max(0, $subscription['amount_due'] - $subscription['amount_paid'])) ?></b></div>
                 <div class="info-row"><span><?= __('due_date') ?></span><b class="font-num"><?= date_ar($subscription['due_date']) ?>

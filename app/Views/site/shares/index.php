@@ -19,7 +19,7 @@ foreach ($byMonth as $monthRows) {
         $paidCount++;
     }
     foreach ($monthRows as $r) {
-        if ((float) $r['amount_due'] > (float) $r['amount_paid'] && $r['due_date'] < date('Y-m-d')) {
+        if ((float) $r['amount_due'] > (float) $r['amount_paid'] && \App\Models\MonthlySubscription::effectiveDue($r) < date('Y-m-d')) {
             $lateCount++;
             break;
         }
@@ -60,7 +60,8 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
             <?php foreach ($history as $h): [$l, $v] = status_badge($h['status']); ?>
                 <tr>
                     <td class="fw-bold font-num"><?= e($h['month']) ?></td>
-                    <td class="font-num"><?= date_ar($h['due_date']) ?></td>
+                    <td class="font-num"><?= date_ar($h['due_date']) ?>
+                        <?php if (!empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small><?php endif; ?></td>
                     <td class="font-num"><?= money($h['amount_due']) ?></td>
                     <td class="font-num"><?= money($h['amount_paid']) ?></td>
                     <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>

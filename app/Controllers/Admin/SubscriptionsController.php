@@ -30,7 +30,7 @@ class SubscriptionsController extends Controller
                     SUM(due > 0 AND paid >= due) AS paid_months,
                     SUM(late) AS late_months
              FROM (SELECT member_id, month, SUM(amount_due) AS due, SUM(amount_paid) AS paid,
-                          MAX(amount_due > amount_paid AND due_date < ?) AS late
+                          MAX(amount_due > amount_paid AND COALESCE(grace_until, due_date) < ?) AS late
                    FROM monthly_subscriptions GROUP BY member_id, month) per_month
              GROUP BY member_id",
             [$today]

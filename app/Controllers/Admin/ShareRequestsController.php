@@ -77,6 +77,11 @@ class ShareRequestsController extends Controller
         $member = Member::find($request['member_id']);
         $newCount = (int) $member['shares_count'];
 
+        if ($request['type'] === 'merge' && count(ShareLot::activeFor((int) $member['id'])) < 2) {
+            Session::flash('error', 'لا يمكن الموافقة على الدمج: المشترك ليس لديه دفعتا أسهم منفصلتان على الأقل. يمكنك رفض الطلب.');
+            $this->redirect('admin/share-requests');
+        }
+
         if ($request['type'] === 'cancel' && (int) $request['shares_count'] > $newCount) {
             Session::flash('error', 'لا يمكن الموافقة: عدد الأسهم المطلوب إلغاؤها أكبر من أسهم المشترك الحالية (' . $newCount . ').');
             $this->redirect('admin/share-requests');

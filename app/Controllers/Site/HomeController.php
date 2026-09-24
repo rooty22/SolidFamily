@@ -37,7 +37,7 @@ class HomeController extends Controller
                 $paidMonths++;
             }
             foreach ($rows as $r) {
-                if ((float) $r['amount_due'] > (float) $r['amount_paid'] && strtotime($r['due_date']) < time()) {
+                if ((float) $r['amount_due'] > (float) $r['amount_paid'] && strtotime(MonthlySubscription::effectiveDue($r)) < time()) {
                     $lateMonths++;
                     break;
                 }

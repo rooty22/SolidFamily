@@ -52,13 +52,18 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
                     <label class="form-label"><?= __('request_type') ?></label>
                     <select name="type" class="form-select" x-model="type">
                         <option value="add"><?= __('share_type_add') ?></option>
-                        <option value="merge"><?= __('share_type_merge') ?></option>
-                        <option value="cancel"><?= __('share_type_cancel') ?></option>
+                        <option value="merge" <?= $canMerge ? '' : 'disabled' ?>><?= __('share_type_merge') ?></option>
+                        <option value="cancel" <?= $cancelableShares > 0 ? '' : 'disabled' ?>><?= __('share_type_cancel') ?></option>
                     </select>
+                    <?php if ((int) $member['shares_count'] < 1): ?>
+                        <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= __('share_only_add_hint') ?></div>
+                    <?php elseif (!$canMerge): ?>
+                        <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= __($mergeBlockReason === 'pending' ? 'share_merge_pending_hint' : 'share_merge_needs_lots_hint') ?></div>
+                    <?php endif; ?>
                 </div>
                 <div class="mb-3" x-show="type !== 'merge'">
                     <label class="form-label"><?= __('shares_count') ?></label>
-                    <input type="number" name="shares_count" class="form-control font-num" min="1" max="<?= max(1, (int) $member['shares_count']) ?>" value="1" :max="type === 'cancel' ? <?= max(1, (int) $member['shares_count']) ?> : 1000">
+                    <input type="number" name="shares_count" class="form-control font-num" min="1" max="<?= max(1, (int) $member['shares_count']) ?>" value="1" :max="type === 'cancel' ? <?= max(1, (int) $cancelableShares) ?> : 1000">
                     <div class="small text-muted mt-1" x-show="type === 'cancel'" x-cloak style="display:none;"><?= __('cannot_cancel_more_shares', ['count' => number_format($member['shares_count'])]) ?></div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send-fill"></i> <?= __('submit_request') ?></button>

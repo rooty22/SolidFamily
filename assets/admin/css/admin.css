@@ -455,6 +455,10 @@ html[dir="ltr"] .main-area {
     min-width: 600px;
 }
 
+/* Label/value tables inside a card: the 600px minimum made them overflow (and get clipped) in narrow cards. */
+.table-modern.table-kv { min-width: 0; table-layout: fixed; }
+.table-modern.table-kv tbody td { overflow-wrap: anywhere; }
+
 html[dir="rtl"] .table-modern thead th { text-align: right; }
 html[dir="ltr"] .table-modern thead th { text-align: left; }
 

@@ -45,20 +45,34 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                     </span>
                 </div>
 
+                <?php
+                // members.shares_count is always the balance NOW. Once a request is approved it already includes the request,
+                // so "current + requested" would count it twice: the projection only makes sense while the request is pending.
+                $isPending = $request['status'] === 'pending';
+                $delta = $request['type'] === 'cancel' ? -$requestedShares : ($request['type'] === 'add' ? $requestedShares : 0);
+                ?>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
-                        <span class="text-[11px] font-semibold text-slate-500 block mb-1">الأسهم الحالية</span>
+                        <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= $isPending ? 'الأسهم الحالية' : 'رصيد المشترك الحالي' ?></span>
                         <span class="text-lg font-bold text-slate-800 font-numeric"><?= number_format($currentShares) ?> سهم</span>
                     </div>
 
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
                         <span class="text-[11px] font-semibold text-slate-500 block mb-1">الأسهم المطلوبة</span>
-                        <span class="text-lg font-bold text-brand-600 font-numeric"><?= $requestedShares ? number_format($requestedShares) . ' سهم' : 'غير محدد (دمج)' ?></span>
+                        <span class="text-lg font-bold text-brand-600 font-numeric"><?= $requestedShares ? ($request['type'] === 'cancel' ? '-' : '+') . number_format($requestedShares) . ' سهم' : 'غير محدد (دمج)' ?></span>
                     </div>
 
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 col-span-2 sm:col-span-1">
-                        <span class="text-[11px] font-semibold text-slate-500 block mb-1">الرصيد بعد التنفيذ</span>
-                        <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format($currentShares + ($request['type'] === 'reduction' ? -$requestedShares : $requestedShares)) ?> سهم</span>
+                        <?php if ($isPending): ?>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">الرصيد بعد التنفيذ</span>
+                            <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format(max(0, $currentShares + $delta)) ?> سهم</span>
+                        <?php elseif ($request['status'] === 'approved'): ?>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">حالة التنفيذ</span>
+                            <span class="text-sm font-bold text-emerald-700">تم التنفيذ، والرصيد الحالي يشمل الطلب</span>
+                        <?php else: ?>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">حالة التنفيذ</span>
+                            <span class="text-sm font-bold text-slate-600">لم يُنفَّذ، الرصيد دون تغيير</span>
+                        <?php endif; ?>
                     </div>
                 </div>
 

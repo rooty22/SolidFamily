@@ -645,4 +645,8 @@ return [
     'founding_schedule_title' => 'Founding installment schedule',
     'founding_installment_n' => 'Installment :n',
     'founding_plan_none' => 'Not chosen',
+    'share_only_add_hint' => 'You have no shares yet, so you can only request to add shares. Merging and cancelling become available once you own shares.',
+    'share_merge_needs_lots_hint' => 'Merging is available when you hold two or more separate share lots.',
+    'share_merge_pending_hint' => 'You already have a merge request under review.',
+    'subscription_grace_until' => 'Grace until :date',
 ];

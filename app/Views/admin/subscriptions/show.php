@@ -75,7 +75,8 @@
             <tr>
                 <td class="fw-bold"><?= e($h['month']) ?></td>
                 <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?></td>
-                <td><?= date_ar($h['due_date']) ?></td>
+                <td><?= date_ar($h['due_date']) ?>
+                    <?php if (!empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted">مهلة حتى <?= date_ar($h['grace_until']) ?></small><?php endif; ?></td>
                 <td><?= money($h['amount_due']) ?></td>
                 <td><?= money($h['amount_paid']) ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>

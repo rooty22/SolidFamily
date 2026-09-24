@@ -11,6 +11,13 @@ class MonthlySubscription extends Model
     /** Days a lot added after this month's due day gets before its first payment counts as late. */
     private const MID_CYCLE_GRACE_DAYS = 7;
 
+    /** The date from which an unpaid row counts as LATE: the due date, or the end of its grace when that is later. */
+    public static function effectiveDue(array $row): string
+    {
+        $grace = $row['grace_until'] ?? null;
+        return ($grace && $grace > $row['due_date']) ? $grace : $row['due_date'];
+    }
+
     /**
      * Month-level view of all of a member's lot rows for one month. The month is only "paid" when EVERYTHING due is
      * collected, "partial" when some money is in but not all, "unpaid" otherwise (never "the worst row wins").
@@ -110,8 +117,11 @@ class MonthlySubscription extends Model
         // A lot approved mid-cycle, after this month's due day already passed, is NOT overdue the instant it is billed:
         // it falls due a few days later. Its amount is a real debt for this month - the row stays UNPAID until
         // money is actually recorded (marking it "paid" would hide what the member still owes).
+        // due_date keeps showing the due day the admin configured; the grace is a separate date that only
+        // postpones the moment the row starts counting as late.
+        $graceUntil = null;
         if ($applyGracePeriod && $month === date('Y-m') && $dueDate < date('Y-m-d')) {
-            $dueDate = date('Y-m-d', strtotime('+' . self::MID_CYCLE_GRACE_DAYS . ' days'));
+            $graceUntil = date('Y-m-d', strtotime('+' . self::MID_CYCLE_GRACE_DAYS . ' days'));
         }
         // A lot with no shares owes nothing this month: that is trivially "paid".
         $status = $amountDue > 0 ? 'unpaid' : 'paid';
@@ -131,6 +141,7 @@ class MonthlySubscription extends Model
                     'amount_due' => $amountDue,
                     'status' => $status,
                     'due_date' => $dueDate,
+                    'grace_until' => $graceUntil,
                 ]);
                 return self::find($existing['id']);
             }
@@ -147,6 +158,7 @@ class MonthlySubscription extends Model
             'amount_paid' => 0,
             'status' => $status,
             'due_date' => $dueDate,
+            'grace_until' => $graceUntil,
         ]);
 
         return self::find($id);

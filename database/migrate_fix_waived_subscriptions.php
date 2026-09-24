@@ -46,10 +46,15 @@ if (!$apply) {
     exit(0);
 }
 
-$update = $pdo->prepare('UPDATE monthly_subscriptions SET status = ?, due_date = ? WHERE id = ?');
+if (!in_array('grace_until', $pdo->query('SHOW COLUMNS FROM monthly_subscriptions')->fetchAll(PDO::FETCH_COLUMN), true)) {
+    fwrite(STDERR, "Run database/migrate_subscription_grace.php first (it adds grace_until).\n");
+    exit(1);
+}
+$update = $pdo->prepare('UPDATE monthly_subscriptions SET status = ?, grace_until = ? WHERE id = ?');
 foreach ($rows as $r) {
     $status = (float) $r['amount_paid'] > 0 ? 'partial' : 'unpaid';
-    $due = ($r['month'] === $currentMonth && $r['due_date'] < date('Y-m-d')) ? $graceDate : $r['due_date'];
-    $update->execute([$status, $due, $r['id']]);
+    // The row keeps its configured due date; a current-month row already past due gets a grace so it is not late at once.
+    $grace = ($r['month'] === $currentMonth && $r['due_date'] < date('Y-m-d')) ? $graceDate : null;
+    $update->execute([$status, $grace, $r['id']]);
 }
 echo count($rows) . " row(s) repaired.\n";

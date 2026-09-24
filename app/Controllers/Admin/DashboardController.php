@@ -100,7 +100,7 @@ class DashboardController extends Controller
             LEFT JOIN monthly_subscriptions cur ON cur.member_id = m.id AND cur.month = :cm
             WHERE m.status = 'active' AND (
                 EXISTS (SELECT 1 FROM monthly_subscriptions s
-                        WHERE s.member_id = m.id AND s.amount_due > s.amount_paid AND s.due_date < :today)
+                        WHERE s.member_id = m.id AND s.amount_due > s.amount_paid AND COALESCE(s.grace_until, s.due_date) < :today)
                 OR (m.shares_count > 0 AND cur.id IS NULL
                     AND CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')) < :today2)
             )");
