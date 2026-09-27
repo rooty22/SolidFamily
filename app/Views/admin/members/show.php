@@ -80,6 +80,13 @@ $catLabels = transaction_categories();
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('bank_account_number') ?></td><td class="font-bold text-slate-900 text-xs font-numeric break-all"><bdi dir="ltr"><?= e($member['bank_account_number'] ?: '-') ?></bdi></td></tr>
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('iban') ?></td><td class="font-bold text-slate-900 text-xs font-numeric break-all"><bdi dir="ltr"><?= e($member['iban'] ?: '-') ?></bdi></td></tr>
                         <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= __('registration_date') ?></td><td class="font-bold text-slate-900 text-xs font-numeric"><?= is_rtl() ? date_ar($member['created_at']) : date('M d, Y', strtotime($member['created_at'])) ?></td></tr>
+                        <tr><td class="text-slate-500 font-medium text-xs bg-slate-50/60"><?= is_rtl() ? 'يوم استحقاق الاشتراك' : 'Subscription Due Day' ?></td><td class="font-bold text-slate-900 text-xs font-numeric">
+                            <?php if ($member['subscription_due_day'] !== null): ?>
+                                <?= (int) $member['subscription_due_day'] ?> <span class="text-slate-400 font-normal">(<?= is_rtl() ? 'خاص بهذا المشترك' : 'custom for this member' ?>)</span>
+                            <?php else: ?>
+                                <?= (int) \App\Models\Setting::get('subscription_due_day', 10) ?> <span class="text-slate-400 font-normal">(<?= is_rtl() ? 'افتراضي النظام' : 'system default' ?>)</span>
+                            <?php endif; ?>
+                        </td></tr>
                     </tbody>
                 </table>
             </div>

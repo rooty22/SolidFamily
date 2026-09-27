@@ -40,7 +40,7 @@ class Member extends Model
     /**
      * Validate only the requested member fields. $data must already be passed through normalize().
      * Allowed $fields: name, mobile, email, national_id, birth_date, national_address, bank_account_number,
-     * iban, bank_name, password (+ password_confirmation when present), shares_count.
+     * iban, bank_name, password (+ password_confirmation when present), shares_count, subscription_due_day.
      */
     public static function validate(array $data, array $fields, ?int $ignoreId = null, bool $passwordRequired = true, bool $requireAll = false): Validator
     {
@@ -95,6 +95,10 @@ class Member extends Model
                     break;
                 case 'shares_count':
                     $v->integer('shares_count', 'عدد الأسهم', 0, 10000);
+                    break;
+                case 'subscription_due_day':
+                    // Blank keeps following the site-wide default; a lot's own due day (set at share approval) still wins over this.
+                    $v->integer('subscription_due_day', 'يوم استحقاق الاشتراك الخاص بالمشترك', 1, 28);
                     break;
             }
         }

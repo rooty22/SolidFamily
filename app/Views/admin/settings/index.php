@@ -637,13 +637,18 @@ $siteFaviconUrl = site_favicon_url();
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'يوم استحقاق الاشتراك الشهري' : 'Monthly Subscription Due Day' ?></label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'يوم استحقاق الاشتراك الشهري (الافتراضي العام)' : 'Monthly Subscription Due Day (system default)' ?></label>
                         <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs transition-all">
                             <input type="number" min="1" max="28" name="subscription_due_day" value="<?= e($settings['subscription_due_day'] ?? '10') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
                             <span class="inline-flex items-center px-3 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">
                                 <?= is_rtl() ? 'من كل شهر' : 'of Month' ?>
                             </span>
                         </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">
+                            <?= is_rtl()
+                                ? 'هذا هو اليوم المستخدم فقط لمن لم يُحدَّد له يوم خاص. لكل مشترك يوم استحقاق مستقل يمكن ضبطه من ملفه (تعديل البيانات)، ولكل دفعة أسهم (لوطة) يومها الخاص أيضاً يُحدَّد عند الموافقة على طلب الأسهم — وهذا التعديل هنا لا يغيّرهما.'
+                                : 'This is used only for members with no due day of their own. Each member can be given an individual due day from their profile (edit), and each share lot gets its own at approval time — changing this setting never overrides either.' ?>
+                        </span>
                     </div>
                 </div>
             </div>

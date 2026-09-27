@@ -36,7 +36,7 @@ class MembersController extends Controller
 
         $validator = Member::validate($data, [
             'name', 'mobile', 'email', 'national_id', 'birth_date', 'national_address',
-            'bank_account_number', 'iban', 'bank_name', 'password', 'shares_count',
+            'bank_account_number', 'iban', 'bank_name', 'password', 'shares_count', 'subscription_due_day',
         ]);
 
         if ($validator->fails()) {
@@ -57,6 +57,7 @@ class MembersController extends Controller
             'bank_name' => ($data['bank_name'] ?? '') ?: null,
             'password' => password_hash($data['password'], PASSWORD_DEFAULT),
             'shares_count' => (int) ($data['shares_count'] ?? 0),
+            'subscription_due_day' => ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null,
             'status' => 'active',
         ]);
 
@@ -109,7 +110,7 @@ class MembersController extends Controller
         $data = Member::normalize($this->all());
         $validator = Member::validate($data, [
             'name', 'mobile', 'email', 'national_id', 'birth_date', 'national_address',
-            'bank_account_number', 'iban', 'bank_name', 'password',
+            'bank_account_number', 'iban', 'bank_name', 'password', 'subscription_due_day',
         ], (int) $id, false);
 
         if ($validator->fails()) {
@@ -128,6 +129,9 @@ class MembersController extends Controller
             'iban' => ($data['iban'] ?? '') ?: null,
             'bank_name' => ($data['bank_name'] ?? '') ?: null,
         ];
+        if (array_key_exists('subscription_due_day', $data)) {
+            $update['subscription_due_day'] = ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null;
+        }
 
         if (!empty($data['password'])) {
             $update['password'] = password_hash($data['password'], PASSWORD_DEFAULT);

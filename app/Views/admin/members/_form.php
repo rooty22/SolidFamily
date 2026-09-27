@@ -73,9 +73,14 @@ $isEn = is_en();
                     <span class="text-[11px] text-slate-400 mt-1 block"><?= $isEn ? 'Can be adjusted later via shares manager' : 'يمكن تعديلها لاحقاً عبر شاشة إدارة الأسهم' ?></span>
                 </div>
             <?php endif; ?>
-            <div class="col-md-<?= isset($member) ? '12' : '6' ?>">
+            <div class="col-md-6">
                 <label class="form-label font-bold text-xs text-slate-700"><?= isset($member) ? ($isEn ? 'New Password (Leave blank to keep current)' : 'كلمة مرور جديدة (اتركه فارغاً للإبقاء على الحالية)') : ($isEn ? 'Account Password' : 'كلمة المرور') ?> <?= isset($member) ? '' : '<span class="text-rose-500">*</span>' ?></label>
                 <input type="password" name="password" class="form-control text-sm" <?= isset($member) ? '' : 'required' ?> minlength="8" placeholder="••••••••">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'This Member\'s Own Due Day' : 'يوم استحقاق خاص بهذا المشترك' ?></label>
+                <input type="number" name="subscription_due_day" class="form-control text-sm font-numeric" min="1" max="28" placeholder="<?= $isEn ? 'System default' : 'افتراضي النظام' ?>" value="<?= e($m['subscription_due_day'] ?? '') ?>">
+                <span class="text-[11px] text-slate-400 mt-1 block"><?= $isEn ? 'Leave blank to follow the system-wide default (Settings). Overrides it for every share of this member that has no due day of its own.' : 'اتركه فارغاً ليتبع الإعداد العام للنظام. تجاوزه يطبَّق على كل أسهم هذا المشترك التي ليس لها يوم استحقاق خاص بها.' ?></span>
             </div>
         </div>
     </div>
