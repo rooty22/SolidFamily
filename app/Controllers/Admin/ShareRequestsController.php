@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Session;
+use App\Models\FoundingAmount;
 use App\Models\Member;
 use App\Models\MonthlySubscription;
 use App\Models\Notification;
@@ -92,10 +93,8 @@ class ShareRequestsController extends Controller
         // each "add" is its own lot with its own due date until a "merge" request folds every lot into one.
         $carriedPaid = 0.0;
         // No due day typed by the admin: the new/merged lot pins the day the member already has, so it does not
-        // drift if that day changes later. A member with no day of their own yet gets today's day-of-month --
-        // the day this request is actually being approved on -- instead of silently falling back to the site
-        // default, which would have nothing to do with when this member's billing actually started.
-        $lotDueDay = $dueDay ?? ((int) ($member['subscription_due_day'] ?? min((int) date('j'), 28)));
+        // drift if that day changes later. A member with no day yet keeps following the site setting.
+        $lotDueDay = $dueDay ?? ($member['subscription_due_day'] !== null ? (int) $member['subscription_due_day'] : null);
         if ($request['type'] === 'add') {
             $newCount += (int) $request['shares_count'];
             ShareLot::create([
@@ -137,16 +136,15 @@ class ShareRequestsController extends Controller
         }
 
         $memberUpdate = ['shares_count' => $newCount];
-        // Keep the member's own due day in step with the lot's whenever this request actually set one (typed
-        // explicitly, or defaulted to today above for a member who had none) -- the founding amount and any
-        // future lot with no day of its own both follow the MEMBER's day, not a specific lot's.
-        if (in_array($request['type'], ['add', 'merge'], true)) {
-            $memberUpdate['subscription_due_day'] = $lotDueDay;
-        } elseif ($dueDay !== null) {
+        if ($dueDay !== null) {
             $memberUpdate['subscription_due_day'] = $dueDay;
         }
         Member::update($member['id'], $memberUpdate);
         $newRows = MonthlySubscription::ensureMonthExistsForMember((int) $member['id'], date('Y-m'));
+        // Pin the founding amount's own due day to TODAY the moment it first becomes owed, rather than waiting for
+        // whoever next opens the founding page (which could be days later) -- it's a distinct day from the
+        // subscription's, so it must be captured exactly when the share behind it is actually approved.
+        FoundingAmount::ensureForMember((int) $member['id']);
 
         if ($request['type'] === 'merge' && $carriedPaid > 0) {
             $activeLot = ShareLot::activeFor($member['id'])[0] ?? null;

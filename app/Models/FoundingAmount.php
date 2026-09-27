@@ -33,6 +33,9 @@ class FoundingAmount extends Model
             'amount_paid' => 0,
             // A member with no shares owes nothing: that is trivially "paid", not an unpaid debt.
             'status' => $total > 0 ? 'unpaid' : 'paid',
+            // The founding amount's own due day, independent of the member's monthly subscription day: captured
+            // the moment it first becomes real (shares already present), never moved again after that.
+            'due_day' => $total > 0 ? min((int) date('j'), 28) : null,
         ]);
 
         return self::find($id);
@@ -50,6 +53,12 @@ class FoundingAmount extends Model
             'total_required' => $total,
             'status' => $status,
         ];
+        // The day the founding amount first becomes owed (not the member's subscription due day, which can be
+        // set separately or left to the site default): captured once, the first time it goes from nothing to
+        // something, and never moved again -- exactly like a share lot's own due day is pinned at approval.
+        if ($row['due_day'] === null && $total > 0) {
+            $update['due_day'] = min((int) date('j'), 28);
+        }
         // With a payment plan, installments that are already paid keep their amount: only the CHANGE in the total
         // (in either direction) lands on the installments still open, or on a new one when everything was paid.
         if (!empty($row['plan_start'])) {
@@ -79,7 +88,7 @@ class FoundingAmount extends Model
         if (!empty($founding['plan_start'])) {
             $start = substr($founding['plan_start'], 0, 7);
         } else {
-            $dueDay = MonthlySubscription::dueDayFor($member);
+            $dueDay = self::dueDay($founding, $member);
             $start = month_due_date(date('Y-m'), $dueDay) >= date('Y-m-d')
                 ? date('Y-m')
                 : date('Y-m', strtotime('first day of next month'));
@@ -94,6 +103,16 @@ class FoundingAmount extends Model
     }
 
     /**
+     * The founding amount's own due day: the day it was first owed on (captured once in ensureForMember() /
+     * syncWithShares()), or -- for founding rows from before that was tracked -- the member's subscription due
+     * day, exactly as it always worked.
+     */
+    public static function dueDay(array $founding, array $member): int
+    {
+        return $founding['due_day'] !== null ? (int) $founding['due_day'] : MonthlySubscription::dueDayFor($member);
+    }
+
+    /**
      * The installment schedule of the chosen plan (empty until a plan is chosen). Amounts split the total evenly
      * (the last one takes the rounding remainder); everything paid so far is applied to the earliest installments first.
      * Computed, not stored, so it always follows the current total (e.g. after the member's shares change).
@@ -105,7 +124,7 @@ class FoundingAmount extends Model
             return [];
         }
 
-        $dueDay = MonthlySubscription::dueDayFor($member);
+        $dueDay = self::dueDay($founding, $member);
         $paidLeft = (float) $founding['amount_paid'];
         $today = date('Y-m-d');
         $items = [];

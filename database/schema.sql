@@ -117,6 +117,7 @@ CREATE TABLE founding_amounts (
     total_required DECIMAL(12,2) NOT NULL DEFAULT 0,
     amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0,
     status ENUM('unpaid','partial','paid') NOT NULL DEFAULT 'unpaid',
+    due_day TINYINT UNSIGNED NULL COMMENT 'the founding amount own due day (1-28), pinned the day it first becomes owed, independent of the member subscription due day',
     plan_months TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'payment plan chosen by the member, 1 = one payment, N = N monthly installments',
     plan_start DATE NULL COMMENT 'first day of the month the first installment falls due, NULL until a plan is chosen',
     plan_schedule TEXT NULL COMMENT 'JSON list with the amount of every installment, frozen so paid installments never change when shares change',

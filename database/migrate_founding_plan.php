@@ -28,6 +28,10 @@ if (!in_array('plan_schedule', $cols, true)) {
     $pdo->exec("ALTER TABLE founding_amounts ADD COLUMN plan_schedule TEXT NULL AFTER plan_start");
     echo "- founding_amounts.plan_schedule added.\n";
 }
+if (!in_array('due_day', $cols, true)) {
+    $pdo->exec("ALTER TABLE founding_amounts ADD COLUMN due_day TINYINT UNSIGNED NULL COMMENT 'the founding amount own due day (1-28), pinned the day it first becomes owed, independent of the member subscription due day' AFTER status");
+    echo "- founding_amounts.due_day added.\n";
+}
 
 // Freeze the installments of plans chosen before this column existed: an even split of the current total, which is
 // what those members currently see (later changes in shares then only move the unpaid part).
@@ -42,5 +46,16 @@ foreach ($rows as $r) {
     $freeze->execute([json_encode(array_map(fn($c) => $c / 100, $parts)), $r['id']]);
 }
 echo '- ' . count($rows) . " plan(s) frozen.\n";
+
+// Pin the due day of existing founding rows that already owe something, to whatever they already effectively
+// display (the member's subscription day, or the site default): purely a snapshot, so nothing visibly changes
+// for them today -- only NEW founding amounts from now on get their own independently-pinned day.
+$pinned = $pdo->exec(
+    "UPDATE founding_amounts f
+     JOIN members m ON m.id = f.member_id
+     SET f.due_day = COALESCE(m.subscription_due_day, (SELECT value FROM settings WHERE `key` = 'subscription_due_day' LIMIT 1), 10)
+     WHERE f.total_required > 0 AND f.due_day IS NULL"
+);
+echo "- {$pinned} existing founding row(s) had their due day pinned to what they already showed.\n";
 
 echo "Founding-plan migration finished successfully.\n";
