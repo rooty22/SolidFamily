@@ -26,7 +26,9 @@ $pdo = new PDO(
 $apply = in_array('--apply', $argv ?? [], true);
 $all = in_array('--all', $argv ?? [], true);
 $currentMonth = date('Y-m');
-$graceDate = date('Y-m-d', strtotime('+7 days'));
+$graceEnabled = (string) ($pdo->query("SELECT value FROM settings WHERE `key` = 'subscription_grace_enabled'")->fetchColumn() ?: '1') === '1';
+$graceDays = (int) ($pdo->query("SELECT value FROM settings WHERE `key` = 'subscription_grace_days'")->fetchColumn() ?: 7);
+$graceDate = $graceEnabled ? date('Y-m-d', strtotime("+{$graceDays} days")) : null;
 
 // Rows of lots that were merged/cancelled are voids by design, not debts: only rows of ACTIVE lots (or lot-less rows) qualify.
 $where = "status = 'paid' AND amount_paid < amount_due"

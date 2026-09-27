@@ -111,7 +111,28 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                             <form method="post" action="<?= url('admin/share-requests/' . $request['id'] . '/approve') ?>" data-confirm="تأكيد الموافقة على الطلب؟">
                                 <?= csrf_field() ?>
                                 <input type="text" name="admin_note" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white mb-2" placeholder="ملاحظة اعتماد (اختياري)...">
-                                <input type="number" name="subscription_due_day" min="1" max="28" value="<?= e($member['subscription_due_day'] ?? '') ?>" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white mb-2 font-numeric" placeholder="يوم استحقاق مخصص لهذا العضو (اختياري، 1-28)...">
+                                <?php
+                                $graceEnabled = \App\Models\Setting::get('subscription_grace_enabled', '1') === '1';
+                                $graceDays = (int) \App\Models\Setting::get('subscription_grace_days', 7);
+                                ?>
+                                <input type="number" id="approve-due-day-input" name="subscription_due_day" min="1" max="28" value="<?= e($member['subscription_due_day'] ?? '') ?>" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white font-numeric" placeholder="يوم استحقاق مخصص لهذا العضو (اختياري، 1-28)..."
+                                    oninput="approveDueDayHint(this)">
+                                <div id="approve-due-day-hint" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-1.5 mb-2" style="display:none;"></div>
+                                <script>
+                                const APPROVE_GRACE_ENABLED = <?= json_encode($graceEnabled) ?>;
+                                const APPROVE_GRACE_DAYS = <?= json_encode($graceDays) ?>;
+                                function approveDueDayHint(el) {
+                                    const box = document.getElementById('approve-due-day-hint');
+                                    const day = parseInt(el.value, 10);
+                                    const today = new Date().getDate();
+                                    if (!day || day >= today) { box.style.display = 'none'; return; }
+                                    box.style.display = 'block';
+                                    box.textContent = APPROVE_GRACE_ENABLED
+                                        ? `تنبيه: يوم ${day} مضى بالفعل هذا الشهر. سيُحتسب هذا الشهر مستحقاً على السهم الجديد بهذا اليوم، مع مهلة ${APPROVE_GRACE_DAYS} أيام قبل اعتباره متأخراً.`
+                                        : `تنبيه: يوم ${day} مضى بالفعل هذا الشهر. سيُحتسب هذا الشهر مستحقاً على السهم الجديد بهذا اليوم، وسيُعتبر متأخراً فوراً (مهلة السداد معطّلة من الإعدادات).`;
+                                }
+                                approveDueDayHint(document.getElementById('approve-due-day-input'));
+                                </script>
                                 <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2">
                                     <i class="bi bi-check-lg text-base"></i>
                                     <span>الموافقة والاعتماد</span>

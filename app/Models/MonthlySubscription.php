@@ -8,8 +8,17 @@ class MonthlySubscription extends Model
 {
     protected static string $table = 'monthly_subscriptions';
 
-    /** Days a lot added after this month's due day gets before its first payment counts as late. */
-    private const MID_CYCLE_GRACE_DAYS = 7;
+    /** Days a lot added after this month's due day gets before its first payment counts as late (admin-configurable; 7 if never set). */
+    private static function gracePeriodDays(): int
+    {
+        return (int) Setting::get('subscription_grace_days', 7);
+    }
+
+    /** Whether a lot added after the due day gets any grace at all before counting as late (admin-configurable; on by default). */
+    private static function graceEnabled(): bool
+    {
+        return (string) Setting::get('subscription_grace_enabled', '1') === '1';
+    }
 
     /** The date from which an unpaid row counts as LATE: the due date, or the end of its grace when that is later. */
     public static function effectiveDue(array $row): string
@@ -132,8 +141,8 @@ class MonthlySubscription extends Model
         // due_date keeps showing the due day the admin configured; the grace is a separate date that only
         // postpones the moment the row starts counting as late.
         $graceUntil = null;
-        if ($applyGracePeriod && $month === date('Y-m') && $dueDate < date('Y-m-d')) {
-            $graceUntil = date('Y-m-d', strtotime('+' . self::MID_CYCLE_GRACE_DAYS . ' days'));
+        if ($applyGracePeriod && self::graceEnabled() && $month === date('Y-m') && $dueDate < date('Y-m-d')) {
+            $graceUntil = date('Y-m-d', strtotime('+' . self::gracePeriodDays() . ' days'));
         }
         // A lot with no shares owes nothing this month: that is trivially "paid".
         $status = $amountDue > 0 ? 'unpaid' : 'paid';

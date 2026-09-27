@@ -2,6 +2,9 @@
 $shares = (int) $member['shares_count'];
 $monthly = $shares * $shareValue;
 $currentMonth = date('Y-m');
+// Same admin on/off switch as the grace period itself: once off, the note is hidden everywhere, even on rows
+// that already carry a (now-irrelevant) grace_until from before it was turned off.
+$graceVisible = \App\Models\Setting::get('subscription_grace_enabled', '1') === '1';
 $currentRows = [];
 $byMonth = [];
 foreach ($history as $h) {
@@ -61,7 +64,7 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
                 <tr>
                     <td class="fw-bold font-num"><?= e($h['month']) ?></td>
                     <td class="font-num"><?= date_ar($h['due_date']) ?>
-                        <?php if (!empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small><?php endif; ?></td>
+                        <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small><?php endif; ?></td>
                     <td class="font-num"><?= money($h['amount_due']) ?></td>
                     <td class="font-num"><?= money($h['amount_paid']) ?></td>
                     <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>

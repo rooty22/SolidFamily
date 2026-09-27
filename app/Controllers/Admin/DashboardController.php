@@ -107,9 +107,19 @@ class DashboardController extends Controller
         $lateStmt->execute(['cm' => $currentMonth, 'cm2' => $currentMonth, 'cm3' => $currentMonth, 'today' => $today, 'today2' => $today, 'dd' => $dueDay]);
         $lateMembers = (int) $lateStmt->fetch()['c'];
 
-        $monthlyTrend = $db->query("SELECT month, SUM(amount_paid) as paid, SUM(amount_due) as due
-            FROM monthly_subscriptions GROUP BY month ORDER BY month DESC LIMIT 6")->fetchAll();
-        $monthlyTrend = array_reverse($monthlyTrend);
+        // The 6 real calendar months ending with the current one -- NOT just whichever 6 month values happen to
+        // have rows, which could be future months already billed ahead (e.g. a member paying several months in
+        // advance) and would then push the chart into the future instead of showing the recent trend.
+        $sums = [];
+        foreach ($db->query("SELECT month, SUM(amount_paid) as paid, SUM(amount_due) as due
+            FROM monthly_subscriptions WHERE month <= '{$currentMonth}' GROUP BY month") as $row) {
+            $sums[$row['month']] = $row;
+        }
+        $monthlyTrend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = date('Y-m', strtotime("-{$i} months", strtotime($currentMonth . '-01')));
+            $monthlyTrend[] = $sums[$month] ?? ['month' => $month, 'paid' => 0, 'due' => 0];
+        }
 
         $export = [
             'إجمالي عدد المشتركين' => $totalMembers,

@@ -1,3 +1,8 @@
+<?php
+// The admin can turn the whole grace-period concept off from Settings; once off, the note is hidden everywhere
+// it's shown, even on rows that already carry a (now-irrelevant) grace_until from before it was turned off.
+$graceVisible = \App\Models\Setting::get('subscription_grace_enabled', '1') === '1';
+?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><?= e($member['name']) ?> <span class="text-muted" style="font-size:13px;">(<?= number_format($member['shares_count']) ?> سهم × <?= money($shareValue) ?>)</span></h5>
     <a href="<?= url('admin/members/' . $member['id']) ?>" class="btn btn-sm btn-soft">ملف المشترك</a>
@@ -81,7 +86,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?>
                     <?php if (!empty($h['lot_status']) && $h['lot_status'] !== 'active'): ?><small class="d-block text-danger">دفعة ملغاة</small><?php endif; ?></td>
                 <td><?= date_ar($h['due_date']) ?>
-                    <?php if (!empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted">مهلة حتى <?= date_ar($h['grace_until']) ?></small><?php endif; ?></td>
+                    <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted">مهلة حتى <?= date_ar($h['grace_until']) ?></small><?php endif; ?></td>
                 <td><?= money($h['amount_due']) ?></td>
                 <td><?= money($h['amount_paid']) ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>

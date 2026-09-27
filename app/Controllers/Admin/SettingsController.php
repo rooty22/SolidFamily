@@ -35,6 +35,7 @@ class SettingsController extends Controller
         'site_language_mode', 'site_default_language',
         // Financial Rules
         'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day',
+        'subscription_grace_days',
         // OTP & SMS Gateway Integration
         'otp_mode', 'otp_resend_seconds', 'otp_length', 'otp_expiry_minutes',
         'otp_max_failed_attempts', 'otp_verify_lock_minutes', 'otp_max_issued_per_identifier', 'otp_issue_window_minutes',
@@ -45,7 +46,7 @@ class SettingsController extends Controller
     ];
 
     /** Financial settings drive every calculation in the system: they can never be blank once submitted. */
-    private const FINANCIAL_FIELDS = ['share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day'];
+    private const FINANCIAL_FIELDS = ['share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day', 'subscription_grace_days'];
 
     public function update(): void
     {
@@ -80,6 +81,7 @@ class SettingsController extends Controller
             ->decimal('loan_admin_fee_percent', 'نسبة المصاريف الإدارية', 0, 100)
             ->decimal('max_loan_ratio', 'أقصى نسبة للقرض', 1, 100)
             ->integer('subscription_due_day', 'يوم استحقاق الاشتراك', 1, 28)
+            ->integer('subscription_grace_days', 'مهلة السداد بعد إضافة السهم', 0, 60)
             ->in('otp_mode', ['demo', 'live', 'disabled'], 'وضع التحقق (OTP)')
             ->integer('otp_resend_seconds', 'مهلة إعادة الإرسال', 10, 300)
             ->in('otp_length', ['4', '6'], 'طول رمز التحقق')
@@ -162,6 +164,10 @@ class SettingsController extends Controller
                 Setting::set($field, (string) $data[$field]);
             }
         }
+
+        // ---- 3b. Subscription grace period on/off (checkbox: '1'/'on' when checked, absent when unchecked) ----
+        $graceVal = $data['subscription_grace_enabled'] ?? null;
+        Setting::set('subscription_grace_enabled', ($graceVal === '1' || $graceVal === 'on') ? '1' : '0');
 
         // ---- 4. Homepage section visibility toggles ----
         $toggleFields = [
