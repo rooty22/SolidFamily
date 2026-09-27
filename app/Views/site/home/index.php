@@ -37,7 +37,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
 
 <!-- Stat Cards Grid -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3 col-6">
+    <div class="col-md-4 col-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-green">
                 <i class="bi bi-pie-chart-fill"></i>
@@ -49,7 +49,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
+    <div class="col-md-4 col-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-blue">
                 <i class="bi bi-calendar2-check-fill"></i>
@@ -63,19 +63,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="stat-card">
-            <div class="stat-icon bg-grad-amber">
-                <i class="bi bi-wallet2"></i>
-            </div>
-            <div>
-                <div class="stat-label"><?= __('estimated_balance') ?></div>
-                <div class="stat-value font-num"><?= money($balance) ?></div>
-                <div class="stat-sub text-emerald-600 font-bold"><?= __('investment_wallet') ?></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 col-6">
+    <div class="col-md-4 col-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-purple">
                 <i class="bi bi-cash-coin"></i>

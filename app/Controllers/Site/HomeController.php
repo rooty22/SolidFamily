@@ -54,9 +54,6 @@ class HomeController extends Controller
             [$member['id']]
         )['c'];
 
-        $totalSubsPaid = array_sum(array_column($subscriptions, 'amount_paid'));
-        $balance = $totalSubsPaid + (float) $founding['amount_paid'] - $activeLoansRemaining;
-
         $transactions = Transaction::withMember(['member_id' => $member['id']]);
 
         $this->view('site/home/index', [
@@ -71,7 +68,6 @@ class HomeController extends Controller
             'activeLoansCount' => count($activeLoans),
             'activeLoansRemaining' => $activeLoansRemaining,
             'remainingInstallments' => $remainingInstallments,
-            'balance' => $balance,
             'transactions' => array_slice($transactions, 0, 6),
         ], 'site/layout');
     }

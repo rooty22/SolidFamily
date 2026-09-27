@@ -72,10 +72,18 @@ class FoundingAmount extends Model
     {
         $member = Member::find($memberId);
         $founding = self::ensureForMember($memberId);
-        $dueDay = MonthlySubscription::dueDayFor($member);
-        $start = month_due_date(date('Y-m'), $dueDay) >= date('Y-m-d')
-            ? date('Y-m')
-            : date('Y-m', strtotime('first day of next month'));
+
+        // A plan already exists: the member is re-splitting it (e.g. into more/fewer installments), not starting a
+        // fresh one -- the start month stays put so an installment already paid keeps the due date it was paid
+        // against. Only choosing a plan for the FIRST time picks a start from today.
+        if (!empty($founding['plan_start'])) {
+            $start = substr($founding['plan_start'], 0, 7);
+        } else {
+            $dueDay = MonthlySubscription::dueDayFor($member);
+            $start = month_due_date(date('Y-m'), $dueDay) >= date('Y-m-d')
+                ? date('Y-m')
+                : date('Y-m', strtotime('first day of next month'));
+        }
 
         self::update($founding['id'], [
             'plan_months' => $months,
