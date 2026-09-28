@@ -458,7 +458,7 @@ $isSingleLang = is_single_language();
                     <?php endif; ?>
                 </div>
 
-                <a href="<?= url('admin/login') ?>" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white hover:border-slate-700 transition-all">
+                <a href="<?= url('admin/login') ?>" class="!hidden inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white hover:border-slate-700 transition-all">
                     <i class="bi bi-shield-lock text-brand-400"></i>
                     <span><?= __('admin_portal') ?></span>
                 </a>
