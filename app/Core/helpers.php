@@ -507,10 +507,59 @@ function site_address(): string
     return site_setting('official_address', 'المملكة العربية السعودية');
 }
 
-function section_enabled(string $name): bool
+/** A link an admin may put on the site: http(s), mailto:, tel:, a site path or an #anchor — never javascript:/data:. */
+function is_safe_link(string $url): bool
 {
-    $val = site_setting('section_' . $name . '_enabled', '1');
-    return ($val === '1' || $val === 'true' || $val === true);
+    if ($url === '' || preg_match('/[\s<>"\'`]/', $url) || preg_match('/^\s*(javascript|data|vbscript):/i', $url)) {
+        return false;
+    }
+    return (bool) preg_match('#^(https?://[^/].*|mailto:.+|tel:\+?[0-9\-]+|/.*|\#[A-Za-z0-9_\-]*|[A-Za-z0-9_\-./?=&\#%]+)$#i', $url);
+}
+
+/** href of an admin-entered link: site paths go through url(), external links and #anchors pass through. */
+function site_link_url(string $url): string
+{
+    if ($url === '' || preg_match('#^(https?://|mailto:|tel:|\#)#i', $url)) {
+        return $url;
+    }
+    return url($url);
+}
+
+/**
+ * Footer social links as the admin saved them ("social_links_json"): [{icon, url, label, enabled}].
+ * Until they are saved once, they are built from the older fixed settings (Twitter, Instagram, Telegram, WhatsApp).
+ */
+function site_social_links_raw(): array
+{
+    $json = (string) site_setting('social_links_json', '');
+    if ($json !== '') {
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    $links = [];
+    foreach (['social_twitter' => ['twitter-x', 'Twitter / X'], 'social_instagram' => ['instagram', 'Instagram'], 'social_telegram' => ['telegram', 'Telegram']] as $key => [$icon, $label]) {
+        if ($url = site_setting($key)) {
+            $links[] = ['icon' => $icon, 'url' => $url, 'label' => $label, 'enabled' => true];
+        }
+    }
+    $links[] = ['icon' => 'whatsapp', 'url' => site_whatsapp_link(), 'label' => 'WhatsApp', 'enabled' => true];
+    return $links;
+}
+
+/** Enabled footer social links, ready to render. */
+function site_social_links(): array
+{
+    $out = [];
+    foreach (site_social_links_raw() as $link) {
+        $url = (string) ($link['url'] ?? '');
+        $icon = (string) ($link['icon'] ?? '');
+        if (empty($link['enabled']) || !is_safe_link($url) || !preg_match('/^[a-z0-9\-]{1,50}$/', $icon)) {
+            continue;
+        }
+        $out[] = ['icon' => $icon, 'url' => site_link_url($url), 'label' => (string) ($link['label'] ?? '')];
+    }
+    return $out;
 }
 
 function site_language_mode(): string

@@ -172,6 +172,16 @@ class Lang
         return $line;
     }
 
+    /** Text of a key in a given locale regardless of the current one (Live Translate edits included); '' when missing. */
+    public static function inLocale(string $locale, string $key): string
+    {
+        if (!isset(self::$translations[$locale])) {
+            $path = base_dir() . "/resources/lang/{$locale}.php";
+            self::$translations[$locale] = file_exists($path) ? require $path : [];
+        }
+        return self::override($locale, $key) ?? (string) (self::$translations[$locale][$key] ?? '');
+    }
+
     /**
      * Text of a key saved from the dashboard by Live Translate: the setting "trans_<locale>_<key>"
      * (see App\LiveTranslate\Resolver::overrideKey()). Null when there is none.

@@ -413,29 +413,7 @@ $isSingleLang = is_single_language();
                     <?= is_rtl() ? 'نهدف إلى بناء مجتمع أسري مترابط مالياً واجتماعياً، وتوفير الأمان والاستقرار لجميع أفراد العائلة.' : 'Aiming to build a financially secure, united family community with interest-free solidarity.' ?>
                 </p>
 
-                <!-- Social Media Icons -->
-                <div class="flex items-center gap-2.5">
-                    <?php if ($tw = site_setting('social_twitter')): ?>
-                        <a href="<?= e($tw) ?>" target="_blank" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center justify-center text-xs transition-colors" title="Twitter / X">
-                            <i class="bi bi-twitter-x"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if ($ig = site_setting('social_instagram')): ?>
-                        <a href="<?= e($ig) ?>" target="_blank" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center justify-center text-xs transition-colors" title="Instagram">
-                            <i class="bi bi-instagram"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if ($tg = site_setting('social_telegram')): ?>
-                        <a href="<?= e($tg) ?>" target="_blank" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center justify-center text-xs transition-colors" title="Telegram">
-                            <i class="bi bi-telegram"></i>
-                        </a>
-                    <?php endif; ?>
-                    <?php if ($waLink = site_whatsapp_link()): ?>
-                        <a href="<?= e($waLink) ?>" target="_blank" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 hover:text-white hover:border-slate-700 flex items-center justify-center text-xs transition-colors" title="WhatsApp">
-                            <i class="bi bi-whatsapp"></i>
-                        </a>
-                    <?php endif; ?>
-                </div>
+                <?php include base_dir() . "/app/Views/site/partials/social-links.php"; ?>
             </div>
 
             <!-- Dynamic Quick Links -->

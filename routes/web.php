@@ -15,6 +15,7 @@ use App\Controllers\Admin\TransactionsController;
 use App\Controllers\Admin\NotificationsController as AdminNotificationsController;
 use App\Controllers\Admin\MessagesController;
 use App\Controllers\Admin\ContentController;
+use App\Controllers\Admin\HomePageController;
 use App\Controllers\Admin\SettingsController;
 use App\Controllers\Admin\LiveTranslateController;
 
@@ -187,6 +188,11 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/messages/{id}/reply', [MessagesController::class, 'reply']);
 
     $router->get('/content', [ContentController::class, 'index']);
+    // Home page builder: registered before /content/{slug} so "home" is never taken for a page slug.
+    $router->get('/content/home', [HomePageController::class, 'edit']);
+    $router->post('/content/home', [HomePageController::class, 'update']);
+    $router->post('/content/home/upload', [HomePageController::class, 'upload']);
+    $router->post('/content/home/reset', [HomePageController::class, 'reset']);
     $router->get('/content/{slug}/edit', [ContentController::class, 'edit']);
     $router->post('/content/{slug}', [ContentController::class, 'update']);
 

@@ -9,6 +9,13 @@ if (!empty($settings['navigation_menu_json'])) {
 $siteLogo    = site_logo_url();
 $siteFavicon = \App\Models\Setting::get('site_favicon');
 $siteFaviconUrl = site_favicon_url();
+$socialLinks = [];
+foreach (site_social_links_raw() as $i => $link) {
+    $socialLinks[] = [
+        '_key' => $i + 1, 'icon' => (string) ($link['icon'] ?? ''), 'url' => (string) ($link['url'] ?? ''),
+        'label' => (string) ($link['label'] ?? ''), 'enabled' => !empty($link['enabled']),
+    ];
+}
 ?>
 
 <div x-data="settingsManager()" class="space-y-6">
@@ -40,6 +47,7 @@ $siteFaviconUrl = site_favicon_url();
     <form x-ref="settingsForm" method="post" action="<?= url('admin/settings') ?>" enctype="multipart/form-data" class="space-y-6">
         <?= csrf_field() ?>
         <input type="hidden" name="navigation_menu_json" x-ref="menuJsonInput">
+        <input type="hidden" name="social_links_json" x-ref="socialJsonInput">
 
         <!-- Navigation Tabs Bar -->
         <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -52,10 +60,11 @@ $siteFaviconUrl = site_favicon_url();
                     <i class="bi bi-telephone-fill"></i>
                     <span><?= is_rtl() ? 'بيانات التواصل والشبكات' : 'Contact & Socials' ?></span>
                 </button>
-                <button type="button" @click="tab = 'sections'" :class="tab === 'sections' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0">
-                    <i class="bi bi-eye-fill"></i>
+                <a href="<?= url('admin/content/home') ?>" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0 text-slate-600 hover:text-slate-900 font-medium">
+                    <i class="bi bi-house-gear-fill"></i>
                     <span><?= is_rtl() ? 'سكاشن الرئيسية' : 'Homepage Sections' ?></span>
-                </button>
+                    <i class="bi bi-box-arrow-up-left text-[10px]"></i>
+                </a>
                 <button type="button" @click="tab = 'menu'" :class="tab === 'menu' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0">
                     <i class="bi bi-list-nested"></i>
                     <span><?= is_rtl() ? 'إدارة القائمة والروابط' : 'Navigation Menu' ?></span>
@@ -243,151 +252,59 @@ $siteFaviconUrl = site_favicon_url();
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-100">
-                    <h4 class="text-xs font-bold text-slate-800 mb-3">حسابات التواصل الاجتماعي</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="pt-4 border-t border-slate-100 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">حساب تويتر / منصة X</label>
-                            <input type="text" name="social_twitter" value="<?= e($settings['social_twitter'] ?? '') ?>" placeholder="https://x.com/username" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300">
+                            <h4 class="text-sm font-bold text-slate-800">حسابات التواصل الاجتماعي (أيقونات الفوتر)</h4>
+                            <p class="text-xs text-slate-500 mt-0.5">أضف أي حساب بأيقونة ورابط، وستظهر بنفس الترتيب في فوتر الموقع. الأيقونات من مكتبة <a href="https://icons.getbootstrap.com/?q=social" target="_blank" class="text-emerald-600 font-bold">Bootstrap Icons</a>.</p>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">حساب انستغرام</label>
-                            <input type="text" name="social_instagram" value="<?= e($settings['social_instagram'] ?? '') ?>" placeholder="https://instagram.com/username" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">قناة تيليجرام</label>
-                            <input type="text" name="social_telegram" value="<?= e($settings['social_telegram'] ?? '') ?>" placeholder="https://t.me/channel" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 3: Homepage Sections Visibility -->
-            <div x-show="tab === 'sections'" class="p-6 space-y-6">
-                <div>
-                    <h3 class="text-base font-bold text-slate-900 mb-1">التحكم في ظهور وإخفاء سكاشن الصفحة الرئيسية</h3>
-                    <p class="text-xs text-slate-500">يمكنك تفعيل أو إخفاء أي سكشن من الصفحة الرئيسية بضغطة زر دون المساس بالبيانات.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Section 1: Hero -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-image"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">سكشن الهيرو والبنر الترحيبي (Hero)</h4>
-                                <p class="text-[11px] text-slate-500">العنوان الرئيسي وأزرار الانضمام والدخول</p>
-                            </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_hero_enabled" value="1" <?= ($settings['section_hero_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
+                        <button type="button" @click="addSocial()" class="px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 inline-flex items-center gap-2 shrink-0">
+                            <i class="bi bi-plus-circle-fill"></i>
+                            <span>إضافة حساب</span>
+                        </button>
                     </div>
 
-                    <!-- Section 2: Stats -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-speedometer"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">شريط الإحصائيات والأرقام (Stats)</h4>
-                                <p class="text-[11px] text-slate-500">إجمالي الأسهم، رأس المال، والأعضاء</p>
-                            </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_stats_enabled" value="1" <?= ($settings['section_stats_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
+                    <datalist id="social-icons">
+                        <template x-for="p in socialPresets" :key="p.icon"><option :value="p.icon" x-text="p.label"></option></template>
+                    </datalist>
 
-                    <!-- Section 3: Features -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-stars"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">سكشن مزايا وركائز الصندوق (Features)</h4>
-                                <p class="text-[11px] text-slate-500">بطاقات القروض الحسنة والادخار والحوكمة</p>
-                            </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_features_enabled" value="1" <?= ($settings['section_features_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
+                    <template x-if="socialLinks.length === 0">
+                        <div class="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl text-xs text-slate-400 font-bold">لا توجد حسابات — لن يظهر أي أيقونات في الفوتر</div>
+                    </template>
 
-                    <!-- Section 4: Calculator -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-calculator"></i>
+                    <template x-for="(link, idx) in socialLinks" :key="link._key">
+                        <div class="grid grid-cols-12 gap-2.5 items-center p-3 rounded-xl border bg-white" :class="link.enabled ? 'border-slate-200' : 'border-dashed border-slate-300 opacity-70'">
+                            <div class="col-span-12 md:col-span-3 flex items-center gap-2">
+                                <div class="w-9 h-9 rounded-lg bg-slate-900 text-slate-200 flex items-center justify-center shrink-0">
+                                    <i :class="'bi bi-' + (link.icon || 'link-45deg')"></i>
+                                </div>
+                                <select @change="pickPreset(link, $event.target.value)" class="w-full text-xs py-2 px-2 rounded-xl border border-slate-300 bg-white">
+                                    <template x-for="p in socialPresets" :key="p.icon">
+                                        <option :value="p.icon" x-text="p.label" :selected="p.icon === link.icon"></option>
+                                    </template>
+                                    <option value="" :selected="!socialPresets.some(p => p.icon === link.icon)">أيقونة أخرى...</option>
+                                </select>
                             </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">حاسبة القروض والاشتراكات (Simulator)</h4>
-                                <p class="text-[11px] text-slate-500">حاسبة الأسهم التفاعلية وتقدير الأقساط</p>
+                            <div class="col-span-6 md:col-span-2">
+                                <input type="text" x-model="link.icon" list="social-icons" placeholder="icon" title="اسم الأيقونة" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 font-mono" dir="ltr">
                             </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_calculator_enabled" value="1" <?= ($settings['section_calculator_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
-
-                    <!-- Section 5: Charter -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-file-earmark-ruled"></i>
+                            <div class="col-span-6 md:col-span-2">
+                                <input type="text" x-model="link.label" maxlength="60" placeholder="الاسم (يظهر عند التمرير)" class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300">
                             </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">سكشن ميثاق ولائحة الصندوق (Charter)</h4>
-                                <p class="text-[11px] text-slate-500">ملخص مبادئ العدالة والتكافل الأسري</p>
+                            <div class="col-span-12 md:col-span-3">
+                                <input type="text" x-model="link.url" maxlength="255" placeholder="https://..." class="w-full text-xs py-2 px-3 rounded-xl border border-slate-300" dir="ltr">
                             </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_charter_enabled" value="1" <?= ($settings['section_charter_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
-
-                    <!-- Section 6: Hadith -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-quote"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">كرت حديث صلة الرحم والبركة (Hadith)</h4>
-                                <p class="text-[11px] text-slate-500">الحديث النبوي الشريف في فضل صلة الرحم</p>
+                            <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-1">
+                                <label class="relative inline-flex items-center cursor-pointer me-1" title="إظهار / إخفاء">
+                                    <input type="checkbox" x-model="link.enabled" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                                <button type="button" @click="moveSocial(idx, -1)" :disabled="idx === 0" class="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-30"><i class="bi bi-arrow-up"></i></button>
+                                <button type="button" @click="moveSocial(idx, 1)" :disabled="idx === socialLinks.length - 1" class="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-30"><i class="bi bi-arrow-down"></i></button>
+                                <button type="button" @click="socialLinks.splice(idx, 1)" class="p-1 rounded text-rose-500 hover:text-rose-700"><i class="bi bi-trash3"></i></button>
                             </div>
                         </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_hadith_enabled" value="1" <?= ($settings['section_hadith_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
-
-                    <!-- Section 7: CTA -->
-                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all md:col-span-2">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg">
-                                <i class="bi bi-megaphone"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-800">بانر الدعوة للانضمام والتواصل (CTA Box)</h4>
-                                <p class="text-[11px] text-slate-500">دعوة المشتركين الجدد وزر التواصل السريع في أسفل الصفحة</p>
-                            </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="section_cta_enabled" value="1" <?= ($settings['section_cta_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        </label>
-                    </div>
+                    </template>
                 </div>
             </div>
 
@@ -940,6 +857,33 @@ function settingsManager() {
         testMobile: '',
         isTestingSms: false,
         menuItems: <?= json_encode($currentMenu, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>,
+        socialLinks: <?= json_encode($socialLinks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>,
+        socialPresets: [
+            { icon: 'twitter-x', label: 'X / Twitter' }, { icon: 'instagram', label: 'Instagram' }, { icon: 'facebook', label: 'Facebook' },
+            { icon: 'snapchat', label: 'Snapchat' }, { icon: 'tiktok', label: 'TikTok' }, { icon: 'youtube', label: 'YouTube' },
+            { icon: 'telegram', label: 'Telegram' }, { icon: 'whatsapp', label: 'WhatsApp' }, { icon: 'linkedin', label: 'LinkedIn' },
+            { icon: 'threads', label: 'Threads' }, { icon: 'discord', label: 'Discord' }, { icon: 'github', label: 'GitHub' },
+            { icon: 'envelope-fill', label: 'Email' }, { icon: 'telephone-fill', label: 'Phone' }, { icon: 'geo-alt-fill', label: 'Location' },
+            { icon: 'globe2', label: 'Website' }, { icon: 'link-45deg', label: 'Link' }
+        ],
+        addSocial() {
+            this.socialLinks.push({ _key: Date.now(), icon: 'link-45deg', url: '', label: '', enabled: true });
+        },
+        pickPreset(link, icon) {
+            if (!icon) return;
+            const preset = this.socialPresets.find(p => p.icon === icon);
+            // Only overwrite the label while it is still empty or one of the preset names.
+            if (preset && (!link.label || this.socialPresets.some(p => p.label === link.label))) {
+                link.label = preset.label;
+            }
+            link.icon = icon;
+        },
+        moveSocial(idx, dir) {
+            const to = idx + dir;
+            if (to < 0 || to >= this.socialLinks.length) return;
+            const [el] = this.socialLinks.splice(idx, 1);
+            this.socialLinks.splice(to, 0, el);
+        },
         addMenuItem() {
             this.menuItems.push({
                 id: 'custom_' + Date.now(),
@@ -1052,6 +996,7 @@ function settingsManager() {
         },
         submitSettings() {
             this.$refs.menuJsonInput.value = JSON.stringify(this.menuItems);
+            this.$refs.socialJsonInput.value = JSON.stringify(this.socialLinks.map(({ _key, ...rest }) => rest));
             this.$refs.settingsForm.submit();
         }
     };

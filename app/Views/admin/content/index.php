@@ -12,6 +12,31 @@
         </div>
     </div>
 
+    <!-- Home page builder -->
+    <div class="bg-gradient-to-l from-emerald-50 to-white rounded-2xl border border-emerald-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-md shadow-emerald-600/20 shrink-0">
+                <i class="bi bi-house-door-fill"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h2 class="font-bold text-slate-900"><?= is_rtl() ? 'الصفحة الرئيسية' : 'Home Page' ?></h2>
+                    <span class="text-xs text-slate-400 font-mono" dir="ltr">/</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5"><?= is_rtl() ? 'تحكم كامل في سكاشن الرئيسية: تعديل النصوص، الترتيب، الإخفاء، وإضافة أقسام جديدة بصور ونصوص وبطاقات' : 'Full control over home sections: edit texts, reorder, hide, and add new sections with images, text and cards' ?></p>
+            </div>
+        </div>
+        <div class="inline-flex items-center gap-2.5 shrink-0">
+            <a href="<?= url('admin/content/home') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all whitespace-nowrap">
+                <i class="bi bi-pencil-square"></i>
+                <span><?= is_rtl() ? 'تعديل الصفحة الرئيسية' : 'Edit Home Page' ?></span>
+            </a>
+            <a href="<?= url('/') ?>" target="_blank" class="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 inline-flex items-center justify-center transition-all" title="<?= is_rtl() ? 'معاينة في الموقع' : 'Preview on Site' ?>">
+                <i class="bi bi-box-arrow-up-right text-xs"></i>
+            </a>
+        </div>
+    </div>
+
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-start text-sm">

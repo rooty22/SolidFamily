@@ -26,7 +26,6 @@ class SettingsController extends Controller
         'site_name', 'site_name_en', 'site_slogan', 'site_slogan_en', 'logo_icon',
         // Contact & Social
         'official_phone', 'official_email', 'official_whatsapp', 'official_address', 'official_address_en',
-        'social_twitter', 'social_instagram', 'social_telegram',
         // SEO
         'seo_meta_title', 'seo_meta_title_en', 'seo_meta_description', 'seo_meta_description_en',
         'seo_meta_keywords', 'seo_meta_keywords_en', 'seo_og_image', 'seo_canonical_url',
@@ -67,7 +66,6 @@ class SettingsController extends Controller
             ->mobile('official_phone', 'رقم الهاتف الرسمي')->mobile('official_whatsapp', 'رقم الواتساب')
             ->email('official_email', 'البريد الرسمي')
             ->max('official_address', 255, 'العنوان')->max('official_address_en', 255, 'العنوان بالإنجليزية')
-            ->url('social_twitter', 'تويتر/X')->url('social_instagram', 'إنستغرام')->url('social_telegram', 'تيليجرام')
             ->max('seo_meta_title', 200, 'عنوان SEO')->max('seo_meta_title_en', 200, 'عنوان SEO بالإنجليزية')
             ->max('seo_meta_description', 500, 'وصف SEO')->max('seo_meta_description_en', 500, 'وصف SEO بالإنجليزية')
             ->max('seo_meta_keywords', 500, 'كلمات SEO')->max('seo_meta_keywords_en', 500, 'كلمات SEO بالإنجليزية')
@@ -114,6 +112,12 @@ class SettingsController extends Controller
         [$menuJson, $menuError] = $this->sanitizeMenu($data['navigation_menu_json'] ?? '');
         if ($menuError !== null) {
             Session::flash('error', $menuError);
+            $this->redirect('admin/settings');
+        }
+
+        [$socialJson, $socialError] = $this->sanitizeSocialLinks($data['social_links_json'] ?? '');
+        if ($socialError !== null) {
+            Session::flash('error', $socialError);
             $this->redirect('admin/settings');
         }
 
@@ -169,25 +173,12 @@ class SettingsController extends Controller
         $graceVal = $data['subscription_grace_enabled'] ?? null;
         Setting::set('subscription_grace_enabled', ($graceVal === '1' || $graceVal === 'on') ? '1' : '0');
 
-        // ---- 4. Homepage section visibility toggles ----
-        $toggleFields = [
-            'section_hero_enabled',
-            'section_stats_enabled',
-            'section_features_enabled',
-            'section_calculator_enabled',
-            'section_charter_enabled',
-            'section_hadith_enabled',
-            'section_cta_enabled',
-        ];
-        foreach ($toggleFields as $tf) {
-            // Checkbox returns '1' or 'on' when checked, absent when unchecked
-            $val = $data[$tf] ?? null;
-            Setting::set($tf, ($val === '1' || $val === 'on') ? '1' : '0');
-        }
-
-        // ---- 5. Navigation menu ----
+        // ---- 4. Navigation menu & footer social links (home page sections live in Admin > Pages > Home page) ----
         if ($menuJson !== null) {
             Setting::set('navigation_menu_json', $menuJson);
+        }
+        if ($socialJson !== null) {
+            Setting::set('social_links_json', $socialJson);
         }
 
         Session::flash('success', 'تم حفظ جميع الإعدادات والهوية والقوائم بنجاح.');
@@ -335,6 +326,43 @@ class SettingsController extends Controller
         }
 
         return [json_encode($items, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), null];
+    }
+
+    /**
+     * Validates the footer social links [{icon, url, label, enabled}] keeping only known keys.
+     * Returns [json|null, error|null]; json is null when nothing was submitted.
+     */
+    private function sanitizeSocialLinks(string $raw): array
+    {
+        if ($raw === '') {
+            return [null, null];
+        }
+        $decoded = strlen($raw) <= 20000 ? json_decode($raw, true) : null;
+        if (!is_array($decoded) || count($decoded) > 30) {
+            return [null, 'صيغة حسابات التواصل الاجتماعي غير صحيحة، لم يتم حفظ أي تغيير.'];
+        }
+
+        $links = [];
+        foreach ($decoded as $link) {
+            if (!is_array($link)) {
+                return [null, 'صيغة حسابات التواصل الاجتماعي غير صحيحة، لم يتم حفظ أي تغيير.'];
+            }
+            $icon = strtolower(trim(preg_replace('/^bi-/', '', trim((string) ($link['icon'] ?? '')))));
+            $url = trim((string) ($link['url'] ?? ''));
+            $label = mb_substr(trim((string) ($link['label'] ?? '')), 0, 60);
+            if ($url === '' && $label === '') {
+                continue; // an empty row the admin added and never filled
+            }
+            if (!preg_match('/^[a-z0-9\-]{1,50}$/', $icon)) {
+                return [null, 'اسم أيقونة حساب التواصل غير صحيح: ' . ($label ?: $icon) . ' (حروف إنجليزية صغيرة وأرقام وشرطات فقط، مثل instagram).'];
+            }
+            if (mb_strlen($url) > 255 || !is_safe_link($url)) {
+                return [null, 'رابط حساب التواصل غير صحيح: ' . ($label ?: $icon) . ' (مثال: https://instagram.com/username).'];
+            }
+            $links[] = ['icon' => $icon, 'url' => $url, 'label' => $label, 'enabled' => !empty($link['enabled'])];
+        }
+
+        return [json_encode($links, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), null];
     }
 
     public function testSms(): void
