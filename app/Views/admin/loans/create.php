@@ -53,6 +53,9 @@ $defaultFee = (float)($feePercent ?? 0);
                     <?= csrf_field() ?>
                     <?php if ($loanRequest): ?>
                         <input type="hidden" name="loan_request_id" value="<?= $loanRequest['id'] ?>">
+                        <?php if (!empty($loanRequest['lot_id'])): ?>
+                            <input type="hidden" name="lot_id" value="<?= (int) $loanRequest['lot_id'] ?>">
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Section 1: Member & Timeline -->
@@ -63,6 +66,18 @@ $defaultFee = (float)($feePercent ?? 0);
                         </h4>
 
                         <div class="row g-3">
+                            <?php if ($loanRequest && !empty($loanRequest['lot_id'])): ?>
+                                <div class="col-12">
+                                    <div class="p-2.5 rounded-xl border border-sky-200 bg-sky-50/80 flex items-center justify-between text-xs">
+                                        <span class="font-bold text-sky-950 flex items-center gap-1.5">
+                                            <i class="bi bi-pie-chart-fill text-sky-600"></i>
+                                            <span><?= $isEn ? 'Bound Share Lot from Request:' : 'حصة الأسهم المحددة من المشترك في الطلب:' ?></span>
+                                            <span class="font-numeric">#<?= (int) $loanRequest['lot_id'] ?></span>
+                                        </span>
+                                        <span class="badge-status badge-info"><?= $isEn ? 'Unmerged Share Lot' : 'حصة غير مدمجة' ?></span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Family Member' : 'المشترك المستفيد' ?> <span class="text-rose-500">*</span></label>
                                 <select name="member_id" class="form-select text-sm" required <?= $loanRequest ? 'disabled' : '' ?>>

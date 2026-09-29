@@ -69,9 +69,12 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
             <div class="info-list">
                 <div class="info-row"><span><?= __('loan_reason') ?></span><b><?= $reasonLabels[$loan['reason']] ?? $loan['reason'] ?></b></div>
                 <div class="info-row"><span><?= __('loan_date') ?></span><b class="font-num"><?= date_ar($loan['loan_date']) ?></b></div>
+                <?php if (!empty($loan['lot_id'])): ?>
+                    <div class="info-row"><span><?= is_rtl() ? 'السهم / الحصة المرتبطة' : 'Linked Share Lot' ?></span><b class="font-num text-purple-700">#<?= (int) $loan['lot_id'] ?></b></div>
+                <?php endif; ?>
                 <div class="info-row"><span><?= __('installments_count') ?></span><b class="font-num"><?= (int) $loan['installments_count'] ?></b></div>
                 <div class="info-row"><span><?= __('installment_value') ?></span><b class="font-num"><?= money($loan['installment_value']) ?></b></div>
-                <div class="info-row"><span><?= __('admin_fee') ?></span><b class="font-num"><?= money($loan['admin_fee_amount']) ?> <small class="text-muted">(<?= rtrim(rtrim(number_format((float) $loan['admin_fee_percent'], 2), '0'), '.') ?>%)</small></b></div>
+                <div class="info-row"><span><?= __('admin_fee') ?></span><b class="font-num"><?= money($loan['admin_fee_amount']) ?></b></div>
             </div>
         </div>
     </div>

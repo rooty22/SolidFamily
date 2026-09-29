@@ -90,9 +90,46 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
 
                 <!-- Clarification (if any) -->
                 <?php if ($request['reason'] === 'other' && !empty($request['reason_other_text'])): ?>
-                    <div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                    <div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 mb-3">
                         <span class="text-xs font-bold text-amber-900 block mb-1.5"><?= __('additional_reason_clarification') ?></span>
                         <p class="text-xs text-amber-800 leading-relaxed mb-0"><?= e($request['reason_other_text']) ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Selected Share Lot for Unmerged Shares -->
+                <?php if (!empty($selectedLot)): 
+                    $selElig = \App\Models\ShareLot::eligibilityDetails($selectedLot, $member, $founding ?? null);
+                ?>
+                    <div class="p-4 rounded-xl border border-sky-200 bg-sky-50/70 mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-sky-950 flex items-center gap-1.5">
+                                <i class="bi bi-pie-chart-fill text-sky-600"></i>
+                                <span><?= is_rtl() ? 'السهم / الحصة المحددة من المشترك لتقديم القرض عليها:' : 'Selected Share Lot by Member:' ?></span>
+                            </span>
+                            <span class="badge-status badge-<?= $selElig['is_eligible'] ? 'success' : 'warning' ?>">
+                                <?= $selElig['is_eligible'] ? (is_rtl() ? 'مستوفية الشروط' : 'Eligible') : (is_rtl() ? 'قيد الاستيفاء' : 'Pending') ?>
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'رقم الحصة' : 'Lot #' ?></span>
+                                <b class="font-numeric text-slate-800">#<?= (int) $selectedLot['id'] ?> (<?= number_format($selectedLot['shares_count']) ?> سهم)</b>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></span>
+                                <b class="font-numeric text-purple-700"><?= date_ar($selElig['start_date']) ?></b>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'سقف القرض للحصة' : 'Lot Loan Ceiling' ?></span>
+                                <b class="font-numeric text-emerald-700"><?= money($selectedLotMaxLoan) ?></b>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months' ?></span>
+                                <b class="<?= $selElig['six_months_met'] ? 'text-emerald-700' : 'text-amber-700' ?>">
+                                    <?= $selElig['six_months_met'] ? 'مكتمل' : 'متبقي ' . $selElig['months_remaining_label'] ?>
+                                </b>
+                            </div>
+                        </div>
                     </div>
                 <?php endif; ?>
 
@@ -281,6 +318,53 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                                 ? __('loan_within_limit_msg')
                                 : __('loan_exceeds_limit_msg') ?>
                         </span>
+                    </div>
+
+                    <!-- Share Lots & Eligibility Conditions (Image 1 Requirement) -->
+                    <div class="pt-3 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-800 block">
+                                <i class="bi bi-calendar-check text-sky-600"></i>
+                                <?= is_rtl() ? 'شروط استحقاق القرض المعتمدة (الأسهم والتأسيس)' : 'Statutory Share Eligibility & 6-Month Rules' ?>
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mb-2">
+                            <?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك لكل سهم على حدة باليوم والشهر والسنة (مرور 6 أشهر وسداد 500 ريال تأسيس لكل سهم).' : 'Documenting subscription start date per share lot (Day, Month, Year) for 6-month & 500 SAR founding criteria.' ?>
+                        </p>
+                        <?php if (empty($memberLots)): ?>
+                            <div class="p-2.5 rounded-xl bg-slate-50 text-xs text-slate-500 text-center"><?= is_rtl() ? 'لا توجد حصص أسهم نشطة مسجلة' : 'No active share lots' ?></div>
+                        <?php else: ?>
+                            <div class="space-y-2">
+                                <?php foreach ($memberLots as $lot): 
+                                    $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding ?? null);
+                                    $isChosen = !empty($request['lot_id']) && (int)$lot['id'] === (int)$request['lot_id'];
+                                ?>
+                                    <div class="p-2.5 rounded-xl border <?= $isChosen ? 'border-sky-500 ring-2 ring-sky-300 bg-sky-50/80' : 'border-slate-200/80 bg-slate-50/70' ?> text-xs">
+                                        <div class="flex items-center justify-between font-bold text-slate-900 mb-1">
+                                            <span class="flex items-center gap-1.5">
+                                                <span><?= is_rtl() ? 'حصة #' . (int) $lot['id'] . ' (' . number_format($lot['shares_count']) . ' سهم)' : 'Lot #' . (int) $lot['id'] . ' (' . number_format($lot['shares_count']) . ' shares)' ?></span>
+                                                <?php if ($isChosen): ?>
+                                                    <span class="badge-status badge-info py-0 px-2 text-[10px]"><?= is_rtl() ? 'محددة للقرض' : 'Chosen' ?></span>
+                                                <?php endif; ?>
+                                            </span>
+                                            <span class="badge-status badge-<?= $elig['is_eligible'] ? 'success' : 'secondary' ?>"><?= $elig['is_eligible'] ? (is_rtl() ? 'مستوفية' : 'Eligible') : (is_rtl() ? 'غير مستوفية' : 'Pending') ?></span>
+                                        </div>
+                                        <div class="text-[11px] text-slate-500 font-numeric mb-1.5">
+                                            <i class="bi bi-calendar3"></i>
+                                            <?= is_rtl() ? 'تاريخ بداية الاشتراك:' : 'Start Date:' ?> <b><?= date_ar($elig['start_date']) ?></b>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 text-[11px] <?= $elig['six_months_met'] ? 'text-emerald-700' : 'text-amber-700' ?>">
+                                            <i class="bi <?= $elig['six_months_met'] ? 'bi-check-circle-fill' : 'bi-hourglass-split' ?>"></i>
+                                            <span><?= $elig['six_months_met'] ? (is_rtl() ? "مكتمل مرور 6 أشهر ({$elig['months_passed']} شهر)" : "6 months completed ({$elig['months_passed']} mos)") : (is_rtl() ? "متبقي {$elig['months_remaining_label']} (حتى " . date_ar($elig['target_date']) . ")" : "{$elig['months_remaining']} mos left") ?></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 text-[11px] <?= $elig['founding_met'] ? 'text-emerald-700' : 'text-amber-700' ?> mt-0.5">
+                                            <i class="bi <?= $elig['founding_met'] ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
+                                            <span><?= $elig['founding_met'] ? (is_rtl() ? 'سداد 500 ريال تأسيس للسهم (مستوفى)' : '500 SAR founding paid') : (is_rtl() ? 'سداد 500 ريال تأسيس (المسدد: ' . money($elig['founding_paid_per_share']) . ')' : 'Founding: ' . money($elig['founding_paid_per_share'])) ?></span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

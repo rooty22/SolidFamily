@@ -91,21 +91,35 @@ class DashboardController extends Controller
 
         $collected = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category IN ('subscription','founding','loan_installment','loan_admin_fee')")->fetch()['s'];
         $disbursed = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category = 'loan_disbursement'")->fetch()['s'];
-        $fundBalance = $collected - $disbursed;
+        
+        // 1. Bank Balance (actual liquidity in bank after loans disbursed and expenses)
+        $bankBalance = $collected - $disbursed;
+        $fundBalance = $bankBalance; // preserved for backwards compatibility
 
-        // A member with no row yet for the current month (nobody has opened their dashboard to lazily create it)
-        // is judged against their OWN due day (falling back to the site default), not a single day for everyone.
-        $lateStmt = $db->prepare("SELECT COUNT(DISTINCT m.id) AS c
-            FROM members m
-            LEFT JOIN monthly_subscriptions cur ON cur.member_id = m.id AND cur.month = :cm
-            WHERE m.status = 'active' AND (
-                EXISTS (SELECT 1 FROM monthly_subscriptions s
-                        WHERE s.member_id = m.id AND s.amount_due > s.amount_paid AND COALESCE(s.grace_until, s.due_date) < :today)
-                OR (m.shares_count > 0 AND cur.id IS NULL
-                    AND CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')) < :today2)
-            )");
-        $lateStmt->execute(['cm' => $currentMonth, 'cm2' => $currentMonth, 'cm3' => $currentMonth, 'today' => $today, 'today2' => $today, 'dd' => $dueDay]);
-        $lateMembers = (int) $lateStmt->fetch()['c'];
+        // 2. Remaining loans portfolio (receivables owed back to the fund)
+        $loansRemaining = (float) $db->query("SELECT COALESCE(SUM(amount_remaining), 0) FROM loans WHERE status IN ('active', 'partial')")->fetchColumn();
+
+        // 3. Total Fund Assets / Net Worth (includes cash in bank + remaining loans portfolio)
+        $totalFundBalance = $bankBalance + $loansRemaining;
+
+        // 4. Detailed Admin Revenue / Commissions earned from loans
+        $loanAdminFees = (float) ($loanRow['total_fees'] ?? 0);
+        $totalLoansAmount = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM loans")->fetchColumn();
+        $avgFeePercent = (float) ($db->query("SELECT AVG(admin_fee_percent) FROM loans WHERE admin_fee_percent > 0")->fetchColumn() ?: 0);
+
+        // Detailed loan commissions list (for the dedicated breakdown card)
+        $detailedFeeLoans = $db->query("SELECT l.id, l.member_id, l.amount, l.admin_fee_percent, l.admin_fee_amount, l.loan_date, l.status, m.name as member_name
+            FROM loans l
+            JOIN members m ON m.id = l.member_id
+            WHERE l.admin_fee_amount > 0
+            ORDER BY l.created_at DESC
+            LIMIT 10")->fetchAll();
+
+        // Overdue members across both monthly subscriptions and loan installments
+        $lateInfo = Member::getLateStatusInfo(true);
+        $lateMembers = $lateInfo['totalLateCount'];
+        $lateSubsCount = $lateInfo['lateSubCount'];
+        $lateLoansCount = $lateInfo['lateLoanCount'];
 
         // The 6 real calendar months ending with the current one -- NOT just whichever 6 month values happen to
         // have rows, which could be future months already billed ahead (e.g. a member paying several months in
@@ -124,6 +138,9 @@ class DashboardController extends Controller
         $export = [
             'إجمالي عدد المشتركين' => $totalMembers,
             'إجمالي عدد الأسهم المسجلة' => $totalShares,
+            'الرصيد الفعلي في البنك (السيولة المتاحة)' => $bankBalance,
+            'الرصيد الإجمالي للصندوق (شامل محفظة القروض)' => $totalFundBalance,
+            'مستحقات القروض القائمة والمتبقية' => $loansRemaining,
             'إجمالي قيمة الاشتراكات الشهرية (الشهر الحالي)' => $subRow['total_due'],
             'الاشتراكات المسددة (الشهر الحالي)' => $subRow['paid_count'],
             'الاشتراكات المسددة جزئياً (الشهر الحالي)' => $subRow['partial_count'],
@@ -133,17 +150,26 @@ class DashboardController extends Controller
             'مبالغ التأسيس المسددة جزئياً' => $foundRow['partial_count'],
             'مبالغ التأسيس غير المسددة' => $foundRow['unpaid_count'],
             'إجمالي عدد القروض' => $loanRow['total_loans'],
+            'إجمالي مبالغ القروض الصادرة' => $totalLoansAmount,
             'القروض المسددة' => $loanRow['paid_count'],
             'القروض المسددة جزئياً' => $loanRow['partial_count'],
             'القروض غير المسددة' => $loanRow['active_count'],
             'إجمالي طلبات القروض' => $loanRequestsCount,
-            'إجمالي إيرادات المصاريف الإدارية للقروض' => $loanRow['total_fees'],
+            'إجمالي عمولات القروض الإدارية المكتسبة' => $loanAdminFees,
+            'متوسط نسبة العمولة الإدارية للقروض' => round($avgFeePercent, 2) . '%',
             'إجمالي طلبات الأسهم' => $shareRequestsCount,
-            'إجمالي الرصيد الحالي للصندوق' => $fundBalance,
             'عدد المشتركين المتأخرين عن السداد' => $lateMembers,
+            'المتأخرون في الاشتراكات الشهرية' => $lateSubsCount,
+            'المتأخرون في أقساط القروض' => $lateLoansCount,
         ];
 
-        return compact('totalMembers', 'totalShares', 'subRow', 'foundRow', 'loanRow', 'loanRequestsCount', 'shareRequestsCount', 'fundBalance', 'lateMembers', 'monthlyTrend', 'export');
+        return compact(
+            'totalMembers', 'totalShares', 'subRow', 'foundRow', 'loanRow',
+            'loanRequestsCount', 'shareRequestsCount', 'fundBalance', 'bankBalance',
+            'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
+            'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
+            'lateLoansCount', 'monthlyTrend', 'export'
+        );
     }
 
     /** Printable statistics report (browser "Save as PDF"). */

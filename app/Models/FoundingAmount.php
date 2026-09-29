@@ -142,7 +142,7 @@ class FoundingAmount extends Model
                 'paid' => $paid,
                 'remaining' => round($amount - $paid, 2),
                 'status' => $status,
-                'late' => $status !== 'paid' && $due < $today,
+                'late' => false,
             ];
         }
 

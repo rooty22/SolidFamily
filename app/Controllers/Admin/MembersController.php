@@ -15,12 +15,95 @@ class MembersController extends Controller
     public function index(): void
     {
         $q = trim((string) $this->input('q', ''));
-        $members = $q !== '' ? Member::search($q) : Member::all('created_at DESC');
+        $paymentStatus = trim((string) $this->input('payment_status', ''));
+        $accountStatus = trim((string) $this->input('account_status', ''));
+        $statusParam = trim((string) $this->input('status', ''));
+
+        if ($statusParam !== '') {
+            if (in_array($statusParam, ['late', 'late_subscription', 'late_loan', 'up_to_date'])) {
+                if ($paymentStatus === '') {
+                    $paymentStatus = $statusParam;
+                }
+            } elseif (in_array($statusParam, ['active', 'inactive'])) {
+                if ($accountStatus === '') {
+                    $accountStatus = $statusParam;
+                }
+            }
+        }
+
+        $allMembers = $q !== '' ? Member::search($q) : Member::all('created_at DESC');
+        $lateInfo = Member::getLateStatusInfo(false);
+
+        $counts = [
+            'all' => count($allMembers),
+            'late' => 0,
+            'late_subscription' => 0,
+            'late_loan' => 0,
+            'up_to_date' => 0,
+        ];
+
+        $decorated = [];
+        foreach ($allMembers as $m) {
+            $mId = (int) $m['id'];
+            $isLateSub = isset($lateInfo['lateSubMap'][$mId]);
+            $isLateLoan = isset($lateInfo['lateLoanMap'][$mId]);
+            $isLate = $isLateSub || $isLateLoan;
+
+            if ($isLateSub && $isLateLoan) {
+                $pStatus = 'late_both';
+            } elseif ($isLateSub) {
+                $pStatus = 'late_subscription';
+            } elseif ($isLateLoan) {
+                $pStatus = 'late_loan';
+            } else {
+                $pStatus = 'up_to_date';
+            }
+
+            if ($isLate) {
+                $counts['late']++;
+            } else {
+                $counts['up_to_date']++;
+            }
+            if ($isLateSub) {
+                $counts['late_subscription']++;
+            }
+            if ($isLateLoan) {
+                $counts['late_loan']++;
+            }
+
+            $m['payment_status'] = $pStatus;
+            $m['is_late'] = $isLate;
+            $m['is_late_sub'] = $isLateSub;
+            $m['is_late_loan'] = $isLateLoan;
+
+            // Apply filters
+            if ($paymentStatus === 'late' && !$isLate) {
+                continue;
+            }
+            if ($paymentStatus === 'late_subscription' && !$isLateSub) {
+                continue;
+            }
+            if ($paymentStatus === 'late_loan' && !$isLateLoan) {
+                continue;
+            }
+            if ($paymentStatus === 'up_to_date' && $isLate) {
+                continue;
+            }
+            if ($accountStatus !== '' && $m['status'] !== $accountStatus) {
+                continue;
+            }
+
+            $decorated[] = $m;
+        }
 
         $this->view('admin/members/index', [
             'pageTitle' => __('members'),
-            'members' => $members,
+            'members' => $decorated,
             'q' => $q,
+            'paymentStatus' => $paymentStatus,
+            'accountStatus' => $accountStatus,
+            'counts' => $counts,
+            'lateInfo' => $lateInfo,
         ], 'admin/layout');
     }
 
@@ -79,6 +162,9 @@ class MembersController extends Controller
         $subscriptions = MonthlySubscription::forMember((int) $id);
         $loans = Loan::forMember((int) $id);
         $transactions = Transaction::withMember(['member_id' => $id]);
+        $overdueDetails = Member::getMemberOverdueDetails((int) $id);
+
+        $lots = \App\Models\ShareLot::activeFor((int) $id);
 
         $this->view('admin/members/show', [
             'pageTitle' => $member['name'],
@@ -87,6 +173,8 @@ class MembersController extends Controller
             'subscriptions' => array_slice($subscriptions, 0, 6),
             'loans' => $loans,
             'transactions' => array_slice($transactions, 0, 10),
+            'overdueDetails' => $overdueDetails,
+            'lots' => $lots,
         ], 'admin/layout');
     }
 

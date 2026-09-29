@@ -26,7 +26,8 @@ class LoanController extends Controller
         $member = Auth::member();
         $requests = LoanRequest::where(['member_id' => $member['id']], 'created_at DESC');
         foreach ($requests as &$r) {
-            $r['queue_position'] = $r['status'] === 'pending' ? LoanRequest::queuePosition($r['id']) : null;
+            // Do not display queue position to the client until admin approval
+            $r['queue_position'] = $r['status'] === 'approved' ? LoanRequest::queuePosition($r['id']) : null;
         }
         unset($r);
         $loans = Loan::forMember($member['id']);
@@ -65,6 +66,50 @@ class LoanController extends Controller
             [$member['id']]
         );
 
+        $lots = \App\Models\ShareLot::activeFor($member['id']);
+        $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
+
+        $lotsData = [];
+        foreach ($lots as $lot) {
+            $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding);
+            $lotShares = (int) $lot['shares_count'];
+            $lotCapital = $lotShares * $shareValue;
+            $lotMaxLoan = $lotCapital * $ratio;
+            $lotsData[] = [
+                'id' => (int) $lot['id'],
+                'shares_count' => $lotShares,
+                'capital' => $lotCapital,
+                'max_loan' => $lotMaxLoan,
+                'start_date' => $elig['start_date'],
+                'start_date_ar' => date_ar($elig['start_date']),
+                'target_date' => $elig['target_date'],
+                'target_date_ar' => date_ar($elig['target_date']),
+                'six_months_met' => (bool) $elig['six_months_met'],
+                'months_passed' => (int) $elig['months_passed'],
+                'months_remaining' => (int) $elig['months_remaining'],
+                'months_remaining_label' => $elig['months_remaining_label'],
+                'founding_met' => (bool) $elig['founding_met'],
+                'founding_paid_per_share' => (float) $elig['founding_paid_per_share'],
+                'is_eligible' => (bool) $elig['is_eligible'],
+            ];
+        }
+
+        $totalShares = (int) ($member['shares_count'] ?? 0);
+        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
+        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
+        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500) || ((float)($founding['total_required'] ?? 0) <= 0);
+
+        $hasEligibleLot = false;
+        foreach ($lotsData as $ld) {
+            if ($ld['six_months_met']) {
+                $hasEligibleLot = true;
+                break;
+            }
+        }
+
+        $canRequest = ($shares > 0) && $foundingMet && $hasEligibleLot;
+        $defaultMax = !empty($lotsData) ? $lotsData[0]['max_loan'] : ($shares * $shareValue * $ratio);
+
         $this->view('site/loans/create-request', [
             'pageTitle' => __('new_loan_request'),
             'reasonLabels' => $this->reasonLabels,
@@ -73,10 +118,17 @@ class LoanController extends Controller
             'shareValue' => $shareValue,
             'ratio' => $ratio,
             'capital' => $shares * $shareValue,
-            'maxLoan' => $shares * $shareValue * $ratio,
+            'maxLoan' => $defaultMax,
             'runningCount' => (int) $running['c'],
             'runningRemaining' => (float) $running['s'],
             'pendingRequests' => LoanRequest::count(['member_id' => $member['id'], 'status' => 'pending']),
+            'lots' => $lots,
+            'lotsData' => $lotsData,
+            'founding' => $founding,
+            'foundingMet' => $foundingMet,
+            'hasEligibleLot' => $hasEligibleLot,
+            'canRequest' => $canRequest,
+            'member' => $member,
         ], 'site/layout');
     }
 
@@ -110,18 +162,69 @@ class LoanController extends Controller
         $amount = round((float) $data['amount_requested'], 2);
         $months = (int) $data['installments_months'];
 
-        // Eligibility: the requested amount cannot exceed (member capital x max loan ratio).
-        $shares = (int) $member['shares_count'];
-        $maxLoan = $shares * (float) Setting::get('share_value', 0) * (float) Setting::get('max_loan_ratio', 10);
-        if ($shares < 1 || $amount > $maxLoan) {
-            Session::flash('error', $shares < 1
-                ? 'لا يمكن تقديم طلب قرض قبل امتلاك سهم واحد على الأقل.'
-                : 'المبلغ المطلوب يتجاوز الحد الأقصى المسموح لك (' . money($maxLoan) . ').');
+        // Lot selection for unmerged shares
+        $lotId = !empty($data['lot_id']) ? (int) $data['lot_id'] : null;
+        $activeLots = \App\Models\ShareLot::activeFor($member['id']);
+        $selectedLot = null;
+
+        if (!empty($activeLots)) {
+            if ($lotId) {
+                foreach ($activeLots as $l) {
+                    if ((int) $l['id'] === $lotId) {
+                        $selectedLot = $l;
+                        break;
+                    }
+                }
+            }
+            if (!$selectedLot && count($activeLots) === 1) {
+                $selectedLot = $activeLots[0];
+                $lotId = (int) $selectedLot['id'];
+            }
+        }
+
+        if (empty($activeLots)) {
+            Session::flash('error', 'لا يمكن تقديم طلب قرض قبل امتلاك سهم واحد على الأقل.');
+            $this->redirect('loans/request');
+        }
+
+        // Validate Founding Amount: Cannot make debt until paying founding amount in full
+        $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
+        $totalShares = (int) ($member['shares_count'] ?? 1);
+        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
+        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
+        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500) || ((float)($founding['total_required'] ?? 0) <= 0);
+
+        if (!$foundingMet) {
+            Session::flash('error', 'تنبيه مبلغ التأسيس: لا يمكن طلب قرض إلا بعد سداد كامل مبلغ التأسيس.');
+            $this->redirect('loans/request');
+        }
+
+        if (count($activeLots) > 1 && !$selectedLot) {
+            Session::flash('error', 'يرجى تحديد السهم / الحصة المراد تقديم طلب القرض عليها.');
+            $this->redirect('loans/request');
+        }
+
+        // Validate 6 months passing for the selected lot
+        $lotElig = \App\Models\ShareLot::eligibilityDetails($selectedLot, $member, $founding);
+        if (!$lotElig['six_months_met']) {
+            Session::flash('error', 'تنبيه شرط المدة: لا يمكن تقديم طلب قرض على هذه الحصة قبل مرور 6 أشهر كاملة على تاريخ بداية الاشتراك (تاريخ الاستحقاق: ' . date_ar($lotElig['target_date']) . ' - متبقي ' . $lotElig['months_remaining_label'] . ').');
+            $this->redirect('loans/request');
+        }
+
+        // Eligibility: the requested amount cannot exceed the selected lot's maximum allowed loan
+        $shareValue = (float) Setting::get('share_value', 0);
+        $ratio = (float) Setting::get('max_loan_ratio', 10);
+        $lotShares = (int) ($selectedLot ? $selectedLot['shares_count'] : $member['shares_count']);
+        $maxLoan = $lotShares * $shareValue * $ratio;
+
+        if ($amount > $maxLoan) {
+            Session::flash('error', 'المبلغ المطلوب (' . money($amount) . ') يتجاوز الحد الأقصى المسموح للحصة المحددة (' . money($maxLoan) . ').');
             $this->redirect('loans/request');
         }
 
         LoanRequest::create([
             'member_id' => $member['id'],
+            'lot_id' => $lotId,
             'amount_requested' => $amount,
             'reason' => $data['reason'],
             'reason_other_text' => ($data['reason'] === 'other') ? $data['reason_other_text'] : null,

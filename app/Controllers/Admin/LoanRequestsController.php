@@ -56,6 +56,13 @@ class LoanRequestsController extends Controller
         $activeLoansCount = count(array_filter($memberLoans, fn($l) => in_array($l['status'], ['active', 'partial'])));
         $totalLoansPaid = count(array_filter($memberLoans, fn($l) => in_array($l['status'], ['paid', 'closed'])));
 
+        $memberLots = \App\Models\ShareLot::activeFor((int) $member['id']);
+        $founding = \App\Models\FoundingAmount::ensureForMember((int) $member['id']);
+
+        $selectedLot = !empty($request['lot_id']) ? \App\Models\ShareLot::find((int) $request['lot_id']) : null;
+        $selectedLotShares = $selectedLot ? (int) $selectedLot['shares_count'] : $memberShares;
+        $selectedLotMaxLoan = $selectedLotShares * $shareValue * $maxLoanRatio;
+
         $this->view('admin/loan_requests/show', [
             'pageTitle' => __('loan_request_details', ['id' => $request['id']]),
             'request' => $request,
@@ -65,8 +72,12 @@ class LoanRequestsController extends Controller
             'memberShares' => $memberShares,
             'memberCapital' => $memberCapital,
             'maxEligibleLoan' => $maxEligibleLoan,
+            'selectedLot' => $selectedLot,
+            'selectedLotMaxLoan' => $selectedLotMaxLoan,
             'activeLoansCount' => $activeLoansCount,
             'totalLoansPaid' => $totalLoansPaid,
+            'memberLots' => $memberLots,
+            'founding' => $founding,
         ], 'admin/layout');
     }
 

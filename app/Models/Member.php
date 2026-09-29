@@ -17,6 +17,144 @@ class Member extends Model
     }
 
     /**
+     * Get maps and counts of members who are overdue for monthly subscriptions and/or loans.
+     *
+     * @param bool $activeOnly Whether to restrict calculation to active members only.
+     */
+    public static function getLateStatusInfo(bool $activeOnly = false): array
+    {
+        $db = \App\Core\Database::connection();
+        $today = date('Y-m-d');
+        $currentMonth = date('Y-m');
+        $dueDay = (int) Setting::get('subscription_due_day', 10);
+
+        $statusClause = $activeOnly ? "AND m.status = 'active'" : "";
+
+        // 1. Members with overdue monthly subscriptions
+        $subStmt = $db->prepare("SELECT DISTINCT m.id
+            FROM members m
+            LEFT JOIN monthly_subscriptions cur ON cur.member_id = m.id AND cur.month = :cm
+            WHERE 1=1 {$statusClause} AND (
+                EXISTS (
+                    SELECT 1 FROM monthly_subscriptions s
+                    WHERE s.member_id = m.id
+                      AND s.amount_due > s.amount_paid
+                      AND COALESCE(s.grace_until, s.due_date) < :today
+                )
+                OR (
+                    m.shares_count > 0 AND cur.id IS NULL
+                    AND CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')) < :today2
+                )
+            )");
+        $subStmt->execute([
+            'cm' => $currentMonth,
+            'cm2' => $currentMonth,
+            'cm3' => $currentMonth,
+            'today' => $today,
+            'today2' => $today,
+            'dd' => $dueDay
+        ]);
+        $lateSubIds = array_map('intval', $subStmt->fetchAll(\PDO::FETCH_COLUMN));
+        $lateSubMap = array_fill_keys($lateSubIds, true);
+
+        // 2. Members with overdue loan installments
+        $loanStmt = $db->prepare("SELECT DISTINCT l.member_id
+            FROM loans l
+            JOIN loan_installments li ON li.loan_id = l.id
+            JOIN members m ON m.id = l.member_id
+            WHERE 1=1 {$statusClause}
+              AND l.status IN ('active', 'partial')
+              AND li.amount_paid < li.amount
+              AND li.due_date < :today");
+        $loanStmt->execute(['today' => $today]);
+        $lateLoanIds = array_map('intval', $loanStmt->fetchAll(\PDO::FETCH_COLUMN));
+        $lateLoanMap = array_fill_keys($lateLoanIds, true);
+
+        $allLateIds = array_values(array_unique(array_merge($lateSubIds, $lateLoanIds)));
+
+        return [
+            'lateSubMap' => $lateSubMap,
+            'lateLoanMap' => $lateLoanMap,
+            'allLateIds' => $allLateIds,
+            'totalLateCount' => count($allLateIds),
+            'lateSubCount' => count($lateSubIds),
+            'lateLoanCount' => count($lateLoanIds),
+        ];
+    }
+
+    /**
+     * Get detailed overdue stats for a specific member.
+     */
+    public static function getMemberOverdueDetails(int $memberId): array
+    {
+        $db = \App\Core\Database::connection();
+        $today = date('Y-m-d');
+        $currentMonth = date('Y-m');
+        $member = self::find($memberId);
+        if (!$member) {
+            return ['is_late' => false, 'late_sub' => false, 'late_loan' => false];
+        }
+
+        $dueDay = (int) ($member['subscription_due_day'] ?? Setting::get('subscription_due_day', 10));
+
+        // Subscriptions
+        $subStmt = $db->prepare("SELECT
+            COUNT(*) as late_months,
+            COALESCE(SUM(amount_due - amount_paid), 0) as amount_overdue
+            FROM monthly_subscriptions
+            WHERE member_id = :mid
+              AND amount_due > amount_paid
+              AND COALESCE(grace_until, due_date) < :today");
+        $subStmt->execute(['mid' => $memberId, 'today' => $today]);
+        $subRow = $subStmt->fetch();
+
+        $lateSubMonths = (int) ($subRow['late_months'] ?? 0);
+        $overdueSubAmount = (float) ($subRow['amount_overdue'] ?? 0);
+
+        // Check if current month is missing and overdue
+        $curRow = MonthlySubscription::where(['member_id' => $memberId, 'month' => $currentMonth]);
+        if (empty($curRow) && (int) $member['shares_count'] > 0) {
+            $curDueDate = month_due_date($currentMonth, $dueDay);
+            if ($curDueDate < $today) {
+                $lateSubMonths++;
+                $shareVal = (float) Setting::get('share_value', 0);
+                $overdueSubAmount += ((int) $member['shares_count'] * $shareVal);
+            }
+        }
+
+        // Loans
+        $loanStmt = $db->prepare("SELECT
+            COUNT(*) as late_installments,
+            COALESCE(SUM(li.amount - li.amount_paid), 0) as amount_overdue
+            FROM loan_installments li
+            JOIN loans l ON l.id = li.loan_id
+            WHERE l.member_id = :mid
+              AND l.status IN ('active', 'partial')
+              AND li.amount_paid < li.amount
+              AND li.due_date < :today");
+        $loanStmt->execute(['mid' => $memberId, 'today' => $today]);
+        $loanRow = $loanStmt->fetch();
+
+        $lateInstallments = (int) ($loanRow['late_installments'] ?? 0);
+        $overdueLoanAmount = (float) ($loanRow['amount_overdue'] ?? 0);
+
+        $lateSub = $lateSubMonths > 0;
+        $lateLoan = $lateInstallments > 0;
+        $isLate = $lateSub || $lateLoan;
+
+        return [
+            'is_late' => $isLate,
+            'late_sub' => $lateSub,
+            'late_loan' => $lateLoan,
+            'late_sub_months' => $lateSubMonths,
+            'overdue_sub_amount' => $overdueSubAmount,
+            'late_loan_installments' => $lateInstallments,
+            'overdue_loan_amount' => $overdueLoanAmount,
+            'total_overdue_amount' => round($overdueSubAmount + $overdueLoanAmount, 2),
+        ];
+    }
+
+    /**
      * Bring member input to its canonical stored form: +966 mobile, lower-case email,
      * upper-case IBAN and account numbers without spaces/dashes.
      */

@@ -146,6 +146,7 @@ CREATE TABLE founding_payments (
 CREATE TABLE loan_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     member_id INT UNSIGNED NOT NULL,
+    lot_id INT UNSIGNED NULL,
     amount_requested DECIMAL(12,2) NOT NULL,
     reason ENUM('personal','educational','marriage','other') NOT NULL,
     reason_other_text VARCHAR(500) NULL,
@@ -157,6 +158,7 @@ CREATE TABLE loan_requests (
     reviewed_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_loan_requests_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_loan_requests_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE SET NULL,
     CONSTRAINT fk_loan_requests_admin FOREIGN KEY (reviewed_by) REFERENCES admins(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -167,6 +169,7 @@ CREATE TABLE loans (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     member_id INT UNSIGNED NOT NULL,
     loan_request_id INT UNSIGNED NULL,
+    lot_id INT UNSIGNED NULL,
     amount DECIMAL(12,2) NOT NULL,
     reason ENUM('personal','educational','marriage','other') NOT NULL,
     reason_other_text VARCHAR(500) NULL,
@@ -182,7 +185,8 @@ CREATE TABLE loans (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     closed_at DATETIME NULL,
     CONSTRAINT fk_loans_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
-    CONSTRAINT fk_loans_request FOREIGN KEY (loan_request_id) REFERENCES loan_requests(id) ON DELETE SET NULL
+    CONSTRAINT fk_loans_request FOREIGN KEY (loan_request_id) REFERENCES loan_requests(id) ON DELETE SET NULL,
+    CONSTRAINT fk_loans_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE loan_installments (

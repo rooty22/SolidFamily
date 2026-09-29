@@ -51,6 +51,144 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
             <div class="stat-sub font-num"><?= __('paid_and_late_summary', ['paid' => $paidCount, 'late' => '<span class="' . ($lateCount > 0 ? 'text-danger fw-bold' : '') . '">' . $lateCount . '</span>']) ?></div></div></div>
 </div>
 
+<!-- Share Lots Subscription Start Dates & Loan Eligibility Documenting Section -->
+<div class="card-panel mb-4">
+    <div class="panel-head flex-wrap gap-2">
+        <div>
+            <h3><i class="bi bi-calendar-check-fill text-brand-600"></i> <?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك للأسهم وشروط استحقاق القرض' : 'Shares Subscription Start Dates & Loan Eligibility' ?></h3>
+            <p class="text-xs text-slate-500 mt-1 mb-0">
+                <?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك لكل سهم على حدة باليوم والشهر والسنة (لربط شرط استحقاق القرض بمرور 6 أشهر وسداد 500 ريال تأسيس لكل سهم)' : 'Full documentation of subscription start dates (Day, Month, Year) per share lot linked to loan eligibility (6 months & 500 SAR founding paid per share).' ?>
+            </p>
+        </div>
+        <span class="badge-status badge-info"><?= count($lots) ?> <?= is_rtl() ? 'حصة أسهم' : 'lots' ?></span>
+    </div>
+    <?php if (empty($lots)): ?>
+        <div class="empty-state py-4"><i class="bi bi-pie-chart text-2xl text-slate-400 mb-2"></i><?= __('no_records_yet') ?></div>
+    <?php else: ?>
+    <style>
+    .table-lots-box {
+        border-radius: 14px;
+        overflow-x: auto;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+    }
+    .table-lots-compact {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: collapse;
+    }
+    .table-lots-compact th {
+        background: #f8fafc;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 10px 14px;
+        border-bottom: 1.5px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .table-lots-compact td {
+        padding: 11px 14px;
+        font-size: 13px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        white-space: nowrap;
+    }
+    .table-lots-compact tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .table-lots-compact tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .table-lots-compact .col-id { width: 65px; text-align: center; }
+    .table-lots-compact .col-shares { width: 115px; }
+    .table-lots-compact .col-date { width: 160px; }
+    .table-lots-compact .col-due { width: 125px; }
+    .table-lots-compact .col-sixmo { width: 235px; }
+    .table-lots-compact .col-found { width: 195px; }
+    .table-lots-compact .col-status { width: 140px; text-align: center; }
+    .table-lots-compact .badge-status {
+        padding: 4px 10px;
+        font-size: 11.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 20px;
+    }
+    </style>
+    <div class="table-lots-box">
+        <table class="table-lots-compact">
+            <thead>
+                <tr>
+                    <th class="col-id">#</th>
+                    <th class="col-shares"><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
+                    <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></th>
+                    <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق' : 'Due Day' ?></th>
+                    <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
+                    <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
+                    <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($lots as $idx => $lot): 
+                $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding ?? null);
+            ?>
+                <tr>
+                    <td class="col-id font-num fw-bold text-slate-500">#<?= (int) ($lot['id'] ?? ($idx + 1)) ?></td>
+                    <td class="col-shares font-num fw-bold text-slate-900"><?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></td>
+                    <td class="col-date font-num">
+                        <span class="inline-flex items-center gap-1.5 fw-bold text-brand-700">
+                            <i class="bi bi-calendar-event text-brand-600"></i>
+                            <span dir="ltr"><?= date_ar($elig['start_date']) ?></span>
+                        </span>
+                    </td>
+                    <td class="col-due font-num text-slate-700"><?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> <?= is_rtl() ? 'من كل شهر' : 'of month' ?></td>
+                    <td class="col-sixmo">
+                        <?php if ($elig['six_months_met']): ?>
+                            <span class="badge-status badge-success">
+                                <i class="bi bi-check-circle-fill"></i>
+                                <?= is_rtl() ? "مكتمل ({$elig['months_passed']} شهر)" : "Completed ({$elig['months_passed']} mos)" ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge-status badge-warning" title="<?= is_rtl() ? 'يكتمل بتاريخ: ' . date_ar($elig['target_date']) : 'Target: ' . date_ar($elig['target_date']) ?>">
+                                <i class="bi bi-hourglass-split"></i>
+                                <?= is_rtl() ? "متبقي {$elig['months_remaining_label']} (حتى " . date_ar($elig['target_date']) . ")" : "{$elig['months_remaining']} mos left" ?>
+                            </span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="col-found">
+                        <?php if ($elig['founding_met']): ?>
+                            <span class="badge-status badge-success">
+                                <i class="bi bi-check-circle-fill"></i>
+                                <?= is_rtl() ? 'مستوفى (مسدد بالكامل)' : 'Fulfilled (Paid)' ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge-status badge-warning">
+                                <i class="bi bi-exclamation-circle-fill"></i>
+                                <?= is_rtl() ? 'مسدد ' . money($elig['founding_paid_per_share']) . ' من 500 ريال' : money($elig['founding_paid_per_share']) . ' of 500' ?>
+                            </span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="col-status">
+                        <?php if ($elig['is_eligible']): ?>
+                            <span class="badge-status badge-success fw-bold">
+                                <i class="bi bi-shield-check"></i>
+                                <?= is_rtl() ? 'مؤهل للقرض' : 'Eligible' ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge-status badge-secondary">
+                                <i class="bi bi-clock"></i>
+                                <?= is_rtl() ? 'قيد استيفاء الشروط' : 'Pending' ?>
+                            </span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+</div>
+
 <div class="split">
     <div class="card-panel">
         <div class="panel-head"><h3><i class="bi bi-clock-history"></i> <?= __('monthly_subs_history') ?></h3><span class="text-muted small font-num"><?= count($history) ?></span></div>

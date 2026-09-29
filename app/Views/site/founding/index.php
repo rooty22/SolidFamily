@@ -66,13 +66,13 @@ $planMonths = (int) $founding['plan_months'];
             <table class="table-modern">
                 <thead><tr><th>#</th><th><?= __('due_date') ?></th><th><?= __('amount') ?></th><th><?= __('paid_amount') ?></th><th><?= __('status') ?></th></tr></thead>
                 <tbody>
-                <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['late'] ? 'unpaid' : $i['status']); ?>
-                    <tr <?= $i['late'] ? 'style="background:#fef2f2;"' : '' ?>>
+                <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['status']); ?>
+                    <tr>
                         <td class="fw-bold font-num"><?= (int) $i['number'] ?></td>
                         <td class="font-num"><?= date_ar($i['due_date']) ?></td>
                         <td class="font-num"><?= money($i['amount']) ?></td>
                         <td class="font-num"><?= money($i['paid']) ?></td>
-                        <td><span class="badge-status badge-<?= $sv ?>"><?= $i['late'] ? $sl : status_badge($i['status'])[0] ?></span></td>
+                        <td><span class="badge-status badge-<?= $sv ?>"><?= $sl ?></span></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

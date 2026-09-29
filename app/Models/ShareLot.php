@@ -23,6 +23,80 @@ class ShareLot extends Model
         return substr((string) $lot['created_at'], 0, 7);
     }
 
+    /** Full subscription start date (YYYY-MM-DD) containing day, month, and year. */
+    public static function startDate(array $lot): string
+    {
+        return !empty($lot['created_at']) ? date('Y-m-d', strtotime($lot['created_at'])) : '-';
+    }
+
+    /** Date when the 6-month threshold is reached. */
+    public static function sixMonthsTargetDate(array $lot): string
+    {
+        return !empty($lot['created_at']) ? date('Y-m-d', strtotime('+6 months', strtotime($lot['created_at']))) : '-';
+    }
+
+    /** Check if 6 months have passed since this share lot was subscribed. */
+    public static function isSixMonthsPassed(array $lot): bool
+    {
+        if (empty($lot['created_at'])) {
+            return false;
+        }
+        $target = strtotime('+6 months', strtotime(substr($lot['created_at'], 0, 10)));
+        return strtotime(date('Y-m-d')) >= $target;
+    }
+
+    /** Calculate how many full months have passed since this share lot was started. */
+    public static function monthsPassed(array $lot): int
+    {
+        if (empty($lot['created_at'])) {
+            return 0;
+        }
+        try {
+            $start = new \DateTime(substr($lot['created_at'], 0, 10));
+            $now = new \DateTime(date('Y-m-d'));
+            $diff = $start->diff($now);
+            return ($diff->y * 12) + $diff->m;
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Complete eligibility evaluation for this share lot according to the fund rules:
+     * 1) 6 months passed since subscription start date (documented with day, month, year)
+     * 2) 500 SAR founding amount paid per share
+     */
+    public static function eligibilityDetails(array $lot, array $member, ?array $founding = null): array
+    {
+        $startDate = self::startDate($lot);
+        $targetDate = self::sixMonthsTargetDate($lot);
+        $sixMonthsMet = self::isSixMonthsPassed($lot);
+        $monthsPassed = self::monthsPassed($lot);
+        $monthsRemaining = max(0, 6 - $monthsPassed);
+        $remLabelAr = $monthsRemaining === 1 ? 'شهر واحد' : ($monthsRemaining === 2 ? 'شهران' : ($monthsRemaining >= 3 && $monthsRemaining <= 10 ? "{$monthsRemaining} أشهر" : "{$monthsRemaining} شهراً"));
+
+        if (!$founding) {
+            $founding = FoundingAmount::ensureForMember((int) $member['id']);
+        }
+
+        $totalShares = (int) ($member['shares_count'] ?? 1);
+        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
+        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
+        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500);
+
+        return [
+            'start_date' => $startDate,
+            'target_date' => $targetDate,
+            'months_passed' => $monthsPassed,
+            'months_remaining' => $monthsRemaining,
+            'months_remaining_label' => $remLabelAr,
+            'six_months_met' => $sixMonthsMet,
+            'founding_paid_per_share' => round($paidPerShare, 2),
+            'founding_met' => $foundingMet,
+            'is_eligible' => $sixMonthsMet && $foundingMet,
+        ];
+    }
+
     /** Reduce active lots oldest-first by $sharesToCancel; a lot emptied to 0 is dropped (merged out). Returns the actual total removed. */
     public static function cancelShares(int $memberId, int $sharesToCancel): int
     {

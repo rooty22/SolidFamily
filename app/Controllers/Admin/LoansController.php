@@ -130,12 +130,29 @@ class LoansController extends Controller
         $feeAmount = round($amount * $feePercent / 100, 2);
         $installmentValue = round($amount / $installmentsCount, 2);
 
+        $lotId = null;
+        if (!empty($data['lot_id'])) {
+            $lotId = (int) $data['lot_id'];
+        } elseif (!empty($data['loan_request_id'])) {
+            $req = LoanRequest::find((int) $data['loan_request_id']);
+            if ($req && !empty($req['lot_id'])) {
+                $lotId = (int) $req['lot_id'];
+            }
+        }
+        if (!$lotId) {
+            $activeLots = \App\Models\ShareLot::activeFor($memberId);
+            if (count($activeLots) === 1) {
+                $lotId = (int) $activeLots[0]['id'];
+            }
+        }
+
         $pdo = Database::connection();
         $pdo->beginTransaction();
         try {
             $loanId = Loan::create([
                 'member_id' => $memberId,
                 'loan_request_id' => $data['loan_request_id'] !== '' ? (int) $data['loan_request_id'] : null,
+                'lot_id' => $lotId,
                 'amount' => $amount,
                 'reason' => $data['reason'],
                 'reason_other_text' => $data['reason'] === 'other' ? $data['reason_other_text'] : null,

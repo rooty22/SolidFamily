@@ -39,6 +39,14 @@ class SubscriptionsController extends Controller
         }
 
         $rows = [];
+        $statusCounts = [
+            'all' => count($members),
+            'late' => 0,
+            'paid' => 0,
+            'partial' => 0,
+            'unpaid' => 0,
+        ];
+
         foreach ($members as $m) {
             // A member can have several unmerged share lots at once, each with its own row this month: the month's
             // status is derived from the SUM of what is due and paid (paid / partial / unpaid).
@@ -51,20 +59,46 @@ class SubscriptionsController extends Controller
                 $late++;
                 $currentStatus = 'unpaid';
             }
+
+            $currentStatus = $currentStatus ?? 'unpaid';
+
+            if ($late > 0) {
+                $statusCounts['late']++;
+            }
+            if (isset($statusCounts[$currentStatus])) {
+                $statusCounts[$currentStatus]++;
+            }
+
             $rows[] = [
                 'member' => $m,
                 'share_value' => $shareValue,
                 'amount' => $m['shares_count'] * $shareValue,
-                'current_status' => $currentStatus ?? 'unpaid',
+                'current_status' => $currentStatus,
                 'paid_months' => (int) ($counts[(int) $m['id']]['paid_months'] ?? 0),
                 'late_months' => $late,
             ];
+        }
+
+        $status = trim((string) $this->input('status', ''));
+        if ($status === '') {
+            $status = trim((string) $this->input('payment_status', ''));
+        }
+
+        if ($status !== '' && $status !== 'all') {
+            $rows = array_values(array_filter($rows, function($r) use ($status) {
+                if ($status === 'late') {
+                    return $r['late_months'] > 0;
+                }
+                return $r['current_status'] === $status;
+            }));
         }
 
         $this->view('admin/subscriptions/index', [
             'pageTitle' => __('subscriptions'),
             'rows' => $rows,
             'q' => $q,
+            'status' => $status,
+            'counts' => $statusCounts,
             'currentMonth' => $currentMonth,
         ], 'admin/layout');
     }
@@ -103,6 +137,7 @@ class SubscriptionsController extends Controller
             'lots' => $lots,
             'payableLots' => $payableLots ?: $lots,
             'allSettled' => !$payableLots,
+            'founding' => \App\Models\FoundingAmount::ensureForMember((int) $memberId),
         ], 'admin/layout');
     }
 

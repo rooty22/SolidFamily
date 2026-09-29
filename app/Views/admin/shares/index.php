@@ -41,15 +41,25 @@
         <tbody>
             <?php foreach ($members as $m): ?>
             <tr>
-                <td class="fw-bold"><?= e($m['name']) ?></td>
+                <td class="fw-bold">
+                    <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
+                        <?= e($m['name']) ?>
+                    </a>
+                </td>
                 <td class="font-numeric"><?= number_format($m['shares_count']) ?></td>
                 <td class="font-numeric"><?= money($shareValue) ?></td>
                 <td class="font-numeric"><?= money($m['shares_count'] * $shareValue) ?></td>
                 <td class="text-end">
-                    <button type="button" class="btn btn-sm btn-soft inline-flex items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#editShares<?= $m['id'] ?>">
-                        <i class="bi bi-pencil"></i>
-                        <span><?= is_rtl() ? 'تعديل' : 'Edit' ?></span>
-                    </button>
+                    <div class="flex items-center justify-end gap-1">
+                        <a href="<?= url('admin/members/' . $m['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1" title="<?= is_rtl() ? 'عرض الحصص وتاريخ الاشتراك' : 'View Lots' ?>">
+                            <i class="bi bi-eye"></i>
+                            <span><?= is_rtl() ? 'الحصص' : 'Lots' ?></span>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-soft inline-flex items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#editShares<?= $m['id'] ?>">
+                            <i class="bi bi-pencil"></i>
+                            <span><?= is_rtl() ? 'تعديل' : 'Edit' ?></span>
+                        </button>
+                    </div>
                 </td>
             </tr>
             <div class="modal fade" id="editShares<?= $m['id'] ?>" tabindex="-1">

@@ -19,12 +19,37 @@ class LoanRequest extends Model
 
     public static function queuePosition(int $requestId): int
     {
-        $pending = self::where(['status' => 'pending'], 'created_at ASC');
-        foreach ($pending as $index => $request) {
-            if ((int) $request['id'] === $requestId) {
-                return $index + 1;
+        $request = self::find($requestId);
+        if (!$request) {
+            return 0;
+        }
+
+        // When approved: position in the waiting queue for disbursement (requests approved by admin without an issued loan yet)
+        if ($request['status'] === 'approved') {
+            $approved = self::raw(
+                "SELECT lr.id FROM loan_requests lr
+                 LEFT JOIN loans l ON l.loan_request_id = lr.id
+                 WHERE lr.status = 'approved' AND l.id IS NULL
+                 ORDER BY COALESCE(lr.reviewed_at, lr.created_at) ASC, lr.id ASC"
+            );
+            foreach ($approved as $index => $r) {
+                if ((int) $r['id'] === $requestId) {
+                    return $index + 1;
+                }
+            }
+            return 0;
+        }
+
+        // When pending: position for admin review queue
+        if ($request['status'] === 'pending') {
+            $pending = self::where(['status' => 'pending'], 'created_at ASC');
+            foreach ($pending as $index => $r) {
+                if ((int) $r['id'] === $requestId) {
+                    return $index + 1;
+                }
             }
         }
+
         return 0;
     }
 

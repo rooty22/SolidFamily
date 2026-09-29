@@ -41,13 +41,13 @@
     <table class="table-modern">
         <thead><tr><th>#</th><th>الاستحقاق</th><th>القيمة</th><th>المسدد</th><th>الحالة</th></tr></thead>
         <tbody>
-        <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['late'] ? 'unpaid' : $i['status']); ?>
-            <tr <?= $i['late'] ? 'style="background:#fef2f2;"' : '' ?>>
+        <?php foreach ($schedule as $i): [$sl, $sv] = status_badge($i['status']); ?>
+            <tr>
                 <td class="fw-bold"><?= (int) $i['number'] ?></td>
                 <td><?= date_ar($i['due_date']) ?></td>
                 <td><?= money($i['amount']) ?></td>
                 <td><?= money($i['paid']) ?></td>
-                <td><span class="badge-status badge-<?= $sv ?>"><?= $i['late'] ? 'متأخر' : status_badge($i['status'])[0] ?></span></td>
+                <td><span class="badge-status badge-<?= $sv ?>"><?= $sl ?></span></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

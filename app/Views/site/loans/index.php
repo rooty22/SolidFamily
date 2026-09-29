@@ -25,7 +25,7 @@
         </div>
     </div>
     <div class="stat-card"><div class="stat-icon bg-grad-blue"><i class="bi bi-hourglass-split"></i></div>
-        <div><div class="stat-label"><?= __('pending_requests') ?></div><div class="stat-value font-num"><?= (int) $pendingRequests ?></div><div class="stat-sub"><?= __('in_waiting_queue') ?></div></div>
+        <div><div class="stat-label"><?= __('pending_requests') ?></div><div class="stat-value font-num"><?= (int) $pendingRequests ?></div><div class="stat-sub"><?= is_rtl() ? 'قيد دراسة الإدارة' : 'under review' ?></div></div>
     </div>
 </div>
 
@@ -41,7 +41,12 @@
                 <div class="top">
                     <div>
                         <div class="amount font-num"><?= money($l['amount']) ?></div>
-                        <div class="meta"><?= $reasonLabels[$l['reason']] ?? $l['reason'] ?> · <?= date_ar($l['loan_date']) ?></div>
+                        <div class="meta">
+                            <?= $reasonLabels[$l['reason']] ?? $l['reason'] ?> · <?= date_ar($l['loan_date']) ?>
+                            <?php if (!empty($l['lot_id'])): ?>
+                                · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= is_rtl() ? 'حصة أسهم #' . (int) $l['lot_id'] : 'Lot #' . (int) $l['lot_id'] ?></span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <span class="badge-status badge-<?= $v ?>"><?= $lb ?></span>
                 </div>
@@ -69,7 +74,12 @@
             <div class="req-row">
                 <div class="r-main">
                     <b class="font-num"><?= money($r['amount_requested']) ?></b>
-                    <span><?= $reasonLabels[$r['reason']] ?? $r['reason'] ?> · <?= (int) $r['installments_months'] ?> <?= __('months') ?> · <?= date_ar($r['created_at']) ?></span>
+                    <span>
+                        <?= $reasonLabels[$r['reason']] ?? $r['reason'] ?> · <?= (int) $r['installments_months'] ?> <?= __('months') ?> · <?= date_ar($r['created_at']) ?>
+                        <?php if (!empty($r['lot_id'])): ?>
+                            · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= is_rtl() ? 'حصة أسهم #' . (int) $r['lot_id'] : 'Lot #' . (int) $r['lot_id'] ?></span>
+                        <?php endif; ?>
+                    </span>
                     <?php if ($r['queue_position']): ?><span class="d-block text-warning fw-bold"><i class="bi bi-people-fill"></i> <?= __('loan_queue_position', ['position' => (int) $r['queue_position']]) ?></span><?php endif; ?>
                 </div>
                 <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>

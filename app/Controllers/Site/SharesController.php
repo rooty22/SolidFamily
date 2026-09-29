@@ -19,6 +19,8 @@ class SharesController extends Controller
         $lots = ShareLot::activeFor($member['id']);
         $dueDay = MonthlySubscription::dueDayFor($member);
 
+        $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
+
         $this->view('site/shares/index', [
             'pageTitle' => __('shares_and_subscriptions'),
             'member' => $member,
@@ -26,6 +28,7 @@ class SharesController extends Controller
             'shareValue' => $shareValue,
             'lots' => $lots,
             'dueDay' => $dueDay,
+            'founding' => $founding,
         ], 'site/layout');
     }
 }

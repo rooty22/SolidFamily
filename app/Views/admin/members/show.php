@@ -9,9 +9,18 @@ $catLabels = transaction_categories();
             <?= e(mb_substr($member['name'] ?? 'M', 0, 1)) ?>
         </div>
         <div>
-            <div class="flex items-center gap-2.5 mb-1">
+            <div class="flex items-center gap-2.5 mb-1 flex-wrap">
                 <h1 class="text-xl sm:text-2xl font-black text-slate-900 m-0"><?= e($member['name']) ?></h1>
                 <span class="badge-status badge-<?= $statusVariant ?>"><?= $statusLabel ?></span>
+                <?php if (!empty($overdueDetails['late_sub']) && !empty($overdueDetails['late_loan'])): ?>
+                    <span class="badge-status badge-danger"><?= is_rtl() ? 'متأخر (اشتراك وقرض)' : 'Overdue (Sub & Loan)' ?></span>
+                <?php elseif (!empty($overdueDetails['late_sub'])): ?>
+                    <span class="badge-status badge-danger"><?= is_rtl() ? 'متأخر (اشتراك شهري)' : 'Overdue (Subscription)' ?></span>
+                <?php elseif (!empty($overdueDetails['late_loan'])): ?>
+                    <span class="badge-status badge-warning"><?= is_rtl() ? 'متأخر (أقساط قروض)' : 'Overdue (Loan)' ?></span>
+                <?php else: ?>
+                    <span class="badge-status badge-success"><?= is_rtl() ? 'سداد منتظم' : 'Up to date' ?></span>
+                <?php endif; ?>
             </div>
             <div class="text-xs text-slate-500 font-numeric font-medium flex items-center gap-2">
                 <span dir="ltr"><?= e($member['mobile']) ?></span>
@@ -27,6 +36,50 @@ $catLabels = transaction_categories();
         </a>
     </div>
 </div>
+
+<?php if (!empty($overdueDetails['is_late'])): ?>
+<!-- Overdue Delay Notice Banner -->
+<div class="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+    <div class="flex items-start sm:items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 text-lg">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div>
+            <div class="font-bold text-sm">
+                <?= is_rtl() ? 'تنبيه: يوجد مبالغ متأخرة على هذا المشترك' : 'Notice: This member has overdue payments' ?>
+            </div>
+            <div class="text-xs text-rose-700 mt-0.5 flex items-center gap-3 flex-wrap">
+                <?php if ($overdueDetails['late_sub']): ?>
+                    <span>
+                        <i class="bi bi-calendar2-x"></i>
+                        <?= is_rtl() ? "اشتراك شهري: {$overdueDetails['late_sub_months']} أشهر (" . money($overdueDetails['overdue_sub_amount']) . ")" : "Monthly Sub: {$overdueDetails['late_sub_months']} mos (" . money($overdueDetails['overdue_sub_amount']) . ")" ?>
+                    </span>
+                <?php endif; ?>
+                <?php if ($overdueDetails['late_loan']): ?>
+                    <span>
+                        <i class="bi bi-cash-coin"></i>
+                        <?= is_rtl() ? "أقساط قروض: {$overdueDetails['late_loan_installments']} أقساط (" . money($overdueDetails['overdue_loan_amount']) . ")" : "Loans: {$overdueDetails['late_loan_installments']} inst (" . money($overdueDetails['overdue_loan_amount']) . ")" ?>
+                    </span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+        <?php if ($overdueDetails['late_sub']): ?>
+            <a href="<?= url('admin/subscriptions/' . $member['id']) ?>" class="btn btn-sm btn-danger font-bold text-xs inline-flex items-center gap-1">
+                <i class="bi bi-wallet2"></i>
+                <span><?= is_rtl() ? 'سداد الاشتراك' : 'Pay Subscription' ?></span>
+            </a>
+        <?php endif; ?>
+        <?php if ($overdueDetails['late_loan']): ?>
+            <a href="<?= url('admin/loans') ?>?q=<?= urlencode($member['name']) ?>" class="btn btn-sm btn-outline-danger font-bold text-xs inline-flex items-center gap-1">
+                <i class="bi bi-cash"></i>
+                <span><?= is_rtl() ? 'سداد القرض' : 'Pay Loan' ?></span>
+            </a>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- 4 Executive KPI Metric Tiles -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -56,6 +109,102 @@ $catLabels = transaction_categories();
             <span class="badge-status badge-<?= $foundVariant ?>"><?= $foundLabel ?></span>
         </div>
     </div>
+</div>
+
+<!-- Share Lots Subscription Start Dates & Loan Eligibility (Image 1 Requirement) -->
+<div class="card-panel mb-5">
+    <div class="panel-head flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+        <div>
+            <h3 class="flex items-center gap-2 m-0 text-base font-bold text-slate-900">
+                <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm shadow-xs">
+                    <i class="bi bi-calendar-check-fill"></i>
+                </div>
+                <span><?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك للأسهم وشروط استحقاق القرض' : 'Share Subscription Start Dates & Loan Eligibility' ?></span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 mb-0">
+                <?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك لكل سهم على حدة باليوم والشهر والسنة (لربط شرط استحقاق القرض بمرور 6 أشهر وسداد 500 ريال تأسيس لكل سهم)' : 'Documenting subscription start dates (Day, Month, Year) per share lot linked to loan eligibility (6 months & 500 SAR founding paid per share).' ?>
+            </p>
+        </div>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold font-numeric"><?= count($lots ?? []) ?> <?= is_rtl() ? 'حصص مسجلة' : 'lots' ?></span>
+    </div>
+    <?php if (empty($lots)): ?>
+        <div class="empty-state py-6">
+            <i class="bi bi-pie-chart text-3xl text-slate-400 mb-2"></i>
+            <span><?= is_rtl() ? 'لا توجد حصص أسهم نشطة مسجلة' : 'No active share lots recorded' ?></span>
+        </div>
+    <?php else: ?>
+        <div class="table-lots-box">
+            <table class="table-lots-compact">
+                <thead>
+                    <tr>
+                        <th class="col-id">#</th>
+                        <th class="col-shares"><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
+                        <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك (يوم/شهر/سنة)' : 'Start Date (Full Date)' ?></th>
+                        <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق الشهري' : 'Due Day' ?></th>
+                        <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6-Month Rule' ?></th>
+                        <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
+                        <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($lots as $idx => $lot): 
+                    $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding ?? null);
+                ?>
+                    <tr>
+                        <td class="col-id font-numeric font-bold text-slate-500">#<?= (int) ($lot['id'] ?? ($idx + 1)) ?></td>
+                        <td class="col-shares font-numeric font-bold text-slate-900"><?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></td>
+                        <td class="col-date font-numeric font-bold text-purple-700">
+                            <span class="inline-flex items-center gap-1.5">
+                                <i class="bi bi-calendar3"></i>
+                                <?= date_ar($elig['start_date']) ?>
+                            </span>
+                        </td>
+                        <td class="col-due font-numeric text-slate-700"><?= (int) \App\Models\MonthlySubscription::dueDayFor($member, $lot) ?> <?= is_rtl() ? 'من كل شهر' : 'of month' ?></td>
+                        <td class="col-sixmo">
+                            <?php if ($elig['six_months_met']): ?>
+                                <span class="badge-status badge-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <?= is_rtl() ? "مكتمل ({$elig['months_passed']} شهر)" : "Completed ({$elig['months_passed']} mos)" ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge-status badge-warning" title="<?= is_rtl() ? 'يكتمل بتاريخ: ' . date_ar($elig['target_date']) : 'Target: ' . date_ar($elig['target_date']) ?>">
+                                    <i class="bi bi-hourglass-split"></i>
+                                    <?= is_rtl() ? "متبقي {$elig['months_remaining_label']} (حتى " . date_ar($elig['target_date']) . ")" : "{$elig['months_remaining']} mos left" ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="col-found">
+                            <?php if ($elig['founding_met']): ?>
+                                <span class="badge-status badge-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <?= is_rtl() ? 'مستوفى (مسدد بالكامل)' : 'Fulfilled (Paid)' ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge-status badge-warning">
+                                    <i class="bi bi-exclamation-circle-fill"></i>
+                                    <?= is_rtl() ? 'مسدد ' . money($elig['founding_paid_per_share']) . ' من 500 ريال' : money($elig['founding_paid_per_share']) . ' of 500' ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="col-status">
+                            <?php if ($elig['is_eligible']): ?>
+                                <span class="badge-status badge-success font-bold">
+                                    <i class="bi bi-shield-check"></i>
+                                    <?= is_rtl() ? 'مؤهل للقرض' : 'Eligible' ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge-status badge-secondary">
+                                    <i class="bi bi-clock"></i>
+                                    <?= is_rtl() ? 'قيد استيفاء الشروط' : 'Pending' ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div class="row g-4 mb-4">
@@ -116,6 +265,7 @@ $catLabels = transaction_categories();
                         <thead>
                             <tr>
                                 <th><?= __('month') ?></th>
+                                <th><?= is_rtl() ? 'الاستحقاق' : 'Due Date' ?></th>
                                 <th><?= __('due_amount') ?></th>
                                 <th><?= __('paid_amount') ?></th>
                                 <th><?= __('status') ?></th>
@@ -125,6 +275,7 @@ $catLabels = transaction_categories();
                         <?php foreach ($subscriptions as $s): [$l,$v] = status_badge($s['status']); ?>
                             <tr>
                                 <td class="font-numeric font-bold text-slate-900"><?= e($s['month']) ?></td>
+                                <td class="font-numeric text-xs text-slate-500"><?= date_ar($s['due_date']) ?></td>
                                 <td class="font-numeric font-bold"><?= money($s['amount_due']) ?></td>
                                 <td class="font-numeric font-bold text-emerald-600"><?= money($s['amount_paid']) ?></td>
                                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
