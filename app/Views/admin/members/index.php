@@ -109,6 +109,12 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
                         <?= e($m['name']) ?>
                     </a>
+                    <?php if (!empty($m['is_admin'])): ?>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold ms-1" title="<?= is_rtl() ? 'حساب إداري - معفى من القروض والأقساط' : 'Admin Account - Exempt from Loans' ?>">
+                            <i class="bi bi-shield-check"></i>
+                            <span><?= is_rtl() ? 'إدارة' : 'Admin' ?></span>
+                        </span>
+                    <?php endif; ?>
                 </td>
                 <td class="font-numeric" dir="ltr"><?= e($m['mobile']) ?></td>
                 <td class="font-numeric" dir="ltr"><?= e($m['national_id']) ?></td>

@@ -13,20 +13,34 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
     <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/20 rounded-full blur-2xl pointer-events-none"></div>
     <div class="relative z-10 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-950/60 border border-brand-500/30 text-brand-300 text-xs font-bold mb-2">
-                <span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
-                <span><?= __('active_account') ?></span>
-            </div>
+            <?php if (!empty($isAdminAccount)): ?>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold mb-2">
+                    <i class="bi bi-shield-check"></i>
+                    <span><?= is_rtl() ? 'حساب إداري' : 'Administrative Account' ?></span>
+                </div>
+            <?php else: ?>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-950/60 border border-brand-500/30 text-brand-300 text-xs font-bold mb-2">
+                    <span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
+                    <span><?= __('active_account') ?></span>
+                </div>
+            <?php endif; ?>
             <h2 class="text-2xl sm:text-3xl font-black mb-1"><?= __('welcome_back', ['name' => e($member['name'])]) ?></h2>
             <p class="text-brand-200 text-xs sm:text-sm max-w-xl">
                 <?= __('member_summary_desc', ['month' => date('Y-m')]) ?>
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="<?= url('loans/request') ?>" class="px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-slate-950 font-extrabold text-sm shadow-md transition-all flex items-center gap-2">
-                <i class="bi bi-cash-coin"></i>
-                <span><?= __('request_loan') ?></span>
-            </a>
+            <?php if (!empty($isAdminAccount)): ?>
+                <a href="<?= url('admin/dashboard') ?>" class="px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-slate-950 font-extrabold text-sm shadow-md transition-all flex items-center gap-2">
+                    <i class="bi bi-speedometer2"></i>
+                    <span><?= is_rtl() ? 'بوابة الإدارة' : 'Admin Portal' ?></span>
+                </a>
+            <?php else: ?>
+                <a href="<?= url('loans/request') ?>" class="px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-slate-950 font-extrabold text-sm shadow-md transition-all flex items-center gap-2">
+                    <i class="bi bi-cash-coin"></i>
+                    <span><?= __('request_loan') ?></span>
+                </a>
+            <?php endif; ?>
             <a href="<?= url('share-requests') ?>" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all flex items-center gap-2">
                 <i class="bi bi-pie-chart"></i>
                 <span><?= __('adjust_shares') ?></span>
@@ -64,17 +78,31 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
         </div>
     </div>
     <div class="col-md-4 col-6">
-        <div class="stat-card">
-            <div class="stat-icon bg-grad-purple">
-                <i class="bi bi-cash-coin"></i>
+        <?php if (!empty($isAdminAccount)): ?>
+            <div class="stat-card">
+                <div class="stat-icon bg-grad-amber">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                    <div class="stat-label"><?= is_rtl() ? 'الصفة والالتزامات' : 'Account Status' ?></div>
+                    <div class="stat-value font-num text-amber-700 text-lg"><?= is_rtl() ? 'إدارة الصندوق' : 'Administration' ?></div>
+                    <div class="stat-sub text-emerald-600 font-bold"><?= is_rtl() ? 'معفى من القروض والأقساط' : 'Exempt from Loans' ?></div>
+                    <div class="stat-sub text-slate-400"><?= is_rtl() ? 'لا توجد أقساط أو ديون مسجلة' : 'No installments owed' ?></div>
+                </div>
             </div>
-            <div>
-                <div class="stat-label"><?= __('active_loans') ?></div>
-                <div class="stat-value font-num"><?= $activeLoansCount ?></div>
-                <div class="stat-sub"><?= __('remaining_to_pay', ['amount' => money($activeLoansRemaining)]) ?></div>
-                <div class="stat-sub"><?= __('remaining_installments') ?>: <b class="font-num"><?= (int) $remainingInstallments ?></b></div>
+        <?php else: ?>
+            <div class="stat-card">
+                <div class="stat-icon bg-grad-purple">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div>
+                    <div class="stat-label"><?= __('active_loans') ?></div>
+                    <div class="stat-value font-num"><?= $activeLoansCount ?></div>
+                    <div class="stat-sub"><?= __('remaining_to_pay', ['amount' => money($activeLoansRemaining)]) ?></div>
+                    <div class="stat-sub"><?= __('remaining_installments') ?>: <b class="font-num"><?= (int) $remainingInstallments ?></b></div>
+                </div>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -165,6 +193,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
                         </span>
                         <i class="bi bi-chevron-<?= is_rtl() ? 'left' : 'right' ?> text-xs text-slate-400"></i>
                     </a>
+                    <?php if (empty($isAdminAccount)): ?>
                     <a href="<?= url('loans/request') ?>" class="btn btn-soft w-100 !justify-between">
                         <span class="flex items-center gap-2">
                             <i class="bi bi-cash-coin text-gold-600"></i>
@@ -172,6 +201,15 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
                         </span>
                         <i class="bi bi-chevron-<?= is_rtl() ? 'left' : 'right' ?> text-xs text-slate-400"></i>
                     </a>
+                    <?php else: ?>
+                    <a href="<?= url('admin/dashboard') ?>" class="btn btn-soft w-100 !justify-between">
+                        <span class="flex items-center gap-2">
+                            <i class="bi bi-speedometer2 text-amber-600"></i>
+                            <span><?= is_rtl() ? 'لوحة تحكم الإدارة' : 'Admin Dashboard' ?></span>
+                        </span>
+                        <i class="bi bi-chevron-<?= is_rtl() ? 'left' : 'right' ?> text-xs text-slate-400"></i>
+                    </a>
+                    <?php endif; ?>
                     <a href="<?= url('settings') ?>" class="btn btn-soft w-100 !justify-between">
                         <span class="flex items-center gap-2">
                             <i class="bi bi-headset text-sky-600"></i>

@@ -387,6 +387,18 @@ function current_admin_id(): ?int
     return $admin['id'] ?? null;
 }
 
+function is_admin_member(?array $member = null): bool
+{
+    if ($member !== null) {
+        return \App\Models\Member::isAdmin($member);
+    }
+    $curr = \App\Core\Auth::member();
+    if ($curr && \App\Models\Member::isAdmin($curr)) {
+        return true;
+    }
+    return \App\Core\Auth::adminCheck();
+}
+
 function is_htmx_or_ajax(): bool
 {
     return (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');

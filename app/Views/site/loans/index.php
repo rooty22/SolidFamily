@@ -1,4 +1,32 @@
 <?php $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(date('Y-m-d'))) / 86400); ?>
+
+<?php if (!empty($isAdminAccount)): ?>
+<div class="space-y-6">
+    <div class="bg-gradient-to-r from-amber-900 via-amber-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div class="relative z-10">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-950/60 border border-amber-500/30 text-amber-300 text-xs font-bold mb-3">
+                <i class="bi bi-shield-check"></i>
+                <span><?= is_rtl() ? 'حساب إداري' : 'Administrative Account' ?></span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-black mb-2"><?= is_rtl() ? 'حساب إدارة الصندوق — معفى من القروض والأقساط' : 'Fund Administration Account — Exempt from Loans' ?></h2>
+            <p class="text-amber-200 text-xs sm:text-sm max-w-2xl leading-relaxed mb-4">
+                <?= is_rtl() ? 'هذا الحساب مخصص للمهام الإدارية والإشرافية على صندوق العائلة، ولا يمكن تقديم طلبات قروض من خلاله، كما أنه معفى تماماً من أي التزامات سداد أو أقساط تمويلية.' : 'This account is dedicated to the administrative duties of the family fund. It cannot apply for loans and is completely exempt from loan installments or financing liabilities.' ?>
+            </p>
+            <div class="flex items-center gap-3">
+                <a href="<?= url('admin/dashboard') ?>" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm shadow-md transition-all inline-flex items-center gap-2">
+                    <i class="bi bi-speedometer2"></i>
+                    <span><?= is_rtl() ? 'الانتقال إلى لوحة تحكم الإدارة' : 'Go to Admin Dashboard' ?></span>
+                </a>
+                <a href="<?= url('home') ?>" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all inline-flex items-center gap-2">
+                    <i class="bi bi-house-door"></i>
+                    <span><?= is_rtl() ? 'الرئيسية' : 'Home' ?></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<?php return; endif; ?>
+
 <div class="page-head">
     <div>
         <p><?= __('loans_index_subtitle') ?></p>

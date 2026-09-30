@@ -194,6 +194,17 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        <?php if (!empty($isAdminMember)): ?>
+                            <div class="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 sm:col-span-2">
+                                <div class="flex items-center gap-2 font-bold text-sm mb-1">
+                                    <i class="bi bi-shield-lock-fill text-amber-700"></i>
+                                    <span><?= is_rtl() ? 'تنبيه: حساب ذو صفة إدارية (غير مؤهل للقروض)' : 'Admin Account Notice (Ineligible)' ?></span>
+                                </div>
+                                <p class="text-xs text-amber-800 mb-0">
+                                    <?= is_rtl() ? 'حسابات الإدارة معفاة تماماً من القروض ولا يمكن اعتماد أو صرف أي قرض لها. يرجى رفض هذا الطلب.' : 'Administrative accounts cannot receive loans. Please reject this request.' ?>
+                                </p>
+                            </div>
+                        <?php else: ?>
                         <!-- Approval Form Card -->
                         <div class="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200/90 flex flex-col justify-between">
                             <div>
@@ -213,6 +224,7 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                                 </button>
                             </form>
                         </div>
+                        <?php endif; ?>
 
                         <!-- Rejection Form Card -->
                         <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200/90 flex flex-col justify-between">

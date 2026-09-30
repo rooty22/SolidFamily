@@ -45,20 +45,30 @@ class HomeController extends Controller
         }
 
         $founding = FoundingAmount::ensureForMember($member['id']);
-        $loans = Loan::forMember($member['id']);
-        $activeLoans = array_filter($loans, fn($l) => in_array($l['status'], ['active', 'partial']));
-        $activeLoansRemaining = array_sum(array_column($activeLoans, 'amount_remaining'));
-        $remainingInstallments = (int) Loan::rawOne(
-            "SELECT COUNT(*) AS c FROM loan_installments li JOIN loans l ON l.id = li.loan_id
-             WHERE l.member_id = ? AND l.status IN ('active', 'partial') AND li.status <> 'paid'",
-            [$member['id']]
-        )['c'];
+        $isAdminAccount = \App\Models\Member::isAdmin($member);
+
+        if ($isAdminAccount) {
+            $loans = [];
+            $activeLoans = [];
+            $activeLoansRemaining = 0.0;
+            $remainingInstallments = 0;
+        } else {
+            $loans = Loan::forMember($member['id']);
+            $activeLoans = array_filter($loans, fn($l) => in_array($l['status'], ['active', 'partial']));
+            $activeLoansRemaining = array_sum(array_column($activeLoans, 'amount_remaining'));
+            $remainingInstallments = (int) Loan::rawOne(
+                "SELECT COUNT(*) AS c FROM loan_installments li JOIN loans l ON l.id = li.loan_id
+                 WHERE l.member_id = ? AND l.status IN ('active', 'partial') AND li.status <> 'paid'",
+                [$member['id']]
+            )['c'];
+        }
 
         $transactions = Transaction::withMember(['member_id' => $member['id']]);
 
         $this->view('site/home/index', [
             'pageTitle' => __('home'),
             'member' => $member,
+            'isAdminAccount' => $isAdminAccount,
             'shareValue' => $shareValue,
             'monthlyAmount' => $monthlyAmount,
             'currentSub' => $currentSub,

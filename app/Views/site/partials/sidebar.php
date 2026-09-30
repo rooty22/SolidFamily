@@ -1,7 +1,8 @@
 <?php
 $member = \App\Core\Auth::member();
+$isAdminMember = \App\Models\Member::isAdmin($member);
 $pendingShare = \App\Models\ShareRequest::count(['member_id' => $member['id'], 'status' => 'pending']);
-$pendingLoan = \App\Models\LoanRequest::count(['member_id' => $member['id'], 'status' => 'pending']);
+$pendingLoan = !$isAdminMember ? \App\Models\LoanRequest::count(['member_id' => $member['id'], 'status' => 'pending']) : 0;
 ?>
 <aside class="sidebar">
     <div class="sidebar-brand">
@@ -29,11 +30,18 @@ $pendingLoan = \App\Models\LoanRequest::count(['member_id' => $member['id'], 'st
             <i class="bi bi-bank2"></i>
             <span><?= __('founding_amount') ?></span>
         </a>
+        <?php if (!$isAdminMember): ?>
         <a href="<?= url('loans') ?>" class="sidebar-link <?= is_active('/loans') ?>">
             <i class="bi bi-cash-coin"></i>
             <span><?= __('loans_title') ?></span>
             <?php if ($pendingLoan > 0): ?><span class="badge-count font-num"><?= $pendingLoan ?></span><?php endif; ?>
         </a>
+        <?php else: ?>
+        <a href="<?= url('admin/dashboard') ?>" class="sidebar-link text-amber-300 hover:text-amber-100 hover:bg-amber-500/10">
+            <i class="bi bi-shield-check text-amber-400"></i>
+            <span><?= is_rtl() ? 'بوابة إدارة الصندوق' : 'Admin Portal' ?></span>
+        </a>
+        <?php endif; ?>
         <a href="<?= url('notifications') ?>" class="sidebar-link <?= is_active('/notifications') ?>">
             <i class="bi bi-bell-fill"></i>
             <span><?= __('notifications') ?></span>

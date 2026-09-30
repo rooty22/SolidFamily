@@ -67,6 +67,7 @@ class LoanRequestsController extends Controller
             'pageTitle' => __('loan_request_details', ['id' => $request['id']]),
             'request' => $request,
             'member' => $member,
+            'isAdminMember' => Member::isAdmin($member),
             'queuePosition' => $queuePosition,
             'reasonLabels' => $this->reasonLabels,
             'memberShares' => $memberShares,
@@ -87,6 +88,13 @@ class LoanRequestsController extends Controller
         $request = LoanRequest::find((int) $id);
         if (!$request || $request['status'] !== 'pending') {
             $this->redirect('admin/loan-requests');
+        }
+
+        $member = Member::find((int) $request['member_id']);
+        if ($member && Member::isAdmin($member)) {
+            Session::flash('error', 'لا يمكن اعتماد طلب قرض لحساب إداري (حسابات الإدارة معفاة وغير مصرح لها بالاقتراض).');
+            $this->redirect('admin/loan-requests/' . $id);
+            return;
         }
 
         LoanRequest::update((int) $id, [

@@ -12,6 +12,9 @@ $catLabels = transaction_categories();
             <div class="flex items-center gap-2.5 mb-1 flex-wrap">
                 <h1 class="text-xl sm:text-2xl font-black text-slate-900 m-0"><?= e($member['name']) ?></h1>
                 <span class="badge-status badge-<?= $statusVariant ?>"><?= $statusLabel ?></span>
+                <?php if (!empty($isAdminMember)): ?>
+                    <span class="badge-status badge-warning"><i class="bi bi-shield-check"></i> <?= is_rtl() ? 'حساب إداري' : 'Admin Account' ?></span>
+                <?php endif; ?>
                 <?php if (!empty($overdueDetails['late_sub']) && !empty($overdueDetails['late_loan'])): ?>
                     <span class="badge-status badge-danger"><?= is_rtl() ? 'متأخر (اشتراك وقرض)' : 'Overdue (Sub & Loan)' ?></span>
                 <?php elseif (!empty($overdueDetails['late_sub'])): ?>
@@ -96,10 +99,16 @@ $catLabels = transaction_categories();
         <div class="text-[11px] font-bold text-slate-400 mt-0.5"><?= __('paid_stat_sub', ['amount' => money($founding['amount_paid'])]) ?></div>
     </div>
 
-    <!-- Loans Count -->
+    <!-- Loans Count / Admin Role -->
     <div class="metric-tile metric-amber">
-        <div class="metric-label"><?= __('loans_count_stat') ?></div>
-        <div class="metric-value font-numeric text-amber-700"><?= count($loans) ?></div>
+        <?php if (!empty($isAdminMember)): ?>
+            <div class="metric-label"><?= is_rtl() ? 'صفة الحساب' : 'Account Role' ?></div>
+            <div class="metric-value text-sm font-bold text-amber-800 mt-1"><?= is_rtl() ? 'معفى من القروض' : 'Exempt from Loans' ?></div>
+            <div class="text-[11px] font-bold text-slate-400 mt-0.5"><?= is_rtl() ? 'حساب إداري' : 'Admin Role' ?></div>
+        <?php else: ?>
+            <div class="metric-label"><?= __('loans_count_stat') ?></div>
+            <div class="metric-value font-numeric text-amber-700"><?= count($loans) ?></div>
+        <?php endif; ?>
     </div>
 
     <!-- Founding Status -->
@@ -300,9 +309,17 @@ $catLabels = transaction_categories();
                     </div>
                     <span><?= __('loans') ?></span>
                 </h3>
-                <a href="<?= url('admin/loans') ?>?q=<?= urlencode($member['name']) ?>" class="btn btn-sm btn-soft font-bold"><?= __('view_all') ?></a>
+                <?php if (empty($isAdminMember)): ?>
+                    <a href="<?= url('admin/loans') ?>?q=<?= urlencode($member['name']) ?>" class="btn btn-sm btn-soft font-bold"><?= __('view_all') ?></a>
+                <?php endif; ?>
             </div>
-            <?php if (empty($loans)): ?>
+            <?php if (!empty($isAdminMember)): ?>
+                <div class="empty-state py-8">
+                    <i class="bi bi-shield-check text-3xl text-amber-500 mb-2"></i>
+                    <span class="font-bold text-slate-800 text-sm"><?= is_rtl() ? 'حساب إداري معفى من القروض' : 'Admin Account - Exempt from Loans' ?></span>
+                    <small class="text-slate-500 mt-1 max-w-sm mx-auto block leading-relaxed"><?= is_rtl() ? 'هذا المشترك يحمل صفة إدارية وهو معفى تماماً من القروض والأقساط التمويلية ولا يمكن صرف قروض له.' : 'This member holds administrative status and is completely exempt from loans and financing installments.' ?></small>
+                </div>
+            <?php elseif (empty($loans)): ?>
                 <div class="empty-state py-8">
                     <i class="bi bi-cash text-3xl text-slate-400 mb-2"></i>
                     <span><?= __('no_loans_found_simple') ?></span>

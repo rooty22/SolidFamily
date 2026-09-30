@@ -9,6 +9,57 @@ class Member extends Model
 {
     protected static string $table = 'members';
 
+    private static ?array $cachedAdminEmails = null;
+
+    public static function getAdminEmails(): array
+    {
+        if (self::$cachedAdminEmails === null) {
+            try {
+                $db = \App\Core\Database::connection();
+                $rows = $db->query("SELECT email FROM admins")->fetchAll(\PDO::FETCH_COLUMN);
+                $list = array_map(fn($e) => mb_strtolower(trim($e)), $rows ?: []);
+                $list[] = 'admin@sandouk.local';
+                self::$cachedAdminEmails = array_values(array_unique(array_filter($list)));
+            } catch (\Throwable $e) {
+                self::$cachedAdminEmails = ['admin@sandouk.local'];
+            }
+        }
+        return self::$cachedAdminEmails;
+    }
+
+    /**
+     * Check if a member record or member ID represents an administrative account.
+     * Admin accounts are exempt from loans, cannot take loans, and have no loan installments.
+     */
+    public static function isAdmin(array|int|null $member): bool
+    {
+        if ($member === null) {
+            return false;
+        }
+
+        if (is_numeric($member)) {
+            $member = self::find((int) $member);
+            if (!$member) {
+                return false;
+            }
+        }
+
+        if (!empty($member['is_admin'])) {
+            return true;
+        }
+
+        $email = mb_strtolower(trim((string) ($member['email'] ?? '')));
+        $natId = mb_strtolower(trim((string) ($member['national_id'] ?? '')));
+
+        $adminEmails = self::getAdminEmails();
+        if (($email !== '' && in_array($email, $adminEmails, true)) ||
+            ($natId !== '' && in_array($natId, $adminEmails, true))) {
+            return true;
+        }
+
+        return false;
+    }
+
     public static function search(string $term): array
     {
         $sql = 'SELECT * FROM members WHERE mobile LIKE ? OR national_id LIKE ? OR name LIKE ? ORDER BY created_at DESC';
@@ -57,17 +108,19 @@ class Member extends Model
         $lateSubIds = array_map('intval', $subStmt->fetchAll(\PDO::FETCH_COLUMN));
         $lateSubMap = array_fill_keys($lateSubIds, true);
 
-        // 2. Members with overdue loan installments
+        // 2. Members with overdue loan installments (Admin accounts are exempt from loans)
         $loanStmt = $db->prepare("SELECT DISTINCT l.member_id
             FROM loans l
             JOIN loan_installments li ON li.loan_id = l.id
             JOIN members m ON m.id = l.member_id
             WHERE 1=1 {$statusClause}
+              AND (m.is_admin IS NULL OR m.is_admin = 0)
               AND l.status IN ('active', 'partial')
               AND li.amount_paid < li.amount
               AND li.due_date < :today");
         $loanStmt->execute(['today' => $today]);
         $lateLoanIds = array_map('intval', $loanStmt->fetchAll(\PDO::FETCH_COLUMN));
+        $lateLoanIds = array_values(array_filter($lateLoanIds, fn($id) => !self::isAdmin($id)));
         $lateLoanMap = array_fill_keys($lateLoanIds, true);
 
         $allLateIds = array_values(array_unique(array_merge($lateSubIds, $lateLoanIds)));
@@ -92,9 +145,10 @@ class Member extends Model
         $currentMonth = date('Y-m');
         $member = self::find($memberId);
         if (!$member) {
-            return ['is_late' => false, 'late_sub' => false, 'late_loan' => false];
+            return ['is_late' => false, 'late_sub' => false, 'late_loan' => false, 'is_admin' => false];
         }
 
+        $isAdmin = self::isAdmin($member);
         $dueDay = (int) ($member['subscription_due_day'] ?? Setting::get('subscription_due_day', 10));
 
         // Subscriptions
@@ -122,21 +176,26 @@ class Member extends Model
             }
         }
 
-        // Loans
-        $loanStmt = $db->prepare("SELECT
-            COUNT(*) as late_installments,
-            COALESCE(SUM(li.amount - li.amount_paid), 0) as amount_overdue
-            FROM loan_installments li
-            JOIN loans l ON l.id = li.loan_id
-            WHERE l.member_id = :mid
-              AND l.status IN ('active', 'partial')
-              AND li.amount_paid < li.amount
-              AND li.due_date < :today");
-        $loanStmt->execute(['mid' => $memberId, 'today' => $today]);
-        $loanRow = $loanStmt->fetch();
+        // Loans (Administrative accounts are completely exempt from loans and installments)
+        if ($isAdmin) {
+            $lateInstallments = 0;
+            $overdueLoanAmount = 0.0;
+        } else {
+            $loanStmt = $db->prepare("SELECT
+                COUNT(*) as late_installments,
+                COALESCE(SUM(li.amount - li.amount_paid), 0) as amount_overdue
+                FROM loan_installments li
+                JOIN loans l ON l.id = li.loan_id
+                WHERE l.member_id = :mid
+                  AND l.status IN ('active', 'partial')
+                  AND li.amount_paid < li.amount
+                  AND li.due_date < :today");
+            $loanStmt->execute(['mid' => $memberId, 'today' => $today]);
+            $loanRow = $loanStmt->fetch();
 
-        $lateInstallments = (int) ($loanRow['late_installments'] ?? 0);
-        $overdueLoanAmount = (float) ($loanRow['amount_overdue'] ?? 0);
+            $lateInstallments = (int) ($loanRow['late_installments'] ?? 0);
+            $overdueLoanAmount = (float) ($loanRow['amount_overdue'] ?? 0);
+        }
 
         $lateSub = $lateSubMonths > 0;
         $lateLoan = $lateInstallments > 0;
@@ -146,6 +205,7 @@ class Member extends Model
             'is_late' => $isLate,
             'late_sub' => $lateSub,
             'late_loan' => $lateLoan,
+            'is_admin' => $isAdmin,
             'late_sub_months' => $lateSubMonths,
             'overdue_sub_amount' => $overdueSubAmount,
             'late_loan_installments' => $lateInstallments,
@@ -237,6 +297,9 @@ class Member extends Model
                 case 'subscription_due_day':
                     // Blank keeps following the site-wide default; a lot's own due day (set at share approval) still wins over this.
                     $v->integer('subscription_due_day', 'يوم استحقاق الاشتراك الخاص بالمشترك', 1, 28);
+                    break;
+                case 'is_admin':
+                    $v->integer('is_admin', 'الصفة الإدارية', 0, 1);
                     break;
             }
         }

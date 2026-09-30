@@ -24,6 +24,23 @@ class LoanController extends Controller
     public function index(): void
     {
         $member = Auth::member();
+        $isAdminAccount = \App\Models\Member::isAdmin($member);
+
+        if ($isAdminAccount) {
+            $this->view('site/loans/index', [
+                'pageTitle' => __('loans_and_requests'),
+                'isAdminAccount' => true,
+                'requests' => [],
+                'loans' => [],
+                'reasonLabels' => $this->reasonLabels,
+                'runningCount' => 0,
+                'runningRemaining' => 0,
+                'pendingRequests' => 0,
+                'nextInstallment' => null,
+            ], 'site/layout');
+            return;
+        }
+
         $requests = LoanRequest::where(['member_id' => $member['id']], 'created_at DESC');
         foreach ($requests as &$r) {
             // Do not display queue position to the client until admin approval
@@ -43,6 +60,7 @@ class LoanController extends Controller
 
         $this->view('site/loans/index', [
             'pageTitle' => __('loans_and_requests'),
+            'isAdminAccount' => false,
             'requests' => $requests,
             'loans' => $loans,
             'reasonLabels' => $this->reasonLabels,
@@ -56,6 +74,11 @@ class LoanController extends Controller
     public function createRequest(): void
     {
         $member = Auth::member();
+        if (\App\Models\Member::isAdmin($member)) {
+            Session::flash('error', 'حساب إدارة الصندوق مخصص للمهام الإدارية وغير مؤهل لتقديم طلبات القروض.');
+            $this->redirect('loans');
+            return;
+        }
         $commitment = ContentPage::bySlug('loan_commitment');
 
         $shares = (int) $member['shares_count'];
@@ -136,6 +159,11 @@ class LoanController extends Controller
     {
         $this->verifyCsrf();
         $member = Auth::member();
+        if (\App\Models\Member::isAdmin($member)) {
+            Session::flash('error', 'حسابات الإدارة غير مصرح لها بالحصول على قروض أو إنشاء طلبات تمويل.');
+            $this->redirect('loans');
+            return;
+        }
         $data = $this->all();
 
         $validator = Validator::make($data)
@@ -240,6 +268,10 @@ class LoanController extends Controller
     public function show(string $id): void
     {
         $member = Auth::member();
+        if (\App\Models\Member::isAdmin($member)) {
+            $this->redirect('loans');
+            return;
+        }
         $loan = Loan::find((int) $id);
         if (!$loan || (int) $loan['member_id'] !== (int) $member['id']) {
             $this->redirect('loans');

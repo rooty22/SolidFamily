@@ -45,8 +45,10 @@ class MembersController extends Controller
         $decorated = [];
         foreach ($allMembers as $m) {
             $mId = (int) $m['id'];
+            $isAdmin = Member::isAdmin($m);
+            $m['is_admin'] = $isAdmin;
             $isLateSub = isset($lateInfo['lateSubMap'][$mId]);
-            $isLateLoan = isset($lateInfo['lateLoanMap'][$mId]);
+            $isLateLoan = !$isAdmin && isset($lateInfo['lateLoanMap'][$mId]);
             $isLate = $isLateSub || $isLateLoan;
 
             if ($isLateSub && $isLateLoan) {
@@ -141,6 +143,7 @@ class MembersController extends Controller
             'password' => password_hash($data['password'], PASSWORD_DEFAULT),
             'shares_count' => (int) ($data['shares_count'] ?? 0),
             'subscription_due_day' => ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null,
+            'is_admin' => !empty($data['is_admin']) ? 1 : 0,
             'status' => 'active',
         ]);
 
@@ -158,9 +161,10 @@ class MembersController extends Controller
             $this->redirect('admin/members');
         }
 
+        $isAdminMember = Member::isAdmin($member);
         $founding = FoundingAmount::ensureForMember((int) $id);
         $subscriptions = MonthlySubscription::forMember((int) $id);
-        $loans = Loan::forMember((int) $id);
+        $loans = $isAdminMember ? [] : Loan::forMember((int) $id);
         $transactions = Transaction::withMember(['member_id' => $id]);
         $overdueDetails = Member::getMemberOverdueDetails((int) $id);
 
@@ -169,6 +173,7 @@ class MembersController extends Controller
         $this->view('admin/members/show', [
             'pageTitle' => $member['name'],
             'member' => $member,
+            'isAdminMember' => $isAdminMember,
             'founding' => $founding,
             'subscriptions' => array_slice($subscriptions, 0, 6),
             'loans' => $loans,
@@ -219,6 +224,9 @@ class MembersController extends Controller
         ];
         if (array_key_exists('subscription_due_day', $data)) {
             $update['subscription_due_day'] = ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null;
+        }
+        if (array_key_exists('is_admin', $data)) {
+            $update['is_admin'] = !empty($data['is_admin']) ? 1 : 0;
         }
 
         if (!empty($data['password'])) {

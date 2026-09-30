@@ -50,6 +50,14 @@ class AuthController extends Controller
             $this->redirect('register');
         }
 
+        $adminEmails = Member::getAdminEmails();
+        if (in_array($data['email'], $adminEmails, true) || in_array($data['national_id'], $adminEmails, true)) {
+            Session::flash('error', 'هذا البريد الإلكتروني أو المعرّف مخصص لإدارة الصندوق ولا يمكن استخدامه لإنشاء حساب مشترك.');
+            Session::setOld($data);
+            $this->redirect('register');
+            return;
+        }
+
         $pending = [
             'name' => $data['name'],
             'mobile' => $data['mobile'],
@@ -175,6 +183,12 @@ class AuthController extends Controller
         $member = Member::findBy('national_id', $nationalId);
 
         if (!$member || !password_verify($password, $member['password'])) {
+            $adminEmails = Member::getAdminEmails();
+            if (in_array(mb_strtolower(trim($nationalId)), $adminEmails, true)) {
+                Session::flash('error', 'هذا المعرّف يخص إدارة الصندوق. يرجى تسجيل الدخول من خلال بوابة الإدارة.');
+                $this->redirect('admin/login');
+                return;
+            }
             RateLimiter::loginFailed('member', $nationalId);
             Session::flash('error', 'رقم الهوية أو كلمة المرور غير صحيحة.');
             Session::setOld(['national_id' => $nationalId]);
