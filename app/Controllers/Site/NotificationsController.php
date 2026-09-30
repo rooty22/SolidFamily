@@ -28,6 +28,7 @@ class NotificationsController extends Controller
                 $subscription = $rows[0];
                 $subscription['amount_due'] = array_sum(array_column($rows, 'amount_due'));
                 $subscription['amount_paid'] = array_sum(array_column($rows, 'amount_paid'));
+                $subscription['status'] = MonthlySubscription::statusOf($subscription);
             }
         }
         $nextInstallment = LoanInstallment::rawOne(

@@ -57,12 +57,12 @@ class SubscriptionsController extends Controller
             // own due date (its own override, the member's, or the site default) has passed.
             if (empty($currentRows) && (int) $m['shares_count'] > 0 && month_due_date($currentMonth, MonthlySubscription::dueDayFor($m)) < $today) {
                 $late++;
-                $currentStatus = 'unpaid';
+                $currentStatus = 'late';
             }
 
             $currentStatus = $currentStatus ?? 'unpaid';
 
-            if ($late > 0) {
+            if ($late > 0 || $currentStatus === 'late') {
                 $statusCounts['late']++;
             }
             if (isset($statusCounts[$currentStatus])) {
@@ -87,7 +87,7 @@ class SubscriptionsController extends Controller
         if ($status !== '' && $status !== 'all') {
             $rows = array_values(array_filter($rows, function($r) use ($status) {
                 if ($status === 'late') {
-                    return $r['late_months'] > 0;
+                    return $r['late_months'] > 0 || $r['current_status'] === 'late';
                 }
                 return $r['current_status'] === $status;
             }));

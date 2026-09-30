@@ -28,8 +28,24 @@ class MonthlySubscription extends Model
     }
 
     /**
+     * Compute dynamic status for a subscription row: 'paid', 'late', 'partial', or 'unpaid'.
+     */
+    public static function statusOf(array $row): string
+    {
+        $due = (float) ($row['amount_due'] ?? 0);
+        $paid = (float) ($row['amount_paid'] ?? 0);
+        if ($due <= 0 || $paid >= $due) {
+            return 'paid';
+        }
+        if (self::effectiveDue($row) < date('Y-m-d')) {
+            return 'late';
+        }
+        return $paid > 0 ? 'partial' : 'unpaid';
+    }
+
+    /**
      * Month-level view of all of a member's lot rows for one month. The month is only "paid" when EVERYTHING due is
-     * collected, "partial" when some money is in but not all, "unpaid" otherwise (never "the worst row wins").
+     * collected, "late" when any open part is past due, "partial" when some money is in but not all, "unpaid" otherwise.
      */
     public static function summarize(array $rows): array
     {
@@ -38,10 +54,19 @@ class MonthlySubscription extends Model
         $status = ($due <= 0 || $paid >= $due) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
 
         $openDueDates = [];
+        $isLate = false;
+        $today = date('Y-m-d');
         foreach ($rows as $r) {
             if ((float) $r['amount_due'] > (float) $r['amount_paid']) {
                 $openDueDates[] = $r['due_date'];
+                if (self::effectiveDue($r) < $today) {
+                    $isLate = true;
+                }
             }
+        }
+
+        if ($status !== 'paid' && $isLate) {
+            $status = 'late';
         }
 
         return [
@@ -60,7 +85,7 @@ class MonthlySubscription extends Model
      */
     public static function forMember(int $memberId): array
     {
-        return self::raw(
+        $rows = self::raw(
             'SELECT s.*, l.status AS lot_status
              FROM monthly_subscriptions s
              LEFT JOIN share_lots l ON l.id = s.lot_id
@@ -68,6 +93,12 @@ class MonthlySubscription extends Model
              ORDER BY s.month DESC, s.lot_id ASC',
             [$memberId]
         );
+        foreach ($rows as &$r) {
+            $r['db_status'] = $r['status'];
+            $r['status'] = self::statusOf($r);
+        }
+        unset($r);
+        return $rows;
     }
 
     /** The lot's own due day if set, else the member's own override, else the site-wide default. */

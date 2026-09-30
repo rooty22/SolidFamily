@@ -226,7 +226,7 @@ function status_badge(string $status): array
             'failed' => 'فشل الإرسال',
             'new' => 'جديد',
             'read' => 'مقروء',
-            'late' => 'متأخر عن السداد',
+            'late' => 'متأخرة',
             'late_both' => 'متأخر (اشتراك وقرض)',
             'late_subscription' => 'متأخر (اشتراك شهري)',
             'late_loan' => 'متأخر (أقساط قروض)',

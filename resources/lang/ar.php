@@ -169,7 +169,7 @@ return [
     'status_failed' => 'فشل الإرسال',
     'status_new' => 'جديد',
     'status_read' => 'مقروء',
-    'status_late' => 'متأخر عن السداد',
+    'status_late' => 'متأخرة',
     'status_late_both' => 'متأخر (اشتراك وقرض)',
     'status_late_subscription' => 'متأخر (اشتراك شهري)',
     'status_late_loan' => 'متأخر (أقساط قروض)',
