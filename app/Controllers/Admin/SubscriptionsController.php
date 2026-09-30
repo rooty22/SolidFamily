@@ -65,7 +65,7 @@ class SubscriptionsController extends Controller
             if ($late > 0 || $currentStatus === 'late') {
                 $statusCounts['late']++;
             }
-            if (isset($statusCounts[$currentStatus])) {
+            if ($currentStatus !== 'late' && isset($statusCounts[$currentStatus])) {
                 $statusCounts[$currentStatus]++;
             }
 
