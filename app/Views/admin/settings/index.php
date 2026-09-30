@@ -83,7 +83,7 @@ foreach (site_social_links_raw() as $i => $link) {
                 </button>
                 <button type="button" @click="tab = 'otp'" :class="tab === 'otp' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0">
                     <i class="bi bi-shield-lock-fill text-amber-500"></i>
-                    <span><?= is_rtl() ? 'رمز التحقق وبوابات SMS' : 'OTP & SMS Gateway' ?></span>
+                    <span><?= is_rtl() ? 'الأمان، التحقق، وبوابات SMS' : 'Security, OTP & SMS Gateway' ?></span>
                 </button>
             </div>
 
@@ -744,6 +744,51 @@ foreach (site_social_links_raw() as $i => $link) {
                     </div>
                 </div>
 
+                <!-- Login Throttle & Security Controls -->
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i class="bi bi-person-lock text-sky-600"></i>
+                                <span><?= is_rtl() ? 'ضوابط قفل تسجيل الدخول (الأدمن والمشتركين)' : 'Login Protection & Rate Limiting' ?></span>
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1"><?= is_rtl() ? 'تحديد مدة الانتظار وعدد المحاولات المسموحة عند إدخال كلمة مرور خاطئة قبل قفل الحساب مؤقتاً.' : 'Set wait cooldown and allowed attempts before temporary lockout on failed logins.' ?></p>
+                        </div>
+                        <button type="submit" form="clearRateLimitsForm" class="btn btn-sm btn-soft text-rose-600 border border-rose-200 hover:bg-rose-50 inline-flex items-center gap-1.5 font-bold text-xs py-2 px-3 rounded-xl transition-all self-start sm:self-auto shrink-0" onclick="return confirm('<?= is_rtl() ? 'هل أنت متأكد من فك الحظر عن كافة محاولات تسجيل الدخول حالياً؟' : 'Are you sure you want to clear all login blocks right now?' ?>')">
+                            <i class="bi bi-unlock-fill"></i>
+                            <span><?= is_rtl() ? 'فك حظر تسجيل الدخول حالياً' : 'Reset All Login Locks' ?></span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <!-- Login Lock Duration (in minutes) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                <span><?= is_rtl() ? 'مدة قفل تسجيل الدخول (بالدقائق)' : 'Lockout Duration (Minutes)' ?></span>
+                                <span class="ms-1 px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold"><?= is_rtl() ? 'الحالي: 1 دقيقة' : 'Default: 1 min' ?></span>
+                            </label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="1" max="120" name="login_lock_minutes" value="<?= e($settings['login_lock_minutes'] ?? '1') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none"><?= is_rtl() ? 'دقيقة' : 'min' ?></span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1"><?= is_rtl() ? 'المدة التي يجب على المستخدم انتظارها بعد تجاوز الحد الأقصى للمحاولات قبل السماح له بالمحاولة مجدداً.' : 'Cooldown time a user must wait after exceeding max failed login attempts.' ?></p>
+                        </div>
+
+                        <!-- Max failed login attempts -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                <span><?= is_rtl() ? 'أقصى عدد محاولات دخول خاطئة' : 'Max Failed Login Attempts' ?></span>
+                                <span class="ms-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold"><?= is_rtl() ? 'الافتراضي: 5 محاولات' : 'Default: 5' ?></span>
+                            </label>
+                            <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs">
+                                <input type="number" min="1" max="30" name="login_max_failed_attempts" value="<?= e($settings['login_max_failed_attempts'] ?? '5') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                                <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none"><?= is_rtl() ? 'محاولات' : 'attempts' ?></span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1"><?= is_rtl() ? 'عدد محاولات كلمة المرور الخاطئة المتتالية المسموحة قبل تفعيل القفل المؤقت.' : 'Consecutive wrong password attempts allowed before temporary lockout.' ?></p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SMS Provider Gateway Configuration -->
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
@@ -845,6 +890,10 @@ foreach (site_social_links_raw() as $i => $link) {
                 <span>حفظ جميع الإعدادات والتغييرات</span>
             </button>
         </div>
+    </form>
+
+    <form id="clearRateLimitsForm" method="post" action="<?= url('admin/settings/clear-rate-limits') ?>" class="hidden">
+        <?= csrf_field() ?>
     </form>
 </div>
 

@@ -26,7 +26,13 @@ class AuthController extends Controller
         $password = (string) $this->input('password');
 
         if (RateLimiter::loginBlocked('admin', $email)) {
-            Session::flash('error', 'تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد 15 دقيقة.');
+            $sec = RateLimiter::loginRetryAfter('admin', $email);
+            $msg = $sec > 60
+                ? "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد " . ceil($sec / 60) . " دقيقة."
+                : ($sec > 0
+                    ? "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد {$sec} ثانية."
+                    : "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد دقيقة واحدة.");
+            Session::flash('error', $msg);
             $this->redirect('admin/login');
         }
 

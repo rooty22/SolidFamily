@@ -40,6 +40,8 @@ class SettingsController extends Controller
         'otp_max_failed_attempts', 'otp_verify_lock_minutes', 'otp_max_issued_per_identifier', 'otp_issue_window_minutes',
         'sms_provider', 'sms_sender_name', 'sms_api_key', 'sms_app_sid',
         'sms_username', 'sms_password', 'sms_custom_url',
+        // Login & Rate Limiting Controls
+        'login_lock_minutes', 'login_max_failed_attempts',
         // Favicon (URL-based fallback; file upload handled separately)
         'site_favicon_url',
     ];
@@ -90,6 +92,8 @@ class SettingsController extends Controller
             ->integer('otp_issue_window_minutes', 'مدة نافذة طلبات الإرسال', 1, 120)
             ->in('sms_provider', ['taqnyat', 'unifonic', '4jawaly', 'msegat', 'twilio', 'custom'], 'مزود خدمة الرسائل SMS')
             ->max('sms_sender_name', 50, 'اسم المرسل')
+            ->integer('login_lock_minutes', 'مدة قفل تسجيل الدخول', 1, 120)
+            ->integer('login_max_failed_attempts', 'عدد محاولات تسجيل الدخول المسموحة', 1, 30)
             ->url('site_logo_url', 'الشعار', true);
         foreach (self::FINANCIAL_FIELDS as $field) {
             if (array_key_exists($field, $data)) {
@@ -378,5 +382,13 @@ class SettingsController extends Controller
         $msg = "رسالة تجريبية لاختبار بوابة الرسائل في " . site_name() . " - رمز الاختبار: " . $code;
         $result = \App\Core\SmsService::send($mobile, $msg);
         $this->json($result);
+    }
+
+    public function clearRateLimits(): void
+    {
+        $this->verifyCsrf();
+        \App\Core\Database::connection()->exec('TRUNCATE TABLE rate_limits');
+        Session::flash('success', 'تم فك الحظر وإلغاء كافة قيود محاولات تسجيل الدخول بنجاح.');
+        $this->redirect('admin/settings');
     }
 }

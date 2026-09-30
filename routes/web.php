@@ -206,4 +206,5 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/settings', [SettingsController::class, 'index']);
     $router->post('/settings', [SettingsController::class, 'update']);
     $router->post('/settings/test-sms', [SettingsController::class, 'testSms']);
+    $router->post('/settings/clear-rate-limits', [SettingsController::class, 'clearRateLimits']);
 });

@@ -2,15 +2,32 @@
 
 namespace App\Core;
 
+use App\Models\Setting;
+
 /**
  * Small DB-backed sliding-window limiter (table `rate_limits`, see database/migrate_security.php).
  * Timestamps are generated in PHP on both write and read, so PHP/MySQL timezone differences cannot skew the window.
  */
 class RateLimiter
 {
-    private const LOGIN_MAX_PER_ACCOUNT = 5;
+    private const DEFAULT_LOGIN_MAX_PER_ACCOUNT = 5;
     private const LOGIN_MAX_PER_IP = 30;
-    private const LOGIN_WINDOW = 900; // 15 minutes
+    private const DEFAULT_LOGIN_WINDOW = 60; // 1 minute default
+
+    public static function loginWindowSeconds(): int
+    {
+        $minutes = (int) Setting::get('login_lock_minutes', 1);
+        if ($minutes <= 0) {
+            $minutes = 1;
+        }
+        return $minutes * 60;
+    }
+
+    public static function loginMaxAttempts(): int
+    {
+        $max = (int) Setting::get('login_max_failed_attempts', self::DEFAULT_LOGIN_MAX_PER_ACCOUNT);
+        return $max > 0 ? $max : self::DEFAULT_LOGIN_MAX_PER_ACCOUNT;
+    }
 
     public static function hit(string $key): void
     {
@@ -67,8 +84,19 @@ class RateLimiter
 
     public static function loginBlocked(string $scope, string $identifier): bool
     {
-        return self::tooMany(self::accountKey($scope, $identifier), self::LOGIN_MAX_PER_ACCOUNT, self::LOGIN_WINDOW)
-            || self::tooMany(self::ipKey($scope), self::LOGIN_MAX_PER_IP, self::LOGIN_WINDOW);
+        $window = self::loginWindowSeconds();
+        $max = self::loginMaxAttempts();
+        return self::tooMany(self::accountKey($scope, $identifier), $max, $window)
+            || self::tooMany(self::ipKey($scope), self::LOGIN_MAX_PER_IP, $window);
+    }
+
+    public static function loginRetryAfter(string $scope, string $identifier): int
+    {
+        $window = self::loginWindowSeconds();
+        $max = self::loginMaxAttempts();
+        $afterAccount = self::retryAfter(self::accountKey($scope, $identifier), $max, $window);
+        $afterIp = self::retryAfter(self::ipKey($scope), self::LOGIN_MAX_PER_IP, $window);
+        return max($afterAccount, $afterIp);
     }
 
     public static function loginFailed(string $scope, string $identifier): void
