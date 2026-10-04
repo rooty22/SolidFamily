@@ -33,7 +33,7 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
             <?php foreach ($requests as $r): [$l, $v] = status_badge($r['status']); ?>
                 <tr>
                     <td class="fw-bold"><?= $typeLabels[$r['type']] ?? $r['type'] ?></td>
-                    <td class="font-num"><?= $r['shares_count'] ? number_format($r['shares_count']) : '-' ?></td>
+                    <td class="font-num"><?= $r['shares_count'] ? number_format($r['shares_count']) : ($r['type'] === 'merge' ? number_format($member['shares_count']) : '-') ?></td>
                     <td class="font-num"><?= date_ar($r['created_at']) ?></td>
                     <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 </tr>
@@ -60,6 +60,12 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
                     <?php elseif (!$canMerge): ?>
                         <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= __($mergeBlockReason === 'pending' ? 'share_merge_pending_hint' : 'share_merge_needs_lots_hint') ?></div>
                     <?php endif; ?>
+                </div>
+                <div class="mb-3" x-show="type === 'merge'" x-cloak style="display:none;">
+                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-0">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <span><?= is_rtl() ? 'سيتم دمج جميع حصصك الحالية بإجمالي (' . number_format($member['shares_count']) . ') سهم في حصة واحدة.' : 'All your active share lots totaling (' . number_format($member['shares_count']) . ') shares will be merged into one.' ?></span>
+                    </div>
                 </div>
                 <div class="mb-3" x-show="type !== 'merge'">
                     <label class="form-label"><?= __('shares_count') ?></label>

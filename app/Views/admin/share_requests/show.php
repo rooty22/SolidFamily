@@ -2,6 +2,9 @@
 [$label, $variant] = status_badge($request['status']); 
 $currentShares = (int) ($member['shares_count'] ?? 1);
 $requestedShares = (int) ($request['shares_count'] ?? 0);
+if ($request['type'] === 'merge' && $requestedShares === 0) {
+    $requestedShares = $currentShares;
+}
 $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
 ?>
 
@@ -58,20 +61,30 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                     </div>
 
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
-                        <span class="text-[11px] font-semibold text-slate-500 block mb-1">الأسهم المطلوبة</span>
-                        <span class="text-lg font-bold text-brand-600 font-numeric"><?= $requestedShares ? ($request['type'] === 'cancel' ? '-' : '+') . number_format($requestedShares) . ' سهم' : 'غير محدد (دمج)' ?></span>
+                        <span class="text-[11px] font-semibold text-slate-500 block mb-1">
+                            <?= $request['type'] === 'merge' ? (is_rtl() ? 'إجمالي الأسهم المدمجة' : 'Total Merged Shares') : (is_rtl() ? 'الأسهم المطلوبة' : 'Requested Shares') ?>
+                        </span>
+                        <span class="text-lg font-bold text-brand-600 font-numeric">
+                            <?php if ($request['type'] === 'merge'): ?>
+                                <?= number_format($requestedShares ?: $currentShares) ?> <?= is_rtl() ? 'سهم (دمج الحصص)' : 'Shares (Merged)' ?>
+                            <?php elseif ($requestedShares): ?>
+                                <?= ($request['type'] === 'cancel' ? '-' : '+') . number_format($requestedShares) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                        </span>
                     </div>
 
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 col-span-2 sm:col-span-1">
                         <?php if ($isPending): ?>
-                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">الرصيد بعد التنفيذ</span>
-                            <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format(max(0, $currentShares + $delta)) ?> سهم</span>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= $request['type'] === 'merge' ? (is_rtl() ? 'الرصيد بعد الدمج' : 'Balance After Merge') : (is_rtl() ? 'الرصيد بعد التنفيذ' : 'Balance After Execution') ?></span>
+                            <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format($request['type'] === 'merge' ? $currentShares : max(0, $currentShares + $delta)) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?></span>
                         <?php elseif ($request['status'] === 'approved'): ?>
-                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">حالة التنفيذ</span>
-                            <span class="text-sm font-bold text-emerald-700">تم التنفيذ، والرصيد الحالي يشمل الطلب</span>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= is_rtl() ? 'حالة التنفيذ' : 'Execution Status' ?></span>
+                            <span class="text-sm font-bold text-emerald-700"><?= $request['type'] === 'merge' ? (is_rtl() ? 'تم دمج الحصص في حصة واحدة بنجاح' : 'Lots successfully merged into one') : (is_rtl() ? 'تم التنفيذ، والرصيد الحالي يشمل الطلب' : 'Executed, current balance includes request') ?></span>
                         <?php else: ?>
-                            <span class="text-[11px] font-semibold text-slate-500 block mb-1">حالة التنفيذ</span>
-                            <span class="text-sm font-bold text-slate-600">لم يُنفَّذ، الرصيد دون تغيير</span>
+                            <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= is_rtl() ? 'حالة التنفيذ' : 'Execution Status' ?></span>
+                            <span class="text-sm font-bold text-slate-600"><?= is_rtl() ? 'لم يُنفَّذ، الرصيد دون تغيير' : 'Not executed, balance unchanged' ?></span>
                         <?php endif; ?>
                     </div>
                 </div>

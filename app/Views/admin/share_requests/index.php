@@ -28,7 +28,15 @@
             <tr>
                 <td class="fw-bold"><?= e($r['member_name']) ?></td>
                 <td><?= $typeLabels[$r['type']] ?? $r['type'] ?></td>
-                <td class="font-numeric"><?= $r['shares_count'] ? number_format($r['shares_count']) : '-' ?></td>
+                <td class="font-numeric">
+                    <?php if (!empty($r['shares_count'])): ?>
+                        <?= number_format($r['shares_count']) ?>
+                    <?php elseif ($r['type'] === 'merge' && !empty($r['member_shares'])): ?>
+                        <?= number_format($r['member_shares']) ?>
+                    <?php else: ?>
+                        -
+                    <?php endif; ?>
+                </td>
                 <td class="text-xs text-slate-500"><?= is_rtl() ? date_ar($r['created_at']) : date('M d, Y', strtotime($r['created_at'])) ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">

@@ -14,6 +14,7 @@ class ShareRequestsController extends Controller
     public function index(): void
     {
         $member = Auth::member();
+        ShareRequest::repairMissingMergeCounts();
         $requests = ShareRequest::where(['member_id' => $member['id']], 'created_at DESC');
 
         $this->view('site/share_requests/index', $this->allowances($member) + [
@@ -90,12 +91,17 @@ class ShareRequestsController extends Controller
                 Session::flash('error', 'لا يمكن طلب إلغاء أكثر من ' . $allow['cancelableShares'] . ' سهم (أسهمك الحالية بعد خصم طلبات الإلغاء المعلّقة).');
                 $this->redirect('share-requests');
             }
+        } else {
+            $activeLots = \App\Models\ShareLot::activeFor((int) $member['id']);
+            $sharesCount = !empty($activeLots)
+                ? (int) array_sum(array_column($activeLots, 'shares_count'))
+                : (int) ($member['shares_count'] ?? 0);
         }
 
         ShareRequest::create([
             'member_id' => $member['id'],
             'type' => $type,
-            'shares_count' => $type === 'merge' ? null : $sharesCount,
+            'shares_count' => $sharesCount,
             'status' => 'pending',
         ]);
 

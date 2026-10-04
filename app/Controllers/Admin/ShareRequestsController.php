@@ -160,12 +160,20 @@ class ShareRequestsController extends Controller
             }
         }
 
-        ShareRequest::update((int) $id, [
+        $requestUpdate = [
             'status' => 'approved',
             'reviewed_by' => current_admin_id(),
             'reviewed_at' => date('Y-m-d H:i:s'),
             'admin_note' => $note,
-        ]);
+        ];
+        if ($request['type'] === 'merge') {
+            $mergedCount = $mergedLot ? (int) $mergedLot['shares_count'] : $newCount;
+            if ($mergedCount > 0) {
+                $requestUpdate['shares_count'] = $mergedCount;
+            }
+        }
+
+        ShareRequest::update((int) $id, $requestUpdate);
 
         Notification::systemNotify($member['id'], 'تحديث طلب الأسهم', 'تمت الموافقة على طلب ' . ($this->typeLabels[$request['type']] ?? '') . ' الخاص بك.');
 
@@ -194,12 +202,19 @@ class ShareRequestsController extends Controller
                 Session::flash('error', 'حقل الملاحظة يجب ألا يزيد عن 500 حرف.');
                 $this->redirect('admin/share-requests');
             }
-            ShareRequest::update((int) $id, [
+            $requestUpdate = [
                 'status' => 'rejected',
                 'reviewed_by' => current_admin_id(),
                 'reviewed_at' => date('Y-m-d H:i:s'),
                 'admin_note' => $note,
-            ]);
+            ];
+            if ($request['type'] === 'merge' && empty($request['shares_count'])) {
+                $m = Member::find($request['member_id']);
+                if ($m && (int) $m['shares_count'] > 0) {
+                    $requestUpdate['shares_count'] = (int) $m['shares_count'];
+                }
+            }
+            ShareRequest::update((int) $id, $requestUpdate);
             \App\Models\Notification::systemNotify($request['member_id'], 'تحديث طلب الأسهم', 'تم رفض طلب ' . ($this->typeLabels[$request['type']] ?? '') . ' الخاص بك.');
             Session::flash('success', 'تم رفض الطلب.');
         }
