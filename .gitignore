@@ -7,6 +7,7 @@ config/config.php
 # ملف dump قاعدة البيانات
 # ============================================================
 database/full_database_dump.sql
+database/backup_before_cleanup.sql
 database/set_favicon.php
 
 # ============================================================
