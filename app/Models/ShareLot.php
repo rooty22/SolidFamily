@@ -29,10 +29,23 @@ class ShareLot extends Model
         return !empty($lot['created_at']) ? date('Y-m-d', strtotime($lot['created_at'])) : '-';
     }
 
-    /** Date when the 6-month threshold is reached. */
+    /** Date when the 6-month threshold is reached (clamped to end of month for short months). */
     public static function sixMonthsTargetDate(array $lot): string
     {
-        return !empty($lot['created_at']) ? date('Y-m-d', strtotime('+6 months', strtotime($lot['created_at']))) : '-';
+        if (empty($lot['created_at'])) {
+            return '-';
+        }
+        try {
+            $d = new \DateTime(substr($lot['created_at'], 0, 10));
+            $day = (int) $d->format('j');
+            $target = clone $d;
+            $target->modify('first day of +6 months');
+            $maxDays = (int) $target->format('t');
+            $target->setDate((int) $target->format('Y'), (int) $target->format('n'), min($day, $maxDays));
+            return $target->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return date('Y-m-d', strtotime('+6 months', strtotime($lot['created_at'])));
+        }
     }
 
     /** Check if 6 months have passed since this share lot was subscribed. */
@@ -41,8 +54,11 @@ class ShareLot extends Model
         if (empty($lot['created_at'])) {
             return false;
         }
-        $target = strtotime('+6 months', strtotime(substr($lot['created_at'], 0, 10)));
-        return strtotime(date('Y-m-d')) >= $target;
+        $targetStr = self::sixMonthsTargetDate($lot);
+        if ($targetStr === '-') {
+            return false;
+        }
+        return date('Y-m-d') >= $targetStr;
     }
 
     /** Calculate how many full months have passed since this share lot was started. */
