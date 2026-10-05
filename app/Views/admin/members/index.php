@@ -92,6 +92,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
     <table class="table-modern">
         <thead>
             <tr>
+                <th style="width:48px">#</th>
                 <th><?= __('name') ?></th>
                 <th><?= __('mobile') ?></th>
                 <th><?= __('national_id') ?></th>
@@ -103,8 +104,9 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($members as $m): [$label, $variant] = status_badge($m['status']); ?>
+            <?php $rowNo = 0; foreach ($members as $m): [$label, $variant] = status_badge($m['status']); $rowNo++; ?>
             <tr>
+                <td class="font-numeric text-slate-500 fw-bold"><?= $rowNo ?></td>
                 <td class="fw-bold text-slate-900">
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
                         <?= e($m['name']) ?>
@@ -154,7 +156,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             <?php endforeach; ?>
             <?php if (empty($members)): ?>
             <tr>
-                <td colspan="8" class="p-0">
+                <td colspan="9" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-people text-3xl text-slate-400 mb-2"></i>
                         <span><?= __('no_members_recorded') ?></span>
