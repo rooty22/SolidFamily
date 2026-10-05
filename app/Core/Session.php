@@ -10,6 +10,12 @@ class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            if (PHP_SAPI === 'cli') {
+                if (!isset($_SESSION)) {
+                    $_SESSION = [];
+                }
+                return;
+            }
             // Config keys with defaults: an environment's config.php (gitignored, so it can lag behind
             // new keys added here) must never throw a warning that prints before session_start() and
             // breaks every header the app tries to send afterwards.
@@ -44,6 +50,9 @@ class Session
 
     public static function set(string $key, $value): void
     {
+        if (!isset($_SESSION)) {
+            $_SESSION = [];
+        }
         $_SESSION[$key] = $value;
     }
 

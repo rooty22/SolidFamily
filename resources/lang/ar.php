@@ -656,6 +656,17 @@ return [
     'founding_plan_none' => 'لم تُحدَّد',
     'share_only_add_hint' => 'ليس لديك أسهم بعد، لذلك يمكنك تقديم طلب إضافة أسهم فقط. الدمج والإلغاء يتاحان بعد امتلاك أسهم.',
     'share_merge_needs_lots_hint' => 'الدمج يتاح عندما يكون لديك دفعتا أسهم منفصلتان أو أكثر.',
-    'share_merge_pending_hint' => 'لديك طلب دمج قيد المراجعة بالفعل.',
     'subscription_grace_until' => 'مهلة حتى :date',
+
+    // Roles & Permissions Package
+    'roles_and_permissions' => 'الأدوار وصلاحيات لوحة التحكم',
+    'manage_roles' => 'الأدوار وقوالب الصلاحيات',
+    'grant_member_access' => 'تعيين صلاحيات لعضو',
+    'permission_denied' => 'عذراً، لا تملك الصلاحية الكافية لتنفيذ هذا الإجراء.',
+    'role_super_admin' => 'المدير العام (صلاحيات كاملة)',
+    'role_treasurer' => 'أمين الصندوق (المسؤول المالي)',
+    'role_loans_committee' => 'لجنة القروض والتمويل',
+    'role_membership_officer' => 'مسؤول شؤون المشتركين والأسهم',
+    'role_support_officer' => 'مشرف المحتوى والتواصل',
+    'role_auditor' => 'مراقب ومراجع مالي',
 ];

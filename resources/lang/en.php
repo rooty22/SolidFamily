@@ -657,7 +657,17 @@ return [
     'founding_installment_n' => 'Installment :n',
     'founding_plan_none' => 'Not chosen',
     'share_only_add_hint' => 'You have no shares yet, so you can only request to add shares. Merging and cancelling become available once you own shares.',
-    'share_merge_needs_lots_hint' => 'Merging is available when you hold two or more separate share lots.',
-    'share_merge_pending_hint' => 'You already have a merge request under review.',
     'subscription_grace_until' => 'Grace until :date',
+
+    // Roles & Permissions Package
+    'roles_and_permissions' => 'Roles & Dashboard Permissions',
+    'manage_roles' => 'Roles & Templates',
+    'grant_member_access' => 'Grant Member Access',
+    'permission_denied' => 'Sorry, you do not have permission to perform this action.',
+    'role_super_admin' => 'Super Administrator (Full Access)',
+    'role_treasurer' => 'Treasurer (Financial Officer)',
+    'role_loans_committee' => 'Loans Committee',
+    'role_membership_officer' => 'Membership & Shares Officer',
+    'role_support_officer' => 'Content & Communications Officer',
+    'role_auditor' => 'Financial Auditor',
 ];

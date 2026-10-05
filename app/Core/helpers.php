@@ -399,6 +399,44 @@ function is_admin_member(?array $member = null): bool
     return \App\Core\Auth::adminCheck();
 }
 
+function admin_can(string $permission, ?int $adminId = null): bool
+{
+    return \App\Permissions\PermissionManager::can($permission, $adminId);
+}
+
+function admin_cannot(string $permission, ?int $adminId = null): bool
+{
+    return \App\Permissions\PermissionManager::cannot($permission, $adminId);
+}
+
+function admin_has_role(string|array $role, ?int $adminId = null): bool
+{
+    return \App\Permissions\PermissionManager::hasRole($role, $adminId);
+}
+
+function admin_is_super(?int $adminId = null): bool
+{
+    return \App\Permissions\PermissionManager::isSuperAdmin($adminId);
+}
+
+function admin_role_name(?int $adminId = null): string
+{
+    return \App\Permissions\PermissionManager::getAdminRoleName($adminId);
+}
+
+function admin_role_badge(?int $adminId = null): string
+{
+    $name = admin_role_name($adminId);
+    if (!$name) {
+        return '';
+    }
+    $isSuper = admin_is_super($adminId);
+    $colorClass = $isSuper 
+        ? 'bg-purple-50 text-purple-700 border-purple-200' 
+        : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ' . $colorClass . '"><i class="bi bi-shield-check"></i> ' . e($name) . '</span>';
+}
+
 function is_htmx_or_ajax(): bool
 {
     return (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');

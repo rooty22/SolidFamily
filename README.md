@@ -26,11 +26,14 @@ php database/migrate_page_forms.php
 php database/migrate_security.php
 php database/migrate_features.php
 php database/migrate_live_translate.php
+php database/migrate_permissions.php
 ```
+
+> **باكدج الصلاحيات والأدوار (Roles & Permissions):** نظام متكامل لإدارة صلاحيات لوحة التحكم وتفويض أعضاء الصندوق للقيام بالمهام الإدارية (أمين الصندوق، لجنة القروض، مسؤول الأسهم...). التفعيل عبر `php database/migrate_permissions.php` والشرح الكامل في `app/Permissions/README.md`.
 
 > **الترجمة الفورية (Live Translate):** زر «ترجمة فورية» في أعلى لوحة التحكم وزر «ترجمة» عائم في الموقع للمشرف، لتعديل أي نص بكل اللغات وحفظه مكانه. الشرح الكامل في `app/LiveTranslate/README.md`، والسكربت الأخير يهيّئ عمود `settings.value` (آمن ويمكن تكراره).
 
-> قاعدة بيانات موجودة مسبقاً؟ شغّل `php database/migrate_security.php` و`php database/migrate_features.php` فقط (آمنان ويمكن تكرارهما): الأول ينشئ جدول `rate_limits` لحماية تسجيل الدخول ورموز التحقق، والثاني يضيف أعمدة الرد على رسائل التواصل ومنع تكرار الإشعارات التلقائية.
+> قاعدة بيانات موجودة مسبقاً؟ شغّل `php database/migrate_permissions.php` لتفعيل نظام الصلاحيات وربط الأعضاء بلوحة التحكم.
 
 هذا سينشئ قاعدة البيانات `sandouk_db` وجميع الجداول، بالإضافة إلى:
 - حساب أدمن افتراضي: `admin@sandouk.local` / `Admin@12345`

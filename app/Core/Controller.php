@@ -82,4 +82,18 @@ abstract class Controller
             die('انتهت صلاحية الجلسة، الرجاء إعادة المحاولة.');
         }
     }
+
+    /**
+     * Authorize that the current admin has a specific permission.
+     */
+    protected function authorize(string $permission): void
+    {
+        if (!admin_can($permission)) {
+            if (is_htmx_or_ajax()) {
+                $this->json(['error' => 'عذراً، لا تملك الصلاحية لتنفيذ هذا الإجراء.'], 403);
+            }
+            Session::flash('error', 'عذراً، ليس لديك الصلاحية المطلوبة للوصول إلى هذا القسم أو الإجراء.');
+            $this->redirect('admin/dashboard');
+        }
+    }
 }

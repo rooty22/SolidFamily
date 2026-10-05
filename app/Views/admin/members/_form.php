@@ -85,23 +85,62 @@ $isEn = is_en();
         </div>
     </div>
 
-    <!-- Section 4: Administrative Role & Loan Exemption -->
-    <div class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200/80">
+    <!-- Section 4: Administrative Role & Dashboard Permissions -->
+    <?php
+    $__allRoles = \App\Models\Role::all('is_system DESC, id ASC');
+    $__currentMemberRoleId = null;
+    if (!empty($m['id'])) {
+        $__db = \App\Core\Database::connection();
+        $__stmt = $__db->prepare("
+            SELECT ar.role_id FROM admin_roles ar
+            INNER JOIN admins a ON a.id = ar.admin_id
+            WHERE a.member_id = ? OR LOWER(a.email) = LOWER(?)
+            LIMIT 1
+        ");
+        $__stmt->execute([$m['id'], $m['email'] ?? '']);
+        $__currentMemberRoleId = $__stmt->fetchColumn() ?: null;
+    }
+    ?>
+    <div class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200/80" x-data="{ isAdmin: <?= !empty($m['is_admin']) ? 'true' : 'false' ?> }">
         <h4 class="text-xs font-black uppercase tracking-wider text-amber-900 mb-3 flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">4</span>
-            <span><?= $isEn ? 'Administrative Role & Loan Exemption' : 'الصفة الإدارية والإعفاء من القروض' ?></span>
+            <span><?= $isEn ? 'Administrative Role & Dashboard Permissions' : 'الصفة الإدارية وصلاحيات لوحة التحكم' ?></span>
         </h4>
-        <div class="p-3.5 bg-white rounded-xl border border-amber-200/70">
+        <div class="p-3.5 bg-white rounded-xl border border-amber-200/70 space-y-3">
             <div class="form-check form-switch mb-0">
                 <input type="hidden" name="is_admin" value="0">
-                <input class="form-check-input cursor-pointer" type="checkbox" role="switch" id="isAdminSwitch" name="is_admin" value="1" <?= !empty($m['is_admin']) ? 'checked' : '' ?>>
+                <input class="form-check-input cursor-pointer" type="checkbox" role="switch" id="isAdminSwitch" name="is_admin" value="1" @change="isAdmin = $el.checked" <?= !empty($m['is_admin']) ? 'checked' : '' ?>>
                 <label class="form-check-label font-bold text-xs text-slate-800 cursor-pointer me-2" for="isAdminSwitch">
-                    <?= $isEn ? 'Assign as Administrative Account (Exempt from Loans & Installments)' : 'تعيين كحساب إداري (معفى تماماً من القروض والأقساط التمويلية)' ?>
+                    <?= $isEn ? 'Grant Administrative Dashboard Privileges (Exempt from Loans)' : 'تعيين كحساب إداري بمزايا دخول للوحة التحكم (معفى تماماً من القروض)' ?>
                 </label>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1.5 mb-0 ms-1">
-                <?= $isEn ? 'Admin accounts are dedicated to system/fund management. They are barred from taking loans, requesting financing, and will never show loan installments or loan debt.' : 'حسابات الإدارة مخصصة لإدارة الصندوق والإشراف عليه؛ ولا يمكنها الاقتراض أو طلب تمويل، ولا تظهر عليها أي أقساط أو ديون قروض.' ?>
+            <p class="text-[11px] text-slate-500 mb-0 ms-1">
+                <?= $isEn ? 'Admin accounts can log in to the dashboard to perform delegated tasks according to their assigned role.' : 'حسابات الإدارة مخصصة لإدارة الصندوق والإشراف عليه وفق الصلاحيات المعينة، ولا يمكنها طلب تمويل أو قروض.' ?>
             </p>
+
+            <!-- Role Selector (visible when switch is on) -->
+            <div x-show="isAdmin" x-transition class="pt-3 border-t border-amber-100 mt-2">
+                <label class="form-label text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <i class="bi bi-shield-lock text-emerald-600"></i>
+                    <span><?= $isEn ? 'Designated Dashboard Role:' : 'الدور الوظيفي وصلاحيات لوحة التحكم:' ?></span>
+                </label>
+                <select name="role_id" class="form-select text-xs rounded-xl border-amber-200 py-2">
+                    <option value=""><?= $isEn ? '-- Select Role --' : '-- اختر الدور والصلاحيات --' ?></option>
+                    <?php foreach ($__allRoles as $r): ?>
+                        <option value="<?= $r['id'] ?>" <?= ($__currentMemberRoleId == $r['id'] || (!$__currentMemberRoleId && $r['name'] === 'treasurer')) ? 'selected' : '' ?>>
+                            <?= e($isEn ? ($r['label_en'] ?: $r['label_ar']) : $r['label_ar']) ?> - <?= e($r['description'] ?: '') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if (!empty($m['id'])): ?>
+                    <div class="mt-2 text-end">
+                        <a href="<?= url('admin/roles/assign?member_id=' . $m['id']) ?>" class="text-[11px] font-bold text-emerald-700 hover:underline inline-flex items-center gap-1">
+                            <i class="bi bi-sliders"></i>
+                            <span><?= $isEn ? 'Fine-tune advanced direct permissions' : 'تخصيص الصلاحيات المباشرة المتقدمة لهذا العضو' ?></span>
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>

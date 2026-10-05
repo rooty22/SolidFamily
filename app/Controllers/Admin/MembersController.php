@@ -9,6 +9,8 @@ use App\Models\FoundingAmount;
 use App\Models\MonthlySubscription;
 use App\Models\Loan;
 use App\Models\Transaction;
+use App\Models\Role;
+use App\Permissions\PermissionManager;
 
 class MembersController extends Controller
 {
@@ -147,6 +149,14 @@ class MembersController extends Controller
             'status' => 'active',
         ]);
 
+        if (!empty($data['is_admin']) && !empty($data['role_id'])) {
+            try {
+                PermissionManager::grantMemberDashboardAccess((int) $id, (int) $data['role_id']);
+            } catch (\Throwable $e) {
+                // Non-fatal, admin can assign later
+            }
+        }
+
         FoundingAmount::ensureForMember($id);
         \App\Models\ShareLot::syncToMemberTotal((int) $id); // shares given at creation bill through a lot
 
@@ -226,7 +236,20 @@ class MembersController extends Controller
             $update['subscription_due_day'] = ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null;
         }
         if (array_key_exists('is_admin', $data)) {
-            $update['is_admin'] = !empty($data['is_admin']) ? 1 : 0;
+            $isAdmin = !empty($data['is_admin']) ? 1 : 0;
+            $update['is_admin'] = $isAdmin;
+            try {
+                if ($isAdmin) {
+                    $roleId = (int) ($data['role_id'] ?? 0);
+                    if ($roleId > 0) {
+                        PermissionManager::grantMemberDashboardAccess((int) $id, $roleId);
+                    }
+                } else {
+                    PermissionManager::revokeMemberDashboardAccess((int) $id);
+                }
+            } catch (\Throwable $e) {
+                // Keep moving
+            }
         }
 
         if (!empty($data['password'])) {

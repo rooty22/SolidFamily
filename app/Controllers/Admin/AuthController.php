@@ -8,7 +8,9 @@ use App\Core\RateLimiter;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Models\Admin;
+use App\Models\Member;
 use App\Models\OtpCode;
+use App\Permissions\PermissionManager;
 
 class AuthController extends Controller
 {
@@ -22,11 +24,11 @@ class AuthController extends Controller
     public function login(): void
     {
         $this->verifyCsrf();
-        $email = mb_strtolower((string) $this->input('email'));
+        $identifier = mb_strtolower(trim((string) $this->input('email')));
         $password = (string) $this->input('password');
 
-        if (RateLimiter::loginBlocked('admin', $email)) {
-            $sec = RateLimiter::loginRetryAfter('admin', $email);
+        if (RateLimiter::loginBlocked('admin', $identifier)) {
+            $sec = RateLimiter::loginRetryAfter('admin', $identifier);
             $msg = $sec > 60
                 ? "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد " . ceil($sec / 60) . " دقيقة."
                 : ($sec > 0
@@ -36,16 +38,71 @@ class AuthController extends Controller
             $this->redirect('admin/login');
         }
 
-        $admin = Admin::findBy('email', $email);
+        $admin = null;
 
-        if (!$admin || !password_verify($password, $admin['password'])) {
-            RateLimiter::loginFailed('admin', $email);
-            Session::flash('error', 'البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-            Session::setOld(['email' => $email]);
+        // 1. Try finding admin by direct email in admins table
+        $directAdmin = Admin::findBy('email', $identifier);
+        if ($directAdmin && password_verify($password, $directAdmin['password'])) {
+            $admin = $directAdmin;
+        }
+
+        // 2. If not found or failed, try finding member by email or national_id
+        if (!$admin) {
+            $member = Member::findBy('email', $identifier);
+            if (!$member) {
+                $member = Member::findBy('national_id', $identifier);
+            }
+
+            if ($member && password_verify($password, $member['password'])) {
+                // Check if member has administrative dashboard privileges
+                if (empty($member['is_admin'])) {
+                    // Check if linked in admins table
+                    $linked = Admin::first(['member_id' => $member['id']]);
+                    if (!$linked) {
+                        RateLimiter::loginFailed('admin', $identifier);
+                        Session::flash('error', 'هذا الحساب غير مصرح له بالدخول إلى لوحة التحكم الإدارية.');
+                        Session::setOld(['email' => $identifier]);
+                        $this->redirect('admin/login');
+                    }
+                }
+
+                // Member is authorized! Ensure admin row is up to date
+                $db = \App\Core\Database::connection();
+                $existing = Admin::first(['member_id' => $member['id']]);
+                if (!$existing) {
+                    $existing = Admin::findBy('email', mb_strtolower($member['email']));
+                }
+
+                if ($existing) {
+                    $admin = $existing;
+                    // Sync latest password and member_id
+                    Admin::update($existing['id'], [
+                        'member_id' => $member['id'],
+                        'password' => $member['password'],
+                        'name' => $member['name'],
+                    ]);
+                    $admin['name'] = $member['name'];
+                } else {
+                    // Create linked admin entry
+                    $newId = Admin::create([
+                        'member_id' => $member['id'],
+                        'name' => $member['name'],
+                        'email' => mb_strtolower($member['email']),
+                        'password' => $member['password'],
+                    ]);
+                    $admin = Admin::find($newId);
+                }
+            }
+        }
+
+        if (!$admin) {
+            RateLimiter::loginFailed('admin', $identifier);
+            Session::flash('error', 'البريد الإلكتروني / رقم الهوية أو كلمة المرور غير صحيحة.');
+            Session::setOld(['email' => $identifier]);
             $this->redirect('admin/login');
         }
 
-        RateLimiter::loginSucceeded('admin', $email);
+        RateLimiter::loginSucceeded('admin', $identifier);
         Auth::loginAdmin($admin);
         $this->redirect('admin/dashboard');
     }
