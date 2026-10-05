@@ -163,8 +163,27 @@ function date_ar(?string $date, string $format = 'd/m/Y'): string
     if (!$date) {
         return '-';
     }
-    $ts = strtotime($date);
+
+    // Standardize to Day/Month/Year (يوم / شهر / سنة) across the entire application
+    $format = str_replace(
+        ['Y-m-d', 'Y/m/d', 'M d, Y', 'F d, Y', 'm/d/Y'],
+        'd/m/Y',
+        $format
+    );
+
+    // Handle d/m/Y or d-m-Y strings so strtotime doesn't fail on PHP's slash/American date assumption
+    $cleanDate = trim($date);
+    if (preg_match('#^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$#', $cleanDate, $matches)) {
+        $cleanDate = $matches[3] . '-' . $matches[2] . '-' . $matches[1] . $matches[4];
+    }
+
+    $ts = strtotime($cleanDate);
     return $ts ? date($format, $ts) : '-';
+}
+
+function format_date(?string $date, bool $withTime = false): string
+{
+    return date_ar($date, $withTime ? 'd/m/Y H:i' : 'd/m/Y');
 }
 
 function birth_date_format(?string $date): string

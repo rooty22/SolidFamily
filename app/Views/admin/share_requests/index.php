@@ -37,7 +37,7 @@
                         -
                     <?php endif; ?>
                 </td>
-                <td class="text-xs text-slate-500"><?= is_rtl() ? date_ar($r['created_at']) : date('M d, Y', strtotime($r['created_at'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($r['created_at']) ?></bdi></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">
                     <a href="<?= url('admin/share-requests/' . $r['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1">

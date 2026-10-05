@@ -234,7 +234,7 @@
                         <td class="font-numeric font-bold text-slate-900"><?= money($fl['amount']) ?></td>
                         <td class="font-numeric font-bold text-slate-700"><?= rtrim(rtrim(number_format((float) $fl['admin_fee_percent'], 2), '0'), '.') ?>%</td>
                         <td class="font-numeric font-bold text-purple-700"><?= money($fl['admin_fee_amount']) ?></td>
-                        <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($fl['loan_date']) : date('M d, Y', strtotime($fl['loan_date'])) ?></td>
+                        <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($fl['loan_date']) ?></bdi></td>
                         <td><span class="badge-status badge-<?= $flVariant ?>"><?= $flLabel ?></span></td>
                         <td class="text-end">
                             <a href="<?= url('admin/loans/' . $fl['id']) ?>" class="btn btn-sm btn-soft" title="<?= __('view') ?>">

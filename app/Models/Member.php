@@ -243,8 +243,10 @@ class Member extends Model
             }
         }
 
-        // Support created_at if entered in d/m/Y format
-        if (!empty($data['created_at'])) {
+        // Support created_at (Registration Date in fund) if entered via Day/Month/Year dropdowns or d/m/Y format
+        if (!empty($data['created_year']) && !empty($data['created_month']) && !empty($data['created_day'])) {
+            $data['created_at'] = sprintf('%04d-%02d-%02d', (int) $data['created_year'], (int) $data['created_month'], (int) $data['created_day']);
+        } elseif (!empty($data['created_at'])) {
             $ca = trim((string) $data['created_at']);
             if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $ca, $m)) {
                 $data['created_at'] = sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);

@@ -55,7 +55,7 @@
         <tbody>
         <?php foreach ($transactions as $t): ?>
             <tr>
-                <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($t['transaction_date']) : date('M d, Y', strtotime($t['transaction_date'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($t['transaction_date']) ?></bdi></td>
                 <td><span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold"><?= $categoryLabels[$t['category']] ?? $t['category'] ?></span></td>
                 <td class="fw-bold text-slate-900"><?= e($t['member_name']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($t['amount']) ?></td>

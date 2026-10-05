@@ -82,7 +82,7 @@
                             </span>
                         </td>
                         <td class="py-4 px-5 text-slate-500 text-xs whitespace-nowrap">
-                            <?= is_rtl() ? date_ar($p['updated_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($p['updated_at'])) ?>
+                            <bdi dir="ltr"><?= date_ar($p['updated_at'], 'd/m/Y H:i') ?></bdi>
                         </td>
                         <td class="py-4 px-5 text-end whitespace-nowrap">
                             <div class="inline-flex items-center justify-end gap-2.5">

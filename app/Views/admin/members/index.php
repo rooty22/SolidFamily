@@ -141,7 +141,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                         </span>
                     <?php endif; ?>
                 </td>
-                <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($m['created_at']) : date('M d, Y', strtotime($m['created_at'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($m['created_at']) ?></bdi></td>
                 <td class="text-end">
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="btn btn-sm btn-soft" title="<?= __('view') ?>"><i class="bi bi-eye"></i></a>
                     <a href="<?= url('admin/members/' . $m['id'] . '/edit') ?>" class="btn btn-sm btn-soft" title="<?= __('edit') ?>"><i class="bi bi-pencil"></i></a>

@@ -30,7 +30,7 @@
                     <td class="fw-bold text-slate-900"><?= e($msg['name']) ?></td>
                     <td class="font-numeric" dir="ltr"><?= e($msg['phone'] ?: '-') ?></td>
                     <td class="text-slate-600"><?= e(mb_substr($msg['message'], 0, 70)) ?><?= mb_strlen($msg['message']) > 70 ? '...' : '' ?></td>
-                    <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($msg['created_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($msg['created_at'])) ?></td>
+                    <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($msg['created_at'], 'd/m/Y H:i') ?></bdi></td>
                     <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                     <td class="text-end">
                         <a href="<?= url('admin/messages/' . $msg['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1.5 font-bold">

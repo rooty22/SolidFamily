@@ -38,7 +38,7 @@
             <tr>
                 <td class="fw-bold text-slate-900"><?= e($l['member_name']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($l['amount']) ?></td>
-                <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($l['loan_date']) : date('M d, Y', strtotime($l['loan_date'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($l['loan_date']) ?></bdi></td>
                 <td><span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold"><?= e(($reasonLabels[$l['reason']] ?? $l['reason'])) ?></span></td>
                 <td class="font-numeric"><?= $l['installments_count'] ?></td>
                 <td class="font-numeric"><?= money($l['installment_value']) ?></td>

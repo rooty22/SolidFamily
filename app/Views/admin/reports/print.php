@@ -43,7 +43,7 @@ $align = is_rtl() ? 'right' : 'left';
         <span class="hint"><?= is_rtl() ? 'في نافذة الطباعة اختر الوجهة "حفظ كملف PDF" (Save as PDF) وليس الطابعة.' : 'In the print window, choose "Save as PDF" as the destination, not a physical printer.' ?></span>
     </div>
     <h1><?= e(site_name()) ?> - <?= e($title) ?></h1>
-    <div class="meta"><?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <?= date('Y-m-d H:i') ?> · <?= is_rtl() ? 'عدد السجلات:' : 'Records:' ?> <?= count($rows) ?></div>
+    <div class="meta"><?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <bdi dir="ltr"><?= date('d/m/Y H:i') ?></bdi> · <?= is_rtl() ? 'عدد السجلات:' : 'Records:' ?> <?= count($rows) ?></div>
     <table>
         <thead>
             <tr><?php foreach ($headers as $h): ?><th><?= e($h) ?></th><?php endforeach; ?></tr>

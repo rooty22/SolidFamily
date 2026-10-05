@@ -25,7 +25,7 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                 </div>
                 <p class="text-xs text-slate-500 mt-1 mb-0 font-numeric">
                     <i class="bi bi-calendar3 me-1 text-slate-400"></i>
-                    <span><?= __('submission_date') ?>: <?= is_rtl() ? date_ar($request['created_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($request['created_at'])) ?></span>
+                    <span><?= __('submission_date') ?>: <bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i') ?></bdi></span>
                 </p>
             </div>
         </div>
@@ -156,14 +156,14 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                             <tr>
                                 <td class="py-3 px-4 bg-slate-50/70 text-xs font-bold text-slate-600"><?= __('submission_date_time') ?></td>
                                 <td class="py-3 px-4 text-xs font-bold text-slate-700 font-numeric">
-                                    <?= is_rtl() ? date_ar($request['created_at'], 'Y-m-d H:i:s') : date('M d, Y H:i:s', strtotime($request['created_at'])) ?>
+                                    <bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i:s') ?></bdi>
                                 </td>
                             </tr>
                             <?php if (!empty($request['reviewed_at'])): ?>
                             <tr>
                                 <td class="py-3 px-4 bg-slate-50/70 text-xs font-bold text-slate-600"><?= __('review_decision_date') ?></td>
                                 <td class="py-3 px-4 text-xs font-bold text-slate-700 font-numeric">
-                                    <?= is_rtl() ? date_ar($request['reviewed_at'], 'Y-m-d H:i:s') : date('M d, Y H:i:s', strtotime($request['reviewed_at'])) ?>
+                                    <bdi dir="ltr"><?= date_ar($request['reviewed_at'], 'd/m/Y H:i:s') ?></bdi>
                                 </td>
                             </tr>
                             <?php endif; ?>
@@ -273,7 +273,7 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                     </div>
                     <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
                         <span class="text-slate-500 font-medium"><?= __('join_date') ?></span>
-                        <span class="font-bold text-slate-900 font-numeric"><?= is_rtl() ? date_ar($member['created_at'], 'Y-m-d') : date('M d, Y', strtotime($member['created_at'])) ?></span>
+                        <span class="font-bold text-slate-900 font-numeric"><bdi dir="ltr"><?= date_ar($member['created_at']) ?></bdi></span>
                     </div>
                     <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
                         <span class="text-slate-500 font-medium"><?= __('membership_status') ?></span>

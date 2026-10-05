@@ -26,7 +26,7 @@ $isEn = is_en();
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Email Address' : 'البريد الإلكتروني' ?> <span class="text-rose-500">*</span></label>
                 <input type="email" name="email" class="form-control text-sm" placeholder="user@domain.com" value="<?= e($m['email'] ?? old('email')) ?>" required>
             </div>
-            <div class="col-md-5">
+            <div class="col-md-6">
                 <label class="form-label font-bold text-xs text-slate-700 flex items-center justify-between">
                     <span><?= $isEn ? 'Date of Birth' : 'تاريخ الميلاد' ?></span>
                     <span class="text-[11px] font-normal text-slate-400"><?= $isEn ? '(Day / Month / Year)' : '(يوم / شهر / سنة)' ?></span>
@@ -47,6 +47,7 @@ $isEn = is_en();
                 if (old('birth_day')) $bDay = sprintf('%02d', (int) old('birth_day'));
                 if (old('birth_month')) $bMonth = sprintf('%02d', (int) old('birth_month'));
                 if (old('birth_year')) $bYear = (string) old('birth_year');
+                $arMonths = [1 => '01 - يناير', 2 => '02 - فبراير', 3 => '03 - مارس', 4 => '04 - أبريل', 5 => '05 - مايو', 6 => '06 - يونيو', 7 => '07 - يوليو', 8 => '08 - أغسطس', 9 => '09 - سبتمبر', 10 => '10 - أكتوبر', 11 => '11 - نوفمبر', 12 => '12 - ديسمبر'];
                 ?>
                 <div class="grid grid-cols-3 gap-1.5" dir="<?= $isEn ? 'ltr' : 'rtl' ?>">
                     <div>
@@ -60,9 +61,7 @@ $isEn = is_en();
                     <div>
                         <select name="birth_month" id="birth_month" class="form-select text-xs font-numeric w-full">
                             <option value=""><?= $isEn ? 'Month' : 'الشهر' ?></option>
-                            <?php 
-                            $arMonths = [1 => '01 - يناير', 2 => '02 - فبراير', 3 => '03 - مارس', 4 => '04 - أبريل', 5 => '05 - مايو', 6 => '06 - يونيو', 7 => '07 - يوليو', 8 => '08 - أغسطس', 9 => '09 - سبتمبر', 10 => '10 - أكتوبر', 11 => '11 - نوفمبر', 12 => '12 - ديسمبر'];
-                            for ($mo = 1; $mo <= 12; $mo++): $smo = sprintf('%02d', $mo); ?>
+                            <?php for ($mo = 1; $mo <= 12; $mo++): $smo = sprintf('%02d', $mo); ?>
                                 <option value="<?= $smo ?>" <?= $bMonth === $smo ? 'selected' : '' ?>><?= $isEn ? $smo : $arMonths[$mo] ?></option>
                             <?php endfor; ?>
                         </select>
@@ -80,11 +79,59 @@ $isEn = is_en();
                 </div>
                 <input type="hidden" name="birth_date" id="birth_date_hidden" value="<?= e($rawBirth) ?>">
             </div>
-            <div class="col-md-3">
-                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Registration Date' : 'تاريخ التسجيل بالصندوق' ?></label>
-                <input type="date" name="created_at" class="form-control text-sm font-numeric" value="<?= !empty($m['created_at']) ? date('Y-m-d', strtotime($m['created_at'])) : date('Y-m-d') ?>">
+            <div class="col-md-6">
+                <label class="form-label font-bold text-xs text-slate-700 flex items-center justify-between">
+                    <span><?= $isEn ? 'Registration Date in Fund' : 'تاريخ التسجيل بالصندوق' ?></span>
+                    <span class="text-[11px] font-normal text-slate-400"><?= $isEn ? '(Day / Month / Year)' : '(يوم / شهر / سنة)' ?></span>
+                </label>
+                <?php
+                $cDay = '';
+                $cMonth = '';
+                $cYear = '';
+                $rawCreated = old('created_at') ?: ($m['created_at'] ?? date('Y-m-d'));
+                if ($rawCreated) {
+                    $ct = strtotime($rawCreated);
+                    if ($ct) {
+                        $cDay = date('d', $ct);
+                        $cMonth = date('m', $ct);
+                        $cYear = date('Y', $ct);
+                    }
+                }
+                if (old('created_day')) $cDay = sprintf('%02d', (int) old('created_day'));
+                if (old('created_month')) $cMonth = sprintf('%02d', (int) old('created_month'));
+                if (old('created_year')) $cYear = (string) old('created_year');
+                ?>
+                <div class="grid grid-cols-3 gap-1.5" dir="<?= $isEn ? 'ltr' : 'rtl' ?>">
+                    <div>
+                        <select name="created_day" id="created_day" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Day' : 'اليوم' ?></option>
+                            <?php for ($d = 1; $d <= 31; $d++): $sd = sprintf('%02d', $d); ?>
+                                <option value="<?= $sd ?>" <?= $cDay === $sd ? 'selected' : '' ?>><?= $d ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <select name="created_month" id="created_month" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Month' : 'الشهر' ?></option>
+                            <?php for ($mo = 1; $mo <= 12; $mo++): $smo = sprintf('%02d', $mo); ?>
+                                <option value="<?= $smo ?>" <?= $cMonth === $smo ? 'selected' : '' ?>><?= $isEn ? $smo : $arMonths[$mo] ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <select name="created_year" id="created_year" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Year' : 'السنة' ?></option>
+                            <?php 
+                            $curYear = (int) date('Y');
+                            for ($yr = $curYear + 1; $yr >= 1970; $yr--): ?>
+                                <option value="<?= $yr ?>" <?= ((string)$cYear === (string)$yr) ? 'selected' : '' ?>><?= $yr ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+                <input type="hidden" name="created_at" id="created_at_hidden" value="<?= e($rawCreated) ?>">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-12">
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'National Address' : 'العنوان الوطني' ?></label>
                 <input type="text" name="national_address" class="form-control text-sm" placeholder="<?= $isEn ? 'City, District, Street' : 'المدينة، الحي، اسم الشارع' ?>" value="<?= e($m['national_address'] ?? '') ?>">
             </div>
@@ -178,10 +225,33 @@ $isEn = is_en();
         month.addEventListener('change', update);
         year.addEventListener('change', update);
     }
+
+    function setupCreatedDateSync() {
+        var day = document.getElementById('created_day');
+        var month = document.getElementById('created_month');
+        var year = document.getElementById('created_year');
+        var hidden = document.getElementById('created_at_hidden');
+        if (!day || !month || !year || !hidden) return;
+        function update() {
+            if (day.value && month.value && year.value) {
+                hidden.value = year.value + '-' + month.value + '-' + day.value;
+            } else if (!day.value && !month.value && !year.value) {
+                hidden.value = '';
+            }
+        }
+        day.addEventListener('change', update);
+        month.addEventListener('change', update);
+        year.addEventListener('change', update);
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupBirthDateSync);
+        document.addEventListener('DOMContentLoaded', function() {
+            setupBirthDateSync();
+            setupCreatedDateSync();
+        });
     } else {
         setupBirthDateSync();
+        setupCreatedDateSync();
     }
 })();
 </script>

@@ -339,7 +339,7 @@ $catLabels = transaction_categories();
                         <?php foreach ($loans as $l): [$lb,$v] = status_badge($l['status']); ?>
                             <tr>
                                 <td class="font-numeric font-bold text-slate-900"><?= money($l['amount']) ?></td>
-                                <td class="font-numeric text-xs text-slate-500"><?= is_rtl() ? date_ar($l['loan_date']) : date('M d, Y', strtotime($l['loan_date'])) ?></td>
+                                <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($l['loan_date']) ?></bdi></td>
                                 <td class="font-numeric font-bold text-rose-600"><?= money($l['amount_remaining']) ?></td>
                                 <td><a href="<?= url('admin/loans/' . $l['id']) ?>"><span class="badge-status badge-<?= $v ?>"><?= $lb ?></span></a></td>
                             </tr>
@@ -382,7 +382,7 @@ $catLabels = transaction_categories();
                             <tr>
                                 <td><span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold"><?= $catLabels[$t['category']] ?? $t['category'] ?></span></td>
                                 <td class="font-numeric font-bold text-slate-900"><?= money($t['amount']) ?></td>
-                                <td class="font-numeric text-xs text-slate-500"><?= is_rtl() ? date_ar($t['transaction_date']) : date('M d, Y', strtotime($t['transaction_date'])) ?></td>
+                                <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($t['transaction_date']) ?></bdi></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>

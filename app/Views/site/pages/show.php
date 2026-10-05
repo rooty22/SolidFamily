@@ -143,7 +143,7 @@ $isSingleLang = is_single_language();
             <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
                 <span class="inline-flex items-center gap-1.5">
                     <i class="bi bi-clock-history text-brand-400"></i>
-                    <span><?= $isEn ? 'Last updated: ' . date('M d, Y', strtotime($page['updated_at'])) : 'آخر تحديث: ' . date_ar($page['updated_at'], 'Y/m/d') ?></span>
+                    <span><?= $isEn ? 'Last updated: ' : 'آخر تحديث: ' ?><bdi dir="ltr"><?= date_ar($page['updated_at']) ?></bdi></span>
                 </span>
                 <span class="w-1 h-1 rounded-full bg-slate-600"></span>
                 <span class="inline-flex items-center gap-1.5">

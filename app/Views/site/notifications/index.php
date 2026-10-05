@@ -59,7 +59,7 @@ $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(d
                 <div class="flex-grow-1">
                     <div class="n-title"><?= e($n['title']) ?></div>
                     <div class="n-body"><?= nl2br(e($n['body'])) ?></div>
-                    <div class="n-time font-num"><i class="bi bi-clock"></i> <?= date_ar($n['created_at'], 'Y-m-d H:i') ?></div>
+                    <div class="n-time font-num"><i class="bi bi-clock"></i> <bdi dir="ltr"><?= date_ar($n['created_at'], 'd/m/Y H:i') ?></bdi></div>
                 </div>
             </div>
             <?php endforeach; ?>

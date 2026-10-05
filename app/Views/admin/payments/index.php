@@ -58,7 +58,7 @@
                 <td class="fw-bold text-slate-900"><?= e($p['member_name']) ?></td>
                 <td><span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold"><?= $categoryLabels[$p['category']] ?? $p['category'] ?></span></td>
                 <td class="font-numeric font-bold text-emerald-600"><?= money($p['amount']) ?></td>
-                <td class="text-xs text-slate-500 font-numeric"><?= is_rtl() ? date_ar($p['transaction_date']) : date('M d, Y', strtotime($p['transaction_date'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($p['transaction_date']) ?></bdi></td>
                 <td class="text-xs text-slate-600"><?= e($p['admin_name'] ?? '-') ?></td>
             </tr>
         <?php endforeach; ?>

@@ -14,7 +14,7 @@
                 </div>
                 <p class="text-xs text-slate-500 mt-1 mb-0 font-numeric">
                     <i class="bi bi-clock me-1 text-slate-400"></i>
-                    <span><?= __('received_at', ['date' => is_rtl() ? date_ar($message['created_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($message['created_at']))]) ?></span>
+                    <span><?= __('received_at', ['date' => '<bdi dir="ltr">' . date_ar($message['created_at'], 'd/m/Y H:i') . '</bdi>']) ?></span>
                 </p>
             </div>
         </div>
@@ -40,7 +40,7 @@
                         </div>
                         <h2 class="text-base font-bold text-slate-900 m-0"><?= __('message_body_details') ?></h2>
                     </div>
-                    <span class="text-xs text-slate-400 font-numeric font-medium"><?= is_rtl() ? date_ar($message['created_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($message['created_at'])) ?></span>
+                    <span class="text-xs text-slate-400 font-numeric font-medium"><bdi dir="ltr"><?= date_ar($message['created_at'], 'd/m/Y H:i') ?></bdi></span>
                 </div>
 
                 <!-- Message Bubble -->
@@ -60,7 +60,7 @@
                             <i class="bi bi-patch-check-fill text-emerald-600 text-sm"></i>
                             <span><?= __('admin_reply') ?></span>
                         </div>
-                        <span class="font-numeric text-emerald-700/80"><?= is_rtl() ? date_ar($message['replied_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($message['replied_at'])) ?></span>
+                        <span class="font-numeric text-emerald-700/80"><bdi dir="ltr"><?= date_ar($message['replied_at'], 'd/m/Y H:i') ?></bdi></span>
                     </div>
                     <div class="whitespace-pre-wrap text-emerald-950 font-medium"><?= nl2br(e($message['reply_text'])) ?></div>
                 </div>

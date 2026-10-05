@@ -76,7 +76,7 @@
             <tr>
                 <td class="fw-bold"><?= e($n['title']) ?><div class="text-muted" style="font-size:12px;"><?= e(mb_substr($n['body'], 0, 60)) ?></div></td>
                 <td><?= $n['target_type'] === 'all' ? (is_rtl() ? 'جميع المشتركين' : 'All Members') : e($n['target_member_name'] ?? (is_rtl() ? 'غير معروف' : 'Unknown')) ?></td>
-                <td class="text-xs text-slate-500"><?= is_rtl() ? date_ar($n['created_at'], 'Y-m-d H:i') : date('M d, Y H:i', strtotime($n['created_at'])) ?></td>
+                <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($n['created_at'], 'd/m/Y H:i') ?></bdi></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">
                     <form method="post" action="<?= url('admin/notifications/' . $n['id'] . '/delete') ?>" data-confirm="<?= is_rtl() ? 'حذف الإشعار؟' : 'Delete notification?' ?>">

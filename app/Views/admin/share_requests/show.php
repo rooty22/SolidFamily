@@ -20,7 +20,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                     <h1 class="text-xl font-bold text-slate-900">طلب أسهم #<?= $request['id'] ?> - <?= e($typeTitle) ?></h1>
                     <span class="badge-status badge-<?= $variant ?>"><?= $label ?></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">تاريخ التقديم: <?= date_ar($request['created_at'], 'Y-m-d H:i') ?></p>
+                <p class="text-xs text-slate-500 mt-0.5"><?= is_rtl() ? 'تاريخ التقديم: ' : 'Submission date: ' ?><bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i') ?></bdi></p>
             </div>
         </div>
 
@@ -94,7 +94,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                         <tbody class="divide-y divide-slate-100">
                             <tr>
                                 <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600 w-1/3">تاريخ التقديم</td>
-                                <td class="py-3 px-4 text-xs font-medium text-slate-700 font-numeric"><?= date_ar($request['created_at'], 'Y-m-d H:i') ?></td>
+                                <td class="py-3 px-4 text-xs font-medium text-slate-700 font-numeric"><bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i') ?></bdi></td>
                             </tr>
                             <?php if (!empty($request['admin_note'])): ?>
                             <tr>
@@ -196,7 +196,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                     </div>
                     <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
                         <span class="text-slate-500">تاريخ الانضمام</span>
-                        <span class="font-bold text-slate-800 font-numeric"><?= date_ar($member['created_at'], 'Y-m-d') ?></span>
+                        <span class="font-bold text-slate-800 font-numeric"><bdi dir="ltr"><?= date_ar($member['created_at']) ?></bdi></span>
                     </div>
                     <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
                         <span class="text-slate-500">حالة العضوية</span>
