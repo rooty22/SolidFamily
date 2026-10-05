@@ -58,10 +58,6 @@ $newMessages = \App\Models\ContactMessage::count(['status' => 'new']);
         </a>
 
         <div class="sidebar-section-title"><?= is_rtl() ? 'المالية' : 'Finance & Ledger' ?></div>
-        <a href="<?= url('admin/payments') ?>" class="sidebar-link <?= is_active('/admin/payments') ?>">
-            <i class="bi bi-credit-card-2-front-fill"></i>
-            <span><?= __('manage_payments') ?></span>
-        </a>
         <a href="<?= url('admin/transactions') ?>" class="sidebar-link <?= is_active('/admin/transactions') ?>">
             <i class="bi bi-journal-text"></i>
             <span><?= __('manage_transactions') ?></span>
