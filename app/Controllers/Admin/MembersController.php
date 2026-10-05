@@ -122,6 +122,7 @@ class MembersController extends Controller
         $validator = Member::validate($data, [
             'name', 'mobile', 'email', 'national_id', 'birth_date', 'national_address',
             'bank_account_number', 'iban', 'bank_name', 'password', 'shares_count', 'subscription_due_day',
+            'created_at',
         ]);
 
         if ($validator->fails()) {
@@ -129,6 +130,10 @@ class MembersController extends Controller
             Session::setOld($data);
             $this->redirect('admin/members/create');
         }
+
+        $createdAt = !empty($data['created_at']) 
+            ? date('Y-m-d H:i:s', strtotime($data['created_at'] . ' ' . date('H:i:s'))) 
+            : date('Y-m-d H:i:s');
 
         $id = Member::create([
             'name' => $data['name'],
@@ -144,6 +149,7 @@ class MembersController extends Controller
             'shares_count' => (int) ($data['shares_count'] ?? 0),
             'subscription_due_day' => ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null,
             'is_admin' => !empty($data['is_admin']) ? 1 : 0,
+            'created_at' => $createdAt,
             'status' => 'active',
         ]);
 
@@ -204,6 +210,7 @@ class MembersController extends Controller
         $validator = Member::validate($data, [
             'name', 'mobile', 'email', 'national_id', 'birth_date', 'national_address',
             'bank_account_number', 'iban', 'bank_name', 'password', 'subscription_due_day',
+            'created_at',
         ], (int) $id, false);
 
         if ($validator->fails()) {
@@ -222,6 +229,10 @@ class MembersController extends Controller
             'iban' => ($data['iban'] ?? '') ?: null,
             'bank_name' => ($data['bank_name'] ?? '') ?: null,
         ];
+        if (!empty($data['created_at'])) {
+            $existingTime = !empty($member['created_at']) ? date('H:i:s', strtotime($member['created_at'])) : '12:00:00';
+            $update['created_at'] = date('Y-m-d H:i:s', strtotime($data['created_at'] . ' ' . $existingTime));
+        }
         if (array_key_exists('subscription_due_day', $data)) {
             $update['subscription_due_day'] = ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null;
         }

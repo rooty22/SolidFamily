@@ -301,6 +301,11 @@ class Member extends Model
                 case 'is_admin':
                     $v->integer('is_admin', 'الصفة الإدارية', 0, 1);
                     break;
+                case 'created_at':
+                    if (!empty($data['created_at'])) {
+                        $v->date('created_at', 'تاريخ التسجيل', 365);
+                    }
+                    break;
             }
         }
 

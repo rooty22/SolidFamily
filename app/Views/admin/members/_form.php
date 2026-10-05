@@ -26,11 +26,15 @@ $isEn = is_en();
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Email Address' : 'البريد الإلكتروني' ?> <span class="text-rose-500">*</span></label>
                 <input type="email" name="email" class="form-control text-sm" placeholder="user@domain.com" value="<?= e($m['email'] ?? old('email')) ?>" required>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Date of Birth' : 'تاريخ الميلاد' ?></label>
-                <input type="date" name="birth_date" class="form-control text-sm" value="<?= e($m['birth_date'] ?? '') ?>">
+                <input type="date" name="birth_date" class="form-control text-sm font-numeric" value="<?= e($m['birth_date'] ?? '') ?>">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Registration Date' : 'تاريخ التسجيل بالصندوق' ?></label>
+                <input type="date" name="created_at" class="form-control text-sm font-numeric" value="<?= !empty($m['created_at']) ? date('Y-m-d', strtotime($m['created_at'])) : date('Y-m-d') ?>">
+            </div>
+            <div class="col-md-4">
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'National Address' : 'العنوان الوطني' ?></label>
                 <input type="text" name="national_address" class="form-control text-sm" placeholder="<?= $isEn ? 'City, District, Street' : 'المدينة، الحي، اسم الشارع' ?>" value="<?= e($m['national_address'] ?? '') ?>">
             </div>
