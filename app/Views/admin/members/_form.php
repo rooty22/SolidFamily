@@ -26,11 +26,61 @@ $isEn = is_en();
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Email Address' : 'البريد الإلكتروني' ?> <span class="text-rose-500">*</span></label>
                 <input type="email" name="email" class="form-control text-sm" placeholder="user@domain.com" value="<?= e($m['email'] ?? old('email')) ?>" required>
             </div>
-            <div class="col-md-4">
-                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Date of Birth' : 'تاريخ الميلاد' ?></label>
-                <input type="date" name="birth_date" class="form-control text-sm font-numeric" value="<?= e($m['birth_date'] ?? '') ?>">
+            <div class="col-md-5">
+                <label class="form-label font-bold text-xs text-slate-700 flex items-center justify-between">
+                    <span><?= $isEn ? 'Date of Birth' : 'تاريخ الميلاد' ?></span>
+                    <span class="text-[11px] font-normal text-slate-400"><?= $isEn ? '(Day / Month / Year)' : '(يوم / شهر / سنة)' ?></span>
+                </label>
+                <?php
+                $bDay = '';
+                $bMonth = '';
+                $bYear = '';
+                $rawBirth = old('birth_date') ?: ($m['birth_date'] ?? '');
+                if ($rawBirth) {
+                    $bt = strtotime($rawBirth);
+                    if ($bt) {
+                        $bDay = date('d', $bt);
+                        $bMonth = date('m', $bt);
+                        $bYear = date('Y', $bt);
+                    }
+                }
+                if (old('birth_day')) $bDay = sprintf('%02d', (int) old('birth_day'));
+                if (old('birth_month')) $bMonth = sprintf('%02d', (int) old('birth_month'));
+                if (old('birth_year')) $bYear = (string) old('birth_year');
+                ?>
+                <div class="grid grid-cols-3 gap-1.5" dir="<?= $isEn ? 'ltr' : 'rtl' ?>">
+                    <div>
+                        <select name="birth_day" id="birth_day" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Day' : 'اليوم' ?></option>
+                            <?php for ($d = 1; $d <= 31; $d++): $sd = sprintf('%02d', $d); ?>
+                                <option value="<?= $sd ?>" <?= $bDay === $sd ? 'selected' : '' ?>><?= $d ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <select name="birth_month" id="birth_month" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Month' : 'الشهر' ?></option>
+                            <?php 
+                            $arMonths = [1 => '01 - يناير', 2 => '02 - فبراير', 3 => '03 - مارس', 4 => '04 - أبريل', 5 => '05 - مايو', 6 => '06 - يونيو', 7 => '07 - يوليو', 8 => '08 - أغسطس', 9 => '09 - سبتمبر', 10 => '10 - أكتوبر', 11 => '11 - نوفمبر', 12 => '12 - ديسمبر'];
+                            for ($mo = 1; $mo <= 12; $mo++): $smo = sprintf('%02d', $mo); ?>
+                                <option value="<?= $smo ?>" <?= $bMonth === $smo ? 'selected' : '' ?>><?= $isEn ? $smo : $arMonths[$mo] ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <select name="birth_year" id="birth_year" class="form-select text-xs font-numeric w-full">
+                            <option value=""><?= $isEn ? 'Year' : 'السنة' ?></option>
+                            <?php 
+                            $maxYear = (int) date('Y');
+                            for ($yr = $maxYear - 10; $yr >= 1930; $yr--): ?>
+                                <option value="<?= $yr ?>" <?= ((string)$bYear === (string)$yr) ? 'selected' : '' ?>><?= $yr ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+                <input type="hidden" name="birth_date" id="birth_date_hidden" value="<?= e($rawBirth) ?>">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Registration Date' : 'تاريخ التسجيل بالصندوق' ?></label>
                 <input type="date" name="created_at" class="form-control text-sm font-numeric" value="<?= !empty($m['created_at']) ? date('Y-m-d', strtotime($m['created_at'])) : date('Y-m-d') ?>">
             </div>
@@ -107,5 +157,31 @@ $isEn = is_en();
                 <?= $isEn ? 'Admin accounts are dedicated to system/fund management. They are barred from taking loans, requesting financing, and will never show loan installments or loan debt.' : 'حسابات الإدارة مخصصة لإدارة الصندوق والإشراف عليه؛ ولا يمكنها الاقتراض أو طلب تمويل، ولا تظهر عليها أي أقساط أو ديون قروض.' ?>
             </p>
         </div>
-    </div>
 </div>
+
+<script>
+(function() {
+    function setupBirthDateSync() {
+        var day = document.getElementById('birth_day');
+        var month = document.getElementById('birth_month');
+        var year = document.getElementById('birth_year');
+        var hidden = document.getElementById('birth_date_hidden');
+        if (!day || !month || !year || !hidden) return;
+        function update() {
+            if (day.value && month.value && year.value) {
+                hidden.value = year.value + '-' + month.value + '-' + day.value;
+            } else if (!day.value && !month.value && !year.value) {
+                hidden.value = '';
+            }
+        }
+        day.addEventListener('change', update);
+        month.addEventListener('change', update);
+        year.addEventListener('change', update);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupBirthDateSync);
+    } else {
+        setupBirthDateSync();
+    }
+})();
+</script>

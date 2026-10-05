@@ -232,6 +232,25 @@ class Member extends Model
         if (isset($data['bank_account_number'])) {
             $data['bank_account_number'] = strtoupper(preg_replace('/[\s\-]/', '', (string) $data['bank_account_number']));
         }
+
+        // Handle Saudi birth date format: يوم / شهر / سنة (Day / Month / Year)
+        if (!empty($data['birth_year']) && !empty($data['birth_month']) && !empty($data['birth_day'])) {
+            $data['birth_date'] = sprintf('%04d-%02d-%02d', (int) $data['birth_year'], (int) $data['birth_month'], (int) $data['birth_day']);
+        } elseif (!empty($data['birth_date'])) {
+            $bd = trim((string) $data['birth_date']);
+            if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $bd, $m)) {
+                $data['birth_date'] = sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+            }
+        }
+
+        // Support created_at if entered in d/m/Y format
+        if (!empty($data['created_at'])) {
+            $ca = trim((string) $data['created_at']);
+            if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $ca, $m)) {
+                $data['created_at'] = sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+            }
+        }
+
         return $data;
     }
 

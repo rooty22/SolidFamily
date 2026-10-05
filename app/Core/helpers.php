@@ -158,13 +158,18 @@ function money_plain(?float $amount, int $decimals = 2): string
 }
 
 
-function date_ar(?string $date, string $format = 'Y-m-d'): string
+function date_ar(?string $date, string $format = 'd/m/Y'): string
 {
     if (!$date) {
         return '-';
     }
     $ts = strtotime($date);
     return $ts ? date($format, $ts) : '-';
+}
+
+function birth_date_format(?string $date): string
+{
+    return date_ar($date, 'd/m/Y');
 }
 
 function relative_days_label(int $days): string

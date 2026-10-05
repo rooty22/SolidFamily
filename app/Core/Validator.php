@@ -155,15 +155,23 @@ class Validator
         return $this;
     }
 
-    /** A real calendar date (Y-m-d) between 1900-01-01 and today (or up to $maxFutureDays ahead). */
+    /** A real calendar date (Y-m-d, d/m/Y, or d-m-Y) between 1900-01-01 and today (or up to $maxFutureDays ahead). */
     public function date(string $field, string $label, int $maxFutureDays = 0): self
     {
         $value = $this->value($field);
         if ($value === '') {
             return $this;
         }
-        $d = \DateTime::createFromFormat('!Y-m-d', $value);
-        $valid = $d && $d->format('Y-m-d') === $value;
+        $valid = false;
+        $d = null;
+        foreach (['!Y-m-d', '!d/m/Y', '!d-m-Y'] as $fmt) {
+            $parsed = \DateTime::createFromFormat($fmt, $value);
+            if ($parsed && $parsed->format(ltrim($fmt, '!')) === $value) {
+                $d = $parsed;
+                $valid = true;
+                break;
+            }
+        }
         if ($valid && $d >= new \DateTime('1900-01-01') && $d > new \DateTime("today +{$maxFutureDays} days")) {
             $this->fail($field, $maxFutureDays === 0 ? "تاريخ {$label} لا يمكن أن يكون في المستقبل." : "تاريخ {$label} بعيد جداً في المستقبل.");
         } elseif (!$valid || $d < new \DateTime('1900-01-01')) {

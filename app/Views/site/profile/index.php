@@ -20,7 +20,7 @@
             <div class="row g-3">
                 <div class="col-md-6"><label class="form-label"><?= __('name') ?></label><input type="text" class="form-control" value="<?= e($member['name']) ?>" disabled></div>
                 <div class="col-md-6"><label class="form-label"><?= __('national_id') ?></label><input type="text" class="form-control ltr-input font-num" value="<?= e($member['national_id']) ?>" disabled></div>
-                <div class="col-md-6"><label class="form-label"><?= __('birth_date') ?></label><input type="text" class="form-control ltr-input font-num" value="<?= date_ar($member['birth_date']) ?>" disabled></div>
+                <div class="col-md-6"><label class="form-label"><?= __('birth_date') ?> <small class="text-muted font-normal">(<?= is_rtl() ? 'يوم / شهر / سنة' : 'DD / MM / YYYY' ?>)</small></label><input type="text" class="form-control ltr-input font-num" value="<?= !empty($member['birth_date']) ? date('d/m/Y', strtotime($member['birth_date'])) : '-' ?>" disabled></div>
                 <div class="col-md-6"><label class="form-label"><?= __('mobile_number') ?></label><input type="text" name="mobile" class="form-control ltr-input font-num" dir="ltr" value="<?= e($member['mobile']) ?>" required></div>
                 <div class="col-md-6"><label class="form-label"><?= __('email_address') ?></label><input type="email" name="email" class="form-control ltr-input font-num" dir="ltr" value="<?= e($member['email']) ?>" required></div>
                 <div class="col-md-6"><label class="form-label"><?= __('national_address') ?></label><input type="text" name="national_address" class="form-control" value="<?= e($member['national_address']) ?>"></div>

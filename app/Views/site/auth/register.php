@@ -51,8 +51,55 @@ $isEn = is_en();
                     <input type="text" name="national_id" class="form-control text-xs sm:text-sm font-numeric" dir="ltr" value="<?= old('national_id') ?>" placeholder="<?= __('national_id_placeholder') ?>" required>
                 </div>
                 <div>
-                    <label class="form-label text-xs font-bold text-slate-700 mb-1"><?= __('birth_date') ?></label>
-                    <input type="date" name="birth_date" required class="form-control text-xs sm:text-sm font-numeric" value="<?= old('birth_date') ?>">
+                    <label class="form-label text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                        <span><?= __('birth_date') ?> <span class="text-rose-500">*</span></span>
+                        <span class="text-[11px] font-normal text-slate-400"><?= is_rtl() ? '(يوم / شهر / سنة)' : '(Day / Month / Year)' ?></span>
+                    </label>
+                    <?php
+                    $rbDay = old('birth_day') ? sprintf('%02d', (int) old('birth_day')) : '';
+                    $rbMonth = old('birth_month') ? sprintf('%02d', (int) old('birth_month')) : '';
+                    $rbYear = old('birth_year') ? (string) old('birth_year') : '';
+                    $oldBirth = old('birth_date');
+                    if (!$rbDay && !$rbMonth && !$rbYear && $oldBirth) {
+                        $obt = strtotime($oldBirth);
+                        if ($obt) {
+                            $rbDay = date('d', $obt);
+                            $rbMonth = date('m', $obt);
+                            $rbYear = date('Y', $obt);
+                        }
+                    }
+                    ?>
+                    <div class="grid grid-cols-3 gap-1.5" dir="<?= is_rtl() ? 'rtl' : 'ltr' ?>">
+                        <div>
+                            <select name="birth_day" id="reg_birth_day" required class="form-select text-xs font-numeric w-full">
+                                <option value=""><?= is_rtl() ? 'اليوم' : 'Day' ?></option>
+                                <?php for ($d = 1; $d <= 31; $d++): $sd = sprintf('%02d', $d); ?>
+                                    <option value="<?= $sd ?>" <?= $rbDay === $sd ? 'selected' : '' ?>><?= $d ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <select name="birth_month" id="reg_birth_month" required class="form-select text-xs font-numeric w-full">
+                                <option value=""><?= is_rtl() ? 'الشهر' : 'Month' ?></option>
+                                <?php 
+                                $arMonths = [1 => '01 - يناير', 2 => '02 - فبراير', 3 => '03 - مارس', 4 => '04 - أبريل', 5 => '05 - مايو', 6 => '06 - يونيو', 7 => '07 - يوليو', 8 => '08 - أغسطس', 9 => '09 - سبتمبر', 10 => '10 - أكتوبر', 11 => '11 - نوفمبر', 12 => '12 - ديسمبر'];
+                                for ($mo = 1; $mo <= 12; $mo++): $smo = sprintf('%02d', $mo); ?>
+                                    <option value="<?= $smo ?>" <?= $rbMonth === $smo ? 'selected' : '' ?>><?= is_rtl() ? $arMonths[$mo] : $smo ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <select name="birth_year" id="reg_birth_year" required class="form-select text-xs font-numeric w-full">
+                                <option value=""><?= is_rtl() ? 'السنة' : 'Year' ?></option>
+                                <?php 
+                                $maxYear = (int) date('Y');
+                                for ($yr = $maxYear - 10; $yr >= 1930; $yr--): ?>
+                                    <option value="<?= $yr ?>" <?= ((string)$rbYear === (string)$yr) ? 'selected' : '' ?>><?= $yr ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" name="birth_date" id="reg_birth_date_hidden" value="<?= e($oldBirth) ?>">
                 </div>
                 <div>
                     <label class="form-label text-xs font-bold text-slate-700 mb-1"><?= __('national_address_city') ?></label>
@@ -114,3 +161,30 @@ $isEn = is_en();
         </p>
     </form>
 </div>
+
+<script>
+(function() {
+    function setupRegBirthDateSync() {
+        var day = document.getElementById('reg_birth_day');
+        var month = document.getElementById('reg_birth_month');
+        var year = document.getElementById('reg_birth_year');
+        var hidden = document.getElementById('reg_birth_date_hidden');
+        if (!day || !month || !year || !hidden) return;
+        function update() {
+            if (day.value && month.value && year.value) {
+                hidden.value = year.value + '-' + month.value + '-' + day.value;
+            } else if (!day.value && !month.value && !year.value) {
+                hidden.value = '';
+            }
+        }
+        day.addEventListener('change', update);
+        month.addEventListener('change', update);
+        year.addEventListener('change', update);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupRegBirthDateSync);
+    } else {
+        setupRegBirthDateSync();
+    }
+})();
+</script>
