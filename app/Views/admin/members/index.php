@@ -151,6 +151,14 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                             <i class="bi bi-<?= $m['status'] === 'active' ? 'pause-circle' : 'play-circle' ?>"></i>
                         </button>
                     </form>
+                    <?php if (empty($m['is_admin'])): ?>
+                    <form method="post" action="<?= url('admin/members/' . $m['id'] . '/delete') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'سيتم حذف المشترك "' . $m['name'] . '" نهائياً مع جميع اشتراكاته ومعاملاته وأسهمه، ولا يمكن التراجع. هل أنت متأكد؟' : 'Member "' . $m['name'] . '" will be permanently deleted with all subscriptions, transactions and shares. This cannot be undone. Are you sure?') ?>">
+                        <?= csrf_field() ?>
+                        <button class="btn btn-sm btn-soft text-rose-600" title="<?= is_rtl() ? 'حذف' : 'Delete' ?>">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endforeach; ?>

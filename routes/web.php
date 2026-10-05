@@ -138,6 +138,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/members/{id}/edit', [MembersController::class, 'edit']);
     $router->post('/members/{id}', [MembersController::class, 'update']);
     $router->post('/members/{id}/toggle-status', [MembersController::class, 'toggleStatus']);
+    $router->post('/members/{id}/delete', [MembersController::class, 'destroy']);
 
     $router->get('/shares', [SharesController::class, 'index']);
     $router->post('/shares/value', [SharesController::class, 'updateShareValue']);

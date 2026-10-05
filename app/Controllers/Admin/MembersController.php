@@ -250,4 +250,30 @@ class MembersController extends Controller
         }
         $this->redirect('admin/members');
     }
+
+    /** Permanently deletes a member together with all of their records (cascade). Admin accounts and members with open loans are protected. */
+    public function destroy(string $id): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $id);
+        if (!$member) {
+            $this->redirect('admin/members');
+        }
+
+        if (Member::isAdmin($member)) {
+            Session::flash('error', 'لا يمكن حذف حساب إداري.');
+            $this->redirect('admin/members');
+        }
+
+        $openLoans = Loan::count(['member_id' => (int) $id, 'status' => 'active'])
+            + Loan::count(['member_id' => (int) $id, 'status' => 'partial']);
+        if ($openLoans > 0) {
+            Session::flash('error', 'لا يمكن حذف المشترك لوجود قروض قائمة عليه. يمكنك إيقاف حسابه بدلاً من ذلك.');
+            $this->redirect('admin/members');
+        }
+
+        Member::delete((int) $id);
+        Session::flash('success', 'تم حذف المشترك "' . $member['name'] . '" وجميع بياناته.');
+        $this->redirect('admin/members');
+    }
 }
