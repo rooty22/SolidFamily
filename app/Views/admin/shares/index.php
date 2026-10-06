@@ -71,9 +71,16 @@
                                 <h5 class="modal-title"><?= is_rtl() ? 'تعديل أسهم: ' : 'Edit Shares: ' ?><?= e($m['name']) ?></h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <div class="modal-body">
-                                <label class="form-label"><?= is_rtl() ? 'عدد الأسهم' : 'Number of Shares' ?></label>
-                                <input type="number" min="0" name="shares_count" class="form-control font-numeric" value="<?= $m['shares_count'] ?>">
+                            <div class="modal-body space-y-3">
+                                <div>
+                                    <label class="form-label text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'عدد الأسهم' : 'Number of Shares' ?></label>
+                                    <input type="number" min="0" name="shares_count" class="form-control font-numeric font-bold" value="<?= $m['shares_count'] ?>">
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'تاريخ بداية اشتراك الأسهم الجديدة (في حال الزيادة)' : 'Start Date for New Shares' ?></label>
+                                    <input type="date" name="start_date" class="form-control text-sm font-numeric" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+                                    <p class="text-[11px] text-slate-400 mt-1 mb-0"><?= is_rtl() ? 'في حال إضافة أسهم جديدة، سيتم توثيق هذا التاريخ كتاريخ بداية اشتراكها.' : 'Documented as start date if new shares are added.' ?></p>
+                                </div>
                             </div>
                             <div class="modal-footer">
                                 <button type="submit" class="btn btn-primary"><?= is_rtl() ? 'حفظ' : 'Save Changes' ?></button>

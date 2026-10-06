@@ -93,7 +93,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <thead>
                     <tr>
                         <th class="col-id">#</th>
-                        <th class="col-shares"><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
+                        <th class="col-shares"><?= is_rtl() ? 'الحصة / السهم' : 'Share / Lot' ?></th>
                         <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك (باليوم والشهر والسنة)' : 'Start Date (Full Date)' ?></th>
                         <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق الشهري' : 'Due Day' ?></th>
                         <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
@@ -107,8 +107,13 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                     $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding ?? null);
                 ?>
                     <tr>
-                        <td class="col-id font-numeric font-bold text-slate-500">#<?= (int) ($lot['id'] ?? ($idx + 1)) ?></td>
-                        <td class="col-shares font-numeric font-bold text-slate-900"><?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></td>
+                        <td class="col-id font-numeric font-bold text-slate-700">#<?= $idx + 1 ?></td>
+                        <td class="col-shares font-numeric font-bold text-slate-900">
+                            <span class="inline-flex items-center gap-1.5 flex-wrap">
+                                <span class="text-xs font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($idx + 1) : 'Share #' . ($idx + 1) ?></span>
+                                <span class="text-[11px] text-slate-500 font-normal">(<?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?>)</span>
+                            </span>
+                        </td>
                         <td class="col-date font-numeric font-bold text-purple-700">
                             <span class="inline-flex items-center gap-1.5">
                                 <i class="bi bi-calendar3"></i>
@@ -167,19 +172,20 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
             </table>
         </div>
 
-        <?php foreach ($lots as $lot): ?>
+        <?php foreach ($lots as $idx => $lot): ?>
         <div class="modal fade" id="editLotDateModal<?= $lot['id'] ?>" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-2xl border-0 shadow-2xl">
                     <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
                         <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
                             <i class="bi bi-calendar2-range text-purple-600"></i>
-                            <span><?= is_rtl() ? "تعديل تاريخ بداية اشتراك الحصة #{$lot['id']} ({$lot['shares_count']} سهم)" : "Edit Start Date for Lot #{$lot['id']}" ?></span>
+                            <span><?= is_rtl() ? "تعديل تاريخ بداية اشتراك السهم رقم " . ($idx + 1) . " ({$lot['shares_count']} سهم)" : "Edit Start Date for Share #" . ($idx + 1) ?></span>
                         </h5>
                         <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/lot/' . $lot['id'] . '/date') ?>">
                         <?= csrf_field() ?>
+                        <input type="hidden" name="redirect_to" value="admin/subscriptions/<?= $member['id'] ?>">
                         <div class="modal-body p-4 space-y-3">
                             <div class="p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl text-xs text-purple-900 leading-relaxed">
                                 <i class="bi bi-info-circle-fill text-purple-600 me-1"></i>
@@ -191,12 +197,14 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                                 <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ بداية الاشتراك الجديد (اليوم / الشهر / السنة)' : 'New Start Date' ?></label>
                                 <input type="date" name="start_date" class="form-control text-sm font-numeric font-bold" value="<?= !empty($lot['created_at']) ? date('Y-m-d', strtotime($lot['created_at'])) : date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
                             </div>
+                            <?php if ($idx === 0): ?>
                             <div class="form-check mt-3">
                                 <input class="form-check-input" type="checkbox" name="sync_member" value="1" id="syncMemberCheck<?= $lot['id'] ?>" checked>
                                 <label class="form-check-label text-xs font-bold text-slate-700" for="syncMemberCheck<?= $lot['id'] ?>">
                                     <?= is_rtl() ? 'تحديث تاريخ تسجيل المشترك في الصندوق ليطابق هذا التاريخ أيضاً' : 'Also sync member registration date to match this date' ?>
                                 </label>
                             </div>
+                            <?php endif; ?>
                         </div>
                         <div class="modal-footer border-t border-slate-100 p-3 bg-slate-50/50 flex justify-between">
                             <button type="button" class="btn btn-light text-xs font-bold px-3 py-2 rounded-xl" data-bs-dismiss="modal"><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></button>

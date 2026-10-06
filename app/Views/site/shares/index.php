@@ -120,7 +120,7 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
             <thead>
                 <tr>
                     <th class="col-id">#</th>
-                    <th class="col-shares"><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
+                    <th class="col-shares"><?= is_rtl() ? 'الحصة / السهم' : 'Share / Lot' ?></th>
                     <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></th>
                     <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق' : 'Due Day' ?></th>
                     <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
@@ -133,8 +133,13 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
                 $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding ?? null);
             ?>
                 <tr>
-                    <td class="col-id font-num fw-bold text-slate-500">#<?= (int) ($lot['id'] ?? ($idx + 1)) ?></td>
-                    <td class="col-shares font-num fw-bold text-slate-900"><?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></td>
+                    <td class="col-id font-num fw-bold text-slate-700">#<?= $idx + 1 ?></td>
+                    <td class="col-shares font-num fw-bold text-slate-900">
+                        <span class="inline-flex items-center gap-1.5 flex-wrap">
+                            <span class="text-xs fw-bold text-brand-700"><?= is_rtl() ? 'السهم رقم ' . ($idx + 1) : 'Share #' . ($idx + 1) ?></span>
+                            <span class="text-[11px] text-slate-500 font-normal">(<?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?>)</span>
+                        </span>
+                    </td>
                     <td class="col-date font-num">
                         <span class="inline-flex items-center gap-1.5 fw-bold text-brand-700">
                             <i class="bi bi-calendar-event text-brand-600"></i>

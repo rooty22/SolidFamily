@@ -55,8 +55,10 @@ class SharesController extends Controller
                 Session::flash('error', $validator->firstError());
             } else {
                 Member::update((int) $id, ['shares_count' => (int) $this->input('shares_count')]);
+                $startDate = trim((string) $this->input('start_date', ''));
+                $createdAt = ($startDate !== '' && strtotime($startDate)) ? date('Y-m-d H:i:s', strtotime($startDate . ' 12:00:00')) : null;
                 // Billing follows the share lots: keep them in step with the total the admin just set.
-                $emptied = \App\Models\ShareLot::syncToMemberTotal((int) $id);
+                $emptied = \App\Models\ShareLot::syncToMemberTotal((int) $id, $createdAt);
                 \App\Models\MonthlySubscription::voidRowsOfLots((int) $id, $emptied, false);
                 \App\Models\MonthlySubscription::ensureMonthExistsForMember((int) $id, date('Y-m'));
                 Session::flash('success', 'تم تحديث عدد أسهم المشترك بنجاح.');

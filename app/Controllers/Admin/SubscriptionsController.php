@@ -327,15 +327,22 @@ class SubscriptionsController extends Controller
         $this->verifyCsrf();
         $member = Member::find((int) $memberId);
         $lot = ShareLot::find((int) $lotId);
+        $redirect = trim((string) $this->input('redirect_to', ''));
+        $back = ($redirect !== '' && !str_starts_with($redirect, 'http'))
+            ? ltrim($redirect, '/')
+            : 'admin/subscriptions/' . $memberId;
+
         if (!$member || !$lot || (int) $lot['member_id'] !== (int) $memberId) {
             Session::flash('error', 'بيانات الحصة غير صحيحة.');
-            $this->redirect('admin/subscriptions/' . $memberId);
+            $this->redirect($back);
+            return;
         }
 
         $date = trim((string) $this->input('start_date', ''));
         if ($date === '' || !strtotime($date)) {
             Session::flash('error', 'تاريخ بداية الاشتراك غير صحيح.');
-            $this->redirect('admin/subscriptions/' . $memberId);
+            $this->redirect($back);
+            return;
         }
 
         $time = !empty($lot['created_at']) ? date('H:i:s', strtotime($lot['created_at'])) : '12:00:00';
@@ -349,7 +356,7 @@ class SubscriptionsController extends Controller
         }
 
         Session::flash('success', 'تم تعديل تاريخ بداية اشتراك الحصة بنجاح.');
-        $this->redirect('admin/subscriptions/' . $memberId);
+        $this->redirect($back);
     }
 
     public function resetPayment(string $memberId, string $subId): void
