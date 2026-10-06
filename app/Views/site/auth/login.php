@@ -39,8 +39,12 @@ $isEn = is_en();
                 <span class="absolute inset-y-0 <?= is_rtl() ? 'right-0' : 'left-0' ?> w-11 flex items-center justify-center pointer-events-none text-slate-400">
                     <i class="bi bi-person-vcard text-lg"></i>
                 </span>
-                <input type="text" name="national_id" class="form-control form-control-icon-start" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" required autofocus>
+                <input type="text" name="national_id" class="form-control form-control-icon-start font-numeric" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" maxlength="10" inputmode="numeric" pattern="[12][0-9]{9}" title="<?= is_rtl() ? 'رقم الهوية الوطنية (10 أرقام تبدأ بـ 1 أو 2)' : 'Saudi National ID (10 digits starting with 1 or 2)' ?>" required autofocus>
             </div>
+            <p class="text-[11px] text-slate-500 mt-1.5 mb-0 flex items-center gap-1.5">
+                <i class="bi bi-shield-check text-emerald-600"></i>
+                <span><?= is_rtl() ? 'تسجيل الدخول متاح برقم الهوية الوطنية فقط (لا يمكن استخدام البريد أو الهاتف).' : 'Login is available using Saudi National ID only (email or phone not allowed).' ?></span>
+            </p>
         </div>
 
         <div>

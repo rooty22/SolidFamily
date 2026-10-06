@@ -187,6 +187,30 @@ class AuthController extends Controller
             return;
         }
 
+        // 2. Reject email format explicitly
+        if (str_contains($nationalId, '@') || filter_var($nationalId, FILTER_VALIDATE_EMAIL)) {
+            Session::flash('error', 'تسجيل الدخول متاح برقم الهوية الوطنية فقط، لا يمكن استخدام البريد الإلكتروني.');
+            Session::setOld(['national_id' => '']);
+            $this->redirect('login');
+            return;
+        }
+
+        // 3. Reject phone/mobile format explicitly
+        if (str_starts_with($nationalId, '+') || str_starts_with($nationalId, '05') || str_starts_with($nationalId, '00966') || str_starts_with($nationalId, '966')) {
+            Session::flash('error', 'تسجيل الدخول متاح برقم الهوية الوطنية فقط، لا يمكن استخدام رقم الجوال أو الهاتف.');
+            Session::setOld(['national_id' => '']);
+            $this->redirect('login');
+            return;
+        }
+
+        // 4. Validate strict National ID format (10 digits starting with 1 or 2)
+        if (!preg_match('/^[12]\d{9}$/', $nationalId)) {
+            Session::flash('error', 'رقم الهوية الوطنية غير صحيح، يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.');
+            Session::setOld(['national_id' => $nationalId]);
+            $this->redirect('login');
+            return;
+        }
+
         if (RateLimiter::loginBlocked('member', $nationalId)) {
             $sec = RateLimiter::loginRetryAfter('member', $nationalId);
             $msg = $sec > 60
@@ -199,13 +223,10 @@ class AuthController extends Controller
             return;
         }
 
-        // Search for member by national_id or email
+        // 5. Search for member strictly by national_id ONLY
         $member = Member::findBy('national_id', $nationalId);
-        if (!$member && filter_var($nationalId, FILTER_VALIDATE_EMAIL)) {
-            $member = Member::findBy('email', $nationalId);
-        }
 
-        // 2. Block if the account has administrative status
+        // 6. Block if the account has administrative status
         if ($member && Member::isAdmin($member)) {
             Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن تسجيل الدخول به من بوابة المشتركين. يرجى تسجيل الدخول عبر بوابة الإدارة.');
             $this->redirect('admin/login');

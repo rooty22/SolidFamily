@@ -123,7 +123,7 @@ $isEn = is_en();
                             <option value=""><?= $isEn ? 'Year' : 'السنة' ?></option>
                             <?php 
                             $curYear = (int) date('Y');
-                            for ($yr = $curYear + 1; $yr >= 1970; $yr--): ?>
+                            for ($yr = $curYear; $yr >= 1970; $yr--): ?>
                                 <option value="<?= $yr ?>" <?= ((string)$cYear === (string)$yr) ? 'selected' : '' ?>><?= $yr ?></option>
                             <?php endfor; ?>
                         </select>

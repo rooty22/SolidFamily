@@ -324,7 +324,7 @@ class Member extends Model
                     break;
                 case 'created_at':
                     if (!empty($data['created_at'])) {
-                        $v->date('created_at', 'تاريخ التسجيل', 365);
+                        $v->date('created_at', 'تاريخ التسجيل', 0);
                     }
                     break;
             }
