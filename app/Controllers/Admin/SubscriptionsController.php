@@ -110,7 +110,19 @@ class SubscriptionsController extends Controller
             $this->redirect('admin/subscriptions');
         }
 
-        MonthlySubscription::ensureMonthExistsForMember((int) $memberId, date('Y-m'));
+        $earliestMonth = $this->earliestPayableMonth((int) $memberId, '');
+        if ($earliestMonth && $earliestMonth <= date('Y-m')) {
+            $cur = strtotime($earliestMonth . '-01');
+            $end = strtotime(date('Y-m-01'));
+            $safety = 0;
+            while ($cur <= $end && $safety < 60) {
+                MonthlySubscription::ensureMonthExistsForMember((int) $memberId, date('Y-m', $cur));
+                $cur = strtotime('+1 month', $cur);
+                $safety++;
+            }
+        } else {
+            MonthlySubscription::ensureMonthExistsForMember((int) $memberId, date('Y-m'));
+        }
         $history = MonthlySubscription::forMember((int) $memberId);
         $shareValue = (float) Setting::get('share_value', 0);
         $lots = ShareLot::activeFor((int) $memberId);
@@ -278,5 +290,147 @@ class SubscriptionsController extends Controller
         }
 
         $this->redirect($back);
+    }
+
+    public function updateLotDate(string $memberId, string $lotId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $memberId);
+        $lot = ShareLot::find((int) $lotId);
+        if (!$member || !$lot || (int) $lot['member_id'] !== (int) $memberId) {
+            Session::flash('error', 'بيانات الحصة غير صحيحة.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $date = trim((string) $this->input('start_date', ''));
+        if ($date === '' || !strtotime($date)) {
+            Session::flash('error', 'تاريخ بداية الاشتراك غير صحيح.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $time = !empty($lot['created_at']) ? date('H:i:s', strtotime($lot['created_at'])) : '12:00:00';
+        $newTimestamp = date('Y-m-d H:i:s', strtotime($date . ' ' . $time));
+
+        ShareLot::update((int) $lotId, ['created_at' => $newTimestamp]);
+
+        // If requested or if single active lot, sync member registration date
+        if (!empty($this->input('sync_member')) || count(ShareLot::activeFor((int) $memberId)) === 1) {
+            Member::update((int) $memberId, ['created_at' => $newTimestamp]);
+        }
+
+        Session::flash('success', 'تم تعديل تاريخ بداية اشتراك الحصة بنجاح.');
+        $this->redirect('admin/subscriptions/' . $memberId);
+    }
+
+    public function resetPayment(string $memberId, string $subId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $memberId);
+        $sub = MonthlySubscription::find((int) $subId);
+        if (!$member || !$sub || (int) $sub['member_id'] !== (int) $memberId) {
+            Session::flash('error', 'سجل الاشتراك غير موجود.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        if ((float) $sub['amount_paid'] <= 0) {
+            Session::flash('error', 'لا توجد دفعات مسجلة على هذا الشهر لإلغائها.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $pdo = \App\Core\Database::connection();
+        $pdo->beginTransaction();
+        try {
+            $isLate = MonthlySubscription::effectiveDue($sub) < date('Y-m-d');
+            $newStatus = ((float) $sub['amount_due'] > 0 && $isLate) ? 'late' : 'unpaid';
+
+            MonthlySubscription::update((int) $subId, [
+                'amount_paid' => 0.00,
+                'status' => $newStatus,
+            ]);
+
+            Transaction::deleteWhere([
+                'member_id' => (int) $memberId,
+                'category' => 'subscription',
+                'related_id' => (int) $subId,
+            ]);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        Session::flash('success', 'تم إلغاء سداد اشتراك شهر ' . $sub['month'] . ' بنجاح وحذف المعاملة المالية المرتبطة.');
+        $this->redirect('admin/subscriptions/' . $memberId);
+    }
+
+    public function updatePayment(string $memberId, string $subId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $memberId);
+        $sub = MonthlySubscription::find((int) $subId);
+        if (!$member || !$sub || (int) $sub['member_id'] !== (int) $memberId) {
+            Session::flash('error', 'سجل الاشتراك غير موجود.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $data = $this->all();
+        $validator = Validator::make($data)
+            ->required('amount_paid', 'المبلغ المسدد')->decimal('amount_paid', 'المبلغ المسدد', 0, 10000000);
+        if ($validator->fails()) {
+            Session::flash('error', $validator->firstError());
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $newPaid = round((float) $data['amount_paid'], 2);
+        $due = (float) $sub['amount_due'];
+        if ($newPaid > $due) {
+            Session::flash('error', 'المبلغ المسدد لا يمكن أن يتجاوز المستحق (' . money($due) . ').');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        $pdo = \App\Core\Database::connection();
+        $pdo->beginTransaction();
+        try {
+            if ($newPaid <= 0) {
+                $isLate = MonthlySubscription::effectiveDue($sub) < date('Y-m-d');
+                $status = ($due > 0 && $isLate) ? 'late' : 'unpaid';
+                MonthlySubscription::update((int) $subId, [
+                    'amount_paid' => 0.00,
+                    'status' => $status,
+                ]);
+                Transaction::deleteWhere([
+                    'member_id' => (int) $memberId,
+                    'category' => 'subscription',
+                    'related_id' => (int) $subId,
+                ]);
+            } else {
+                $status = $newPaid >= $due ? 'paid' : 'partial';
+                MonthlySubscription::update((int) $subId, [
+                    'amount_paid' => $newPaid,
+                    'status' => $status,
+                ]);
+                $tx = Transaction::first([
+                    'member_id' => (int) $memberId,
+                    'category' => 'subscription',
+                    'related_id' => (int) $subId,
+                ]);
+                if ($tx) {
+                    Transaction::update($tx['id'], [
+                        'amount' => $newPaid,
+                        'description' => ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'],
+                    ]);
+                } else {
+                    Transaction::record((int) $memberId, 'subscription', (int) $subId, $newPaid, current_admin_id(), ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month']);
+                }
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        Session::flash('success', 'تم تعديل مبلغ سداد اشتراك شهر ' . $sub['month'] . ' بنجاح.');
+        $this->redirect('admin/subscriptions/' . $memberId);
     }
 }

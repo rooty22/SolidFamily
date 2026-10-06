@@ -152,6 +152,9 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/subscriptions', [SubscriptionsController::class, 'index']);
     $router->get('/subscriptions/{memberId}', [SubscriptionsController::class, 'show']);
     $router->post('/subscriptions/{memberId}/pay', [SubscriptionsController::class, 'recordPayment']);
+    $router->post('/subscriptions/{memberId}/lot/{lotId}/date', [SubscriptionsController::class, 'updateLotDate']);
+    $router->post('/subscriptions/{memberId}/reset-payment/{subId}', [SubscriptionsController::class, 'resetPayment']);
+    $router->post('/subscriptions/{memberId}/update-payment/{subId}', [SubscriptionsController::class, 'updatePayment']);
 
     $router->get('/founding', [AdminFoundingController::class, 'index']);
     $router->get('/founding/{memberId}', [AdminFoundingController::class, 'show']);
@@ -169,6 +172,8 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/loans/{id}/edit', [LoansController::class, 'edit']);
     $router->post('/loans/{id}', [LoansController::class, 'update']);
     $router->post('/loans/{id}/pay', [LoansController::class, 'recordPayment']);
+    $router->post('/loans/{id}/installments/{installmentId}/reset-payment', [LoansController::class, 'resetPayment']);
+    $router->post('/loans/{id}/installments/{installmentId}/update-payment', [LoansController::class, 'updatePayment']);
     $router->post('/loans/{id}/close', [LoansController::class, 'close']);
     $router->post('/loans/{id}/delete', [LoansController::class, 'destroy']);
 

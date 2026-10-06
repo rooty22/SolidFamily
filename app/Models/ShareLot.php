@@ -163,7 +163,7 @@ class ShareLot extends Model
      * sets a member's shares directly instead of through an approved request: extra shares become a new lot, removed
      * shares are taken from the oldest lots first. Returns the ids of lots that ended up emptied.
      */
-    public static function syncToMemberTotal(int $memberId): array
+    public static function syncToMemberTotal(int $memberId, ?string $createdAt = null): array
     {
         $member = Member::find($memberId);
         if (!$member) {
@@ -174,7 +174,13 @@ class ShareLot extends Model
         $sum = (int) array_sum(array_column($active, 'shares_count'));
 
         if ($total > $sum) {
-            self::create(['member_id' => $memberId, 'shares_count' => $total - $sum]);
+            $lotData = ['member_id' => $memberId, 'shares_count' => $total - $sum];
+            if ($createdAt) {
+                $lotData['created_at'] = $createdAt;
+            } elseif (!empty($member['created_at'])) {
+                $lotData['created_at'] = $member['created_at'];
+            }
+            self::create($lotData);
             return [];
         }
         if ($total < $sum) {

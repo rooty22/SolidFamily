@@ -154,7 +154,7 @@ class MembersController extends Controller
         ]);
 
         FoundingAmount::ensureForMember($id);
-        \App\Models\ShareLot::syncToMemberTotal((int) $id); // shares given at creation bill through a lot
+        \App\Models\ShareLot::syncToMemberTotal((int) $id, $createdAt); // shares given at creation bill through a lot
 
         Session::flash('success', 'تم إضافة المشترك بنجاح.');
         $this->redirect('admin/members/' . $id);
@@ -231,7 +231,14 @@ class MembersController extends Controller
         ];
         if (!empty($data['created_at'])) {
             $existingTime = !empty($member['created_at']) ? date('H:i:s', strtotime($member['created_at'])) : '12:00:00';
-            $update['created_at'] = date('Y-m-d H:i:s', strtotime($data['created_at'] . ' ' . $existingTime));
+            $newCreatedAt = date('Y-m-d H:i:s', strtotime($data['created_at'] . ' ' . $existingTime));
+            $update['created_at'] = $newCreatedAt;
+
+            // Also sync active share lots so subscription start date and 6-month rule reflect the new registration date
+            $activeLots = \App\Models\ShareLot::activeFor((int) $id);
+            if (count($activeLots) === 1) {
+                \App\Models\ShareLot::update($activeLots[0]['id'], ['created_at' => $newCreatedAt]);
+            }
         }
         if (array_key_exists('subscription_due_day', $data)) {
             $update['subscription_due_day'] = ($data['subscription_due_day'] ?? '') !== '' ? (int) $data['subscription_due_day'] : null;

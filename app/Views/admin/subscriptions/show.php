@@ -99,6 +99,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
                         <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
                         <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
+                        <th class="col-actions"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -154,34 +155,152 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                                 </span>
                             <?php endif; ?>
                         </td>
+                        <td class="col-actions">
+                            <button type="button" class="btn btn-sm btn-outline-purple inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors shadow-2xs" data-bs-toggle="modal" data-bs-target="#editLotDateModal<?= $lot['id'] ?>">
+                                <i class="bi bi-calendar-event"></i>
+                                <span><?= is_rtl() ? 'تعديل التاريخ' : 'Edit Date' ?></span>
+                            </button>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+
+        <?php foreach ($lots as $lot): ?>
+        <div class="modal fade" id="editLotDateModal<?= $lot['id'] ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-2xl border-0 shadow-2xl">
+                    <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
+                        <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
+                            <i class="bi bi-calendar2-range text-purple-600"></i>
+                            <span><?= is_rtl() ? "تعديل تاريخ بداية اشتراك الحصة #{$lot['id']} ({$lot['shares_count']} سهم)" : "Edit Start Date for Lot #{$lot['id']}" ?></span>
+                        </h5>
+                        <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/lot/' . $lot['id'] . '/date') ?>">
+                        <?= csrf_field() ?>
+                        <div class="modal-body p-4 space-y-3">
+                            <div class="p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl text-xs text-purple-900 leading-relaxed">
+                                <i class="bi bi-info-circle-fill text-purple-600 me-1"></i>
+                                <?= is_rtl() 
+                                    ? 'تعديل تاريخ بداية الاشتراك باليوم والشهر والسنة يؤثر مباشرة على حساب شرط مرور 6 أشهر لأهلية القرض، وكذلك يسمح بتسجيل سداد الاشتراكات ابتداءً من هذا التاريخ.' 
+                                    : 'Editing the subscription start date impacts the 6-month loan eligibility rule and allows recording payments starting from this date.' ?>
+                            </div>
+                            <div>
+                                <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ بداية الاشتراك الجديد (اليوم / الشهر / السنة)' : 'New Start Date' ?></label>
+                                <input type="date" name="start_date" class="form-control text-sm font-numeric font-bold" value="<?= !empty($lot['created_at']) ? date('Y-m-d', strtotime($lot['created_at'])) : date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+                            </div>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" name="sync_member" value="1" id="syncMemberCheck<?= $lot['id'] ?>" checked>
+                                <label class="form-check-label text-xs font-bold text-slate-700" for="syncMemberCheck<?= $lot['id'] ?>">
+                                    <?= is_rtl() ? 'تحديث تاريخ تسجيل المشترك في الصندوق ليطابق هذا التاريخ أيضاً' : 'Also sync member registration date to match this date' ?>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-t border-slate-100 p-3 bg-slate-50/50 flex justify-between">
+                            <button type="button" class="btn btn-light text-xs font-bold px-3 py-2 rounded-xl" data-bs-dismiss="modal"><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></button>
+                            <button type="submit" class="btn btn-primary text-xs font-bold px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 border-0 shadow-md shadow-purple-600/20">
+                                <i class="bi bi-check-lg me-1"></i>
+                                <?= is_rtl() ? 'حفظ التاريخ' : 'Save Date' ?>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>
 
 <div class="card-panel">
     <div class="panel-head"><h3><i class="bi bi-clock-history"></i> سجل الاشتراكات</h3></div>
     <table class="table-modern">
-        <thead><tr><th>الشهر</th><th>الدفعة</th><th>موعد الاستحقاق</th><th>المستحق</th><th>المسدد</th><th>الحالة</th></tr></thead>
+        <thead>
+            <tr>
+                <th>الشهر</th>
+                <th>الدفعة</th>
+                <th>موعد الاستحقاق</th>
+                <th>المستحق</th>
+                <th>المسدد</th>
+                <th>الحالة</th>
+                <th class="text-center"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
+            </tr>
+        </thead>
         <tbody>
         <?php foreach ($history as $h): [$l, $v] = status_badge($h['status']); ?>
             <tr>
-                <td class="fw-bold"><?= e($h['month']) ?></td>
+                <td class="fw-bold font-numeric"><?= e($h['month']) ?></td>
                 <td class="text-muted" style="font-size:12.5px;"><?= $h['lot_id'] ? '#' . $h['lot_id'] . ' (' . number_format($h['shares_count_snapshot']) . ' سهم)' : '-' ?>
                     <?php if (!empty($h['lot_status']) && $h['lot_status'] !== 'active'): ?><small class="d-block text-danger">دفعة ملغاة</small><?php endif; ?></td>
-                <td><?= date_ar($h['due_date']) ?>
+                <td class="font-numeric"><?= date_ar($h['due_date']) ?>
                     <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted">مهلة حتى <?= date_ar($h['grace_until']) ?></small><?php endif; ?></td>
-                <td><?= money($h['amount_due']) ?></td>
-                <td><?= money($h['amount_paid']) ?></td>
+                <td class="font-numeric"><?= money($h['amount_due']) ?></td>
+                <td class="font-numeric font-bold <?= (float)$h['amount_paid'] > 0 ? 'text-emerald-600' : '' ?>"><?= money($h['amount_paid']) ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                <td class="text-center">
+                    <?php if ((float) $h['amount_paid'] > 0): ?>
+                        <div class="d-inline-flex align-items-center gap-1.5">
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5 text-xs rounded-lg inline-flex items-center gap-1 font-bold" data-bs-toggle="modal" data-bs-target="#editSubPayModal<?= $h['id'] ?>" title="<?= is_rtl() ? 'تعديل المبلغ المسدد' : 'Edit Paid Amount' ?>">
+                                <i class="bi bi-pencil-square"></i>
+                                <span><?= is_rtl() ? 'تعديل' : 'Edit' ?></span>
+                            </button>
+                            <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/reset-payment/' . $h['id']) ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من إلغاء سداد اشتراك شهر ' . e($h['month']) . '؟ سيتم إعادة حالة الشهر إلى غير مسدد وحذف المعاملة المالية المرتبطة بالكامل.' : 'Are you sure you want to cancel payment for month ' . e($h['month']) . '?' ?>');" class="d-inline m-0">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2.5 text-xs rounded-lg inline-flex items-center gap-1 font-bold" title="<?= is_rtl() ? 'إلغاء السداد وحذف المعاملة' : 'Cancel Payment' ?>">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                    <span><?= is_rtl() ? 'إلغاء السداد' : 'Reset' ?></span>
+                                </button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <span class="text-slate-400 text-xs">-</span>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         <?php if (empty($history)): ?>
-            <tr><td colspan="6"><div class="empty-state"><i class="bi bi-calendar-x"></i>لا يوجد سجل بعد</div></td></tr>
+            <tr><td colspan="7"><div class="empty-state"><i class="bi bi-calendar-x"></i>لا يوجد سجل بعد</div></td></tr>
         <?php endif; ?>
         </tbody>
     </table>
 </div>
+
+<?php foreach ($history as $h): if ((float) $h['amount_paid'] > 0): ?>
+<div class="modal fade" id="editSubPayModal<?= $h['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl">
+            <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
+                <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
+                    <i class="bi bi-pencil-square text-emerald-600"></i>
+                    <span><?= is_rtl() ? "تعديل سداد اشتراك شهر {$h['month']}" : "Edit Payment for Month {$h['month']}" ?></span>
+                </h5>
+                <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/update-payment/' . $h['id']) ?>">
+                <?= csrf_field() ?>
+                <div class="modal-body p-4 space-y-3">
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <span class="text-slate-600 font-bold"><?= is_rtl() ? 'المبلغ المستحق لهذا الشهر:' : 'Amount Due:' ?></span>
+                        <span class="font-numeric font-extrabold text-slate-900"><?= money($h['amount_due']) ?></span>
+                    </div>
+                    <div>
+                        <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>
+                        <input type="number" step="0.01" min="0" max="<?= (float) $h['amount_due'] ?>" name="amount_paid" class="form-control text-sm font-numeric font-bold" value="<?= (float) $h['amount_paid'] ?>" required>
+                        <p class="text-[11px] text-muted mb-0 mt-1.5">
+                            <?= is_rtl() ? 'إذا جعلت المبلغ 0، سيتم إلغاء السداد بالكامل وإعادة حالة الشهر إلى غير مسدد وحذف الحركة المالية.' : 'Setting the amount to 0 will reset the month to unpaid and delete the financial transaction.' ?>
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer border-t border-slate-100 p-3 bg-slate-50/50 flex justify-between">
+                    <button type="button" class="btn btn-light text-xs font-bold px-3 py-2 rounded-xl" data-bs-dismiss="modal"><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></button>
+                    <button type="submit" class="btn btn-primary text-xs font-bold px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 border-0 shadow-md shadow-emerald-600/20">
+                        <i class="bi bi-check-lg me-1"></i>
+                        <?= is_rtl() ? 'حفظ التعديل' : 'Save Changes' ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; endforeach; ?>

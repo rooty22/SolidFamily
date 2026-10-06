@@ -194,6 +194,7 @@ $isEn = is_en();
                     <th><?= __('paid') ?></th>
                     <th><?= __('remaining') ?></th>
                     <th><?= __('status') ?></th>
+                    <th class="text-center"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -205,10 +206,68 @@ $isEn = is_en();
                         <td class="font-numeric text-emerald-600 font-bold"><?= money($i['amount_paid']) ?></td>
                         <td class="font-numeric text-rose-600 font-bold"><?= money($i['amount'] - $i['amount_paid']) ?></td>
                         <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                        <td class="text-center">
+                            <?php if ((float) $i['amount_paid'] > 0): ?>
+                                <div class="d-inline-flex align-items-center gap-1.5">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5 text-xs rounded-lg inline-flex items-center gap-1 font-bold" data-bs-toggle="modal" data-bs-target="#editLoanInstModal<?= $i['id'] ?>" title="<?= is_rtl() ? 'تعديل المبلغ المسدد' : 'Edit Paid Amount' ?>">
+                                        <i class="bi bi-pencil-square"></i>
+                                        <span><?= is_rtl() ? 'تعديل' : 'Edit' ?></span>
+                                    </button>
+                                    <form method="post" action="<?= url('admin/loans/' . $loan['id'] . '/installments/' . $i['id'] . '/reset-payment') ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من إلغاء سداد القسط رقم ' . $i['installment_number'] . '؟ سيتم إعادة القسط إلى غير مسدد وتحديث رصيد القرض وحذف المعاملة المالية المرتبطة.' : 'Are you sure you want to cancel payment for installment #' . $i['installment_number'] . '?' ?>');" class="d-inline m-0">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2.5 text-xs rounded-lg inline-flex items-center gap-1 font-bold" title="<?= is_rtl() ? 'إلغاء السداد وحذف المعاملة' : 'Cancel Payment' ?>">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                            <span><?= is_rtl() ? 'إلغاء السداد' : 'Reset' ?></span>
+                                        </button>
+                                    </form>
+                                </div>
+                            <?php else: ?>
+                                <span class="text-slate-400 text-xs">-</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </div>
+
+<?php foreach ($installments as $i): if ((float) $i['amount_paid'] > 0): ?>
+<div class="modal fade" id="editLoanInstModal<?= $i['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl">
+            <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
+                <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
+                    <i class="bi bi-pencil-square text-emerald-600"></i>
+                    <span><?= is_rtl() ? "تعديل سداد القسط رقم {$i['installment_number']}" : "Edit Payment for Installment #{$i['installment_number']}" ?></span>
+                </h5>
+                <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="<?= url('admin/loans/' . $loan['id'] . '/installments/' . $i['id'] . '/update-payment') ?>">
+                <?= csrf_field() ?>
+                <div class="modal-body p-4 space-y-3">
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <span class="text-slate-600 font-bold"><?= is_rtl() ? 'قيمة القسط الكاملة:' : 'Installment Value:' ?></span>
+                        <span class="font-numeric font-extrabold text-slate-900"><?= money($i['amount']) ?></span>
+                    </div>
+                    <div>
+                        <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>
+                        <input type="number" step="0.01" min="0" max="<?= (float) $i['amount'] ?>" name="amount_paid" class="form-control text-sm font-numeric font-bold" value="<?= (float) $i['amount_paid'] ?>" required>
+                        <p class="text-[11px] text-muted mb-0 mt-1.5">
+                            <?= is_rtl() ? 'إذا جعلت المبلغ 0، سيتم إلغاء السداد بالكامل وإعادة القسط إلى غير مسدد وتحديث رصيد القرض وحذف الحركة المالية.' : 'Setting the amount to 0 will reset the installment to unpaid, update the loan balance, and delete the financial transaction.' ?>
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer border-t border-slate-100 p-3 bg-slate-50/50 flex justify-between">
+                    <button type="button" class="btn btn-light text-xs font-bold px-3 py-2 rounded-xl" data-bs-dismiss="modal"><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></button>
+                    <button type="submit" class="btn btn-primary text-xs font-bold px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 border-0 shadow-md shadow-emerald-600/20">
+                        <i class="bi bi-check-lg me-1"></i>
+                        <?= is_rtl() ? 'حفظ التعديل' : 'Save Changes' ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; endforeach; ?>
 

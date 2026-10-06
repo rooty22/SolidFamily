@@ -436,4 +436,142 @@ class LoansController extends Controller
         Session::flash('success', 'تم حذف القرض.');
         $this->redirect('admin/loans');
     }
+
+    public function resetPayment(string $id, string $installmentId): void
+    {
+        $this->verifyCsrf();
+        $loan = Loan::find((int) $id);
+        $installment = LoanInstallment::find((int) $installmentId);
+        if (!$loan || !$installment || (int) $installment['loan_id'] !== (int) $id) {
+            Session::flash('error', 'بيانات القرض أو القسط غير صحيحة.');
+            $this->redirect('admin/loans/' . $id);
+        }
+
+        if ((float) $installment['amount_paid'] <= 0) {
+            Session::flash('error', 'لا يوجد سداد مسجل على هذا القسط لإلغائه.');
+            $this->redirect('admin/loans/' . $id);
+        }
+
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            LoanInstallment::update((int) $installmentId, [
+                'amount_paid' => 0.00,
+                'status' => 'unpaid',
+                'paid_at' => null,
+            ]);
+
+            Transaction::deleteWhere([
+                'member_id' => (int) $loan['member_id'],
+                'category' => 'loan_installment',
+                'related_id' => (int) $installmentId,
+            ]);
+
+            $installments = LoanInstallment::forLoan((int) $id);
+            $totalPaid = array_sum(array_column($installments, 'amount_paid'));
+            $remaining = round((float) $loan['amount'] - $totalPaid, 2);
+            $loanStatus = $remaining <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'active');
+
+            $loanUpdate = [
+                'amount_paid' => $totalPaid,
+                'amount_remaining' => max(0, $remaining),
+                'status' => $loanStatus,
+            ];
+            if ($loan['status'] === 'closed' && $remaining > 0) {
+                $loanUpdate['closed_at'] = null;
+            }
+            Loan::update((int) $id, $loanUpdate);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        Session::flash('success', 'تم إلغاء سداد القسط رقم ' . $installment['installment_number'] . ' وتحديث رصيد القرض بنجاح.');
+        $this->redirect('admin/loans/' . $id);
+    }
+
+    public function updatePayment(string $id, string $installmentId): void
+    {
+        $this->verifyCsrf();
+        $loan = Loan::find((int) $id);
+        $installment = LoanInstallment::find((int) $installmentId);
+        if (!$loan || !$installment || (int) $installment['loan_id'] !== (int) $id) {
+            Session::flash('error', 'بيانات القرض أو القسط غير صحيحة.');
+            $this->redirect('admin/loans/' . $id);
+        }
+
+        $data = $this->all();
+        $validator = Validator::make($data)
+            ->required('amount_paid', 'المبلغ المسدد')->decimal('amount_paid', 'المبلغ المسدد', 0, 10000000);
+        if ($validator->fails()) {
+            Session::flash('error', $validator->firstError());
+            $this->redirect('admin/loans/' . $id);
+        }
+
+        $newPaid = round((float) $data['amount_paid'], 2);
+        $instAmount = (float) $installment['amount'];
+        if ($newPaid > $instAmount) {
+            Session::flash('error', 'المبلغ المسدد لا يمكن أن يتجاوز قيمة القسط (' . money($instAmount) . ').');
+            $this->redirect('admin/loans/' . $id);
+        }
+
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            if ($newPaid <= 0) {
+                LoanInstallment::update((int) $installmentId, [
+                    'amount_paid' => 0.00,
+                    'status' => 'unpaid',
+                    'paid_at' => null,
+                ]);
+                Transaction::deleteWhere([
+                    'member_id' => (int) $loan['member_id'],
+                    'category' => 'loan_installment',
+                    'related_id' => (int) $installmentId,
+                ]);
+            } else {
+                $status = $newPaid >= $instAmount ? 'paid' : 'partial';
+                LoanInstallment::update((int) $installmentId, [
+                    'amount_paid' => $newPaid,
+                    'status' => $status,
+                    'paid_at' => $status === 'paid' ? ($installment['paid_at'] ?: date('Y-m-d H:i:s')) : null,
+                ]);
+                $tx = Transaction::first([
+                    'member_id' => (int) $loan['member_id'],
+                    'category' => 'loan_installment',
+                    'related_id' => (int) $installmentId,
+                ]);
+                if ($tx) {
+                    Transaction::update($tx['id'], ['amount' => $newPaid]);
+                } else {
+                    Transaction::record((int) $loan['member_id'], 'loan_installment', (int) $installmentId, $newPaid, current_admin_id(), 'سداد قسط رقم ' . $installment['installment_number']);
+                }
+            }
+
+            $installments = LoanInstallment::forLoan((int) $id);
+            $totalPaid = array_sum(array_column($installments, 'amount_paid'));
+            $remaining = round((float) $loan['amount'] - $totalPaid, 2);
+            $loanStatus = $remaining <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'active');
+
+            $loanUpdate = [
+                'amount_paid' => $totalPaid,
+                'amount_remaining' => max(0, $remaining),
+                'status' => $loanStatus,
+            ];
+            if ($loan['status'] === 'closed' && $remaining > 0) {
+                $loanUpdate['closed_at'] = null;
+            }
+            Loan::update((int) $id, $loanUpdate);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        Session::flash('success', 'تم تعديل مبلغ سداد القسط رقم ' . $installment['installment_number'] . ' وتحديث رصيد القرض بنجاح.');
+        $this->redirect('admin/loans/' . $id);
+    }
 }
