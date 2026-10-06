@@ -238,6 +238,7 @@ class MembersController extends Controller
             $activeLots = \App\Models\ShareLot::activeFor((int) $id);
             if (count($activeLots) === 1) {
                 \App\Models\ShareLot::update($activeLots[0]['id'], ['created_at' => $newCreatedAt]);
+                \App\Models\MonthlySubscription::purgeStalePreStartRows((int) $id);
             }
         }
         if (array_key_exists('subscription_due_day', $data)) {

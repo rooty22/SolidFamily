@@ -89,12 +89,31 @@ class MonthlySubscription extends Model
     }
 
     /**
+     * Purges any unpaid subscription rows that precede the active lots' actual start dates.
+     * Prevents phantom historical rows when a lot's start date is moved forward or added later.
+     */
+    public static function purgeStalePreStartRows(int $memberId): void
+    {
+        $lots = ShareLot::activeFor($memberId);
+        foreach ($lots as $lot) {
+            $startMonth = ShareLot::startMonth($lot);
+            if ($startMonth) {
+                self::raw(
+                    "DELETE FROM monthly_subscriptions WHERE member_id = ? AND lot_id = ? AND month < ? AND (amount_paid = 0 OR amount_paid IS NULL)",
+                    [$memberId, (int) $lot['id'], $startMonth]
+                );
+            }
+        }
+    }
+
+    /**
      * The member's subscription history. Rows that owe nothing and hold no money (voided when a lot was cancelled or merged
      * away, or the placeholder of a member with no shares) are not transactions, so they are left out. A row with money on
      * it stays, flagged with lot_status so the screens can show it belongs to a lot that no longer exists.
      */
     public static function forMember(int $memberId): array
     {
+        self::purgeStalePreStartRows($memberId);
         $rows = self::raw(
             'SELECT s.*, l.status AS lot_status
              FROM monthly_subscriptions s

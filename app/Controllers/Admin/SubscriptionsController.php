@@ -110,6 +110,9 @@ class SubscriptionsController extends Controller
             $this->redirect('admin/subscriptions');
         }
 
+        // Clean up any stale unpaid rows that precede the active lots' start dates
+        MonthlySubscription::purgeStalePreStartRows((int) $memberId);
+
         $earliestMonth = $this->earliestPayableMonth((int) $memberId, '');
         if ($earliestMonth && $earliestMonth <= date('Y-m')) {
             $cur = strtotime($earliestMonth . '-01');
@@ -422,6 +425,25 @@ class SubscriptionsController extends Controller
         // If requested or if single active lot, sync member registration date
         if (!empty($this->input('sync_member')) || count(ShareLot::activeFor((int) $memberId)) === 1) {
             Member::update((int) $memberId, ['created_at' => $newTimestamp]);
+        }
+
+        // Clean up any unpaid subscription rows before the new start month
+        $newStartMonth = substr($date, 0, 7);
+        MonthlySubscription::raw(
+            "DELETE FROM monthly_subscriptions WHERE member_id = ? AND lot_id = ? AND month < ? AND (amount_paid = 0 OR amount_paid IS NULL)",
+            [(int) $memberId, (int) $lotId, $newStartMonth]
+        );
+
+        // Ensure subscriptions exist from the new start month up to the current month if in past/present
+        if ($newStartMonth <= date('Y-m')) {
+            $cur = strtotime($newStartMonth . '-01');
+            $end = strtotime(date('Y-m-01'));
+            $safety = 0;
+            while ($cur <= $end && $safety < 60) {
+                MonthlySubscription::ensureMonthExistsForMember((int) $memberId, date('Y-m', $cur));
+                $cur = strtotime('+1 month', $cur);
+                $safety++;
+            }
         }
 
         Session::flash('success', 'تم تعديل تاريخ بداية اشتراك الحصة بنجاح.');

@@ -177,8 +177,12 @@ class ShareLot extends Model
             $lotData = ['member_id' => $memberId, 'shares_count' => $total - $sum];
             if ($createdAt) {
                 $lotData['created_at'] = $createdAt;
-            } elseif (!empty($member['created_at'])) {
+            } elseif (count($active) === 0 && !empty($member['created_at'])) {
+                // Initial lot creation uses member registration date
                 $lotData['created_at'] = $member['created_at'];
+            } else {
+                // Additional shares added later start at current timestamp
+                $lotData['created_at'] = date('Y-m-d H:i:s');
             }
             self::create($lotData);
             return [];
