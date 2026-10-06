@@ -39,13 +39,13 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <input type="hidden" name="action" value="bulk_pay">
                 <?= $lotPicker() ?>
                 <div class="row g-2">
-                    <div class="col-6">
-                        <label class="form-label">الشهر الأول</label>
-                        <input type="month" name="start_month" class="form-control" value="<?= date('Y-m') ?>" required>
+                    <div class="col-7">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ السداد / الشهر الأول (يوم/شهر/سنة)' : 'Start Date (Day/Month/Year)' ?></label>
+                        <input type="date" name="start_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" required>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label">عدد الأشهر</label>
-                        <input type="number" name="months_count" class="form-control" value="1" min="1" max="24">
+                    <div class="col-5">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'عدد الأشهر' : 'Months Count' ?></label>
+                        <input type="number" name="months_count" class="form-control font-numeric" value="1" min="1" max="24">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 mt-3"><i class="bi bi-check-circle"></i> تسجيل السداد بالكامل</button>
@@ -60,13 +60,13 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <input type="hidden" name="action" value="partial_pay">
                 <?= $lotPicker() ?>
                 <div class="row g-2">
-                    <div class="col-6">
-                        <label class="form-label">الشهر</label>
-                        <input type="month" name="partial_month" class="form-control" value="<?= date('Y-m') ?>" required>
+                    <div class="col-7">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ الدفعة / الشهر (يوم/شهر/سنة)' : 'Payment Date / Month (Day/Month/Year)' ?></label>
+                        <input type="date" name="partial_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" required>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label">قيمة الدفعة</label>
-                        <input type="number" step="0.01" min="0.01" name="partial_amount" class="form-control" required>
+                    <div class="col-5">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'قيمة الدفعة' : 'Amount' ?></label>
+                        <input type="number" step="0.01" min="0.01" name="partial_amount" class="form-control font-numeric" placeholder="0.00" required>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-soft w-100 mt-3"><i class="bi bi-cash-stack"></i> تسجيل الدفعة الجزئية</button>
@@ -283,6 +283,10 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                         <span class="text-slate-600 font-bold"><?= is_rtl() ? 'المبلغ المستحق لهذا الشهر:' : 'Amount Due:' ?></span>
                         <span class="font-numeric font-extrabold text-slate-900"><?= money($h['amount_due']) ?></span>
+                    </div>
+                    <div>
+                        <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد (يوم/شهر/سنة)' : 'Payment Date (Day/Month/Year)' ?></label>
+                        <input type="date" name="payment_date" class="form-control text-sm font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>

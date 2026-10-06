@@ -204,20 +204,34 @@ class SubscriptionsController extends Controller
         $lotIdInput = trim((string) ($data['lot_id'] ?? ''));
 
         if ($action === 'bulk_pay') {
-            $data += ['start_month' => date('Y-m'), 'months_count' => '1'];
+            $rawDate = trim((string) ($data['start_date'] ?? $data['start_month'] ?? date('Y-m-d')));
+            $paymentDate = date('Y-m-d');
+            $startMonth = date('Y-m');
+
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+                $startMonth = substr($rawDate, 0, 7);
+                $paymentDate = $rawDate;
+            } elseif (preg_match('/^\d{4}-\d{2}$/', $rawDate)) {
+                $startMonth = $rawDate;
+            } else {
+                Session::flash('error', 'صيغة تاريخ السداد غير صحيحة.');
+                $this->redirect($back);
+                return;
+            }
+
             $validator = Validator::make($data)
-                ->required('start_month', 'شهر البداية')->month('start_month', 'البداية')
                 ->required('months_count', 'عدد الأشهر')->integer('months_count', 'عدد الأشهر', 1, 24);
             if ($validator->fails()) {
                 Session::flash('error', $validator->firstError());
                 $this->redirect($back);
+                return;
             }
 
-            $startMonth = $data['start_month'];
             $earliest = $this->earliestPayableMonth((int) $memberId, $lotIdInput);
             if ($earliest !== null && $startMonth < $earliest) {
                 Session::flash('error', 'لا يمكن تسجيل سداد لشهر قبل بداية الاشتراك (' . $earliest . ').');
                 $this->redirect($back);
+                return;
             }
             $count = (int) $data['months_count'];
             $ts = strtotime($startMonth . '-01');
@@ -229,13 +243,12 @@ class SubscriptionsController extends Controller
                 if ($sub === null) {
                     Session::flash('error', 'المشترك عنده أكتر من دفعة أسهم منفصلة — حدّد أنهي دفعة تسدّدها.');
                     $this->redirect($back);
+                    return;
                 }
                 $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
                 if ($remaining > 0) {
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
-                    if ($remaining > 0) {
-                        Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month);
-                    }
+                    Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month, $paymentDate);
                     $paidAny = true;
                 }
             }
@@ -247,42 +260,59 @@ class SubscriptionsController extends Controller
                 Session::flash('error', 'الأشهر المحددة مسددة بالكامل مسبقاً.');
             }
         } elseif ($action === 'partial_pay' || $action === 'partial') {
-            $data += ['partial_month' => date('Y-m')];
+            $rawDate = trim((string) ($data['partial_date'] ?? $data['partial_month'] ?? date('Y-m-d')));
+            $paymentDate = date('Y-m-d');
+            $month = date('Y-m');
+
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+                $month = substr($rawDate, 0, 7);
+                $paymentDate = $rawDate;
+            } elseif (preg_match('/^\d{4}-\d{2}$/', $rawDate)) {
+                $month = $rawDate;
+            } else {
+                Session::flash('error', 'صيغة تاريخ الدفعة غير صحيحة.');
+                $this->redirect($back);
+                return;
+            }
+
             $validator = Validator::make($data)
-                ->required('partial_month', 'الشهر')->month('partial_month', 'الدفعة')
                 ->required('partial_amount', 'مبلغ الدفعة')->decimal('partial_amount', 'مبلغ الدفعة', 0.01, 10000000);
             if ($validator->fails()) {
                 Session::flash('error', $validator->firstError());
                 $this->redirect($back);
+                return;
             }
 
-            $month = $data['partial_month'];
             $earliest = $this->earliestPayableMonth((int) $memberId, $lotIdInput);
             if ($earliest !== null && $month < $earliest) {
                 Session::flash('error', 'لا يمكن تسجيل دفعة لشهر قبل بداية الاشتراك (' . $earliest . ').');
                 $this->redirect($back);
+                return;
             }
             $amount = round((float) $data['partial_amount'], 2);
             $sub = $this->resolveLotSubscription((int) $memberId, $month, $lotIdInput);
             if ($sub === null) {
                 Session::flash('error', 'المشترك عنده أكتر من دفعة أسهم منفصلة — حدّد أنهي دفعة تسدّدها.');
                 $this->redirect($back);
+                return;
             }
             $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
 
             if ($remaining <= 0) {
                 Session::flash('error', 'اشتراك شهر ' . $month . ' مسدد بالكامل.');
                 $this->redirect($back);
+                return;
             }
             if ($amount > $remaining) {
                 Session::flash('error', 'المبلغ يتجاوز المتبقي على اشتراك شهر ' . $month . ' (' . money($remaining) . ').');
                 $this->redirect($back);
+                return;
             }
 
             $newPaid = round((float) $sub['amount_paid'] + $amount, 2);
             $status = $newPaid >= (float) $sub['amount_due'] ? 'paid' : 'partial';
             MonthlySubscription::update($sub['id'], ['amount_paid' => $newPaid, 'status' => $status]);
-            Transaction::record((int) $memberId, 'subscription', $sub['id'], $amount, current_admin_id(), 'دفعة جزئية لشهر ' . $month);
+            Transaction::record((int) $memberId, 'subscription', $sub['id'], $amount, current_admin_id(), 'دفعة جزئية لشهر ' . $month, $paymentDate);
             Notification::systemNotify((int) $memberId, 'تسجيل سداد اشتراك', 'تم تسجيل دفعة بقيمة ' . money($amount) . ' على اشتراك شهر ' . $month . '.');
             Session::flash('success', 'تم تسجيل الدفعة بنجاح.');
         } else {
@@ -410,18 +440,23 @@ class SubscriptionsController extends Controller
                     'amount_paid' => $newPaid,
                     'status' => $status,
                 ]);
+                $paymentDate = !empty($data['payment_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['payment_date']) ? $data['payment_date'] : null;
                 $tx = Transaction::first([
                     'member_id' => (int) $memberId,
                     'category' => 'subscription',
                     'related_id' => (int) $subId,
                 ]);
                 if ($tx) {
-                    Transaction::update($tx['id'], [
+                    $txUpdate = [
                         'amount' => $newPaid,
                         'description' => ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'],
-                    ]);
+                    ];
+                    if ($paymentDate) {
+                        $txUpdate['transaction_date'] = $paymentDate;
+                    }
+                    Transaction::update($tx['id'], $txUpdate);
                 } else {
-                    Transaction::record((int) $memberId, 'subscription', (int) $subId, $newPaid, current_admin_id(), ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month']);
+                    Transaction::record((int) $memberId, 'subscription', (int) $subId, $newPaid, current_admin_id(), ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'], $paymentDate);
                 }
             }
             $pdo->commit();
