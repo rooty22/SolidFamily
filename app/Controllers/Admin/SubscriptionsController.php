@@ -141,6 +141,23 @@ class SubscriptionsController extends Controller
         unset($lot);
         $payableLots = array_values(array_filter($lots, fn($l) => $l['outstanding'] > 0));
 
+        $totalDue = round(array_sum(array_map('floatval', array_column($history, 'amount_due'))), 2);
+        $totalPaid = round(array_sum(array_map('floatval', array_column($history, 'amount_paid'))), 2);
+        $totalRemaining = max(0.0, round($totalDue - $totalPaid, 2));
+
+        $today = date('Y-m-d');
+        $lateRows = [];
+        $lateAmount = 0.0;
+        foreach ($history as $h) {
+            $rem = max(0.0, round((float) $h['amount_due'] - (float) $h['amount_paid'], 2));
+            if ($rem > 0 && MonthlySubscription::effectiveDue($h) < $today) {
+                $lateRows[] = $h;
+                $lateAmount += $rem;
+            }
+        }
+        $lateCount = count($lateRows);
+        $lateAmount = round($lateAmount, 2);
+
         $this->view('admin/subscriptions/show', [
             'pageTitle' => __('subscriptions_for', ['name' => $member['name']]),
             'member' => $member,
@@ -150,6 +167,11 @@ class SubscriptionsController extends Controller
             'payableLots' => $payableLots ?: $lots,
             'allSettled' => !$payableLots,
             'founding' => \App\Models\FoundingAmount::ensureForMember((int) $memberId),
+            'totalDue' => $totalDue,
+            'totalPaid' => $totalPaid,
+            'totalRemaining' => $totalRemaining,
+            'lateCount' => $lateCount,
+            'lateAmount' => $lateAmount,
         ], 'admin/layout');
     }
 
@@ -315,6 +337,53 @@ class SubscriptionsController extends Controller
             Transaction::record((int) $memberId, 'subscription', $sub['id'], $amount, current_admin_id(), 'دفعة جزئية لشهر ' . $month, $paymentDate);
             Notification::systemNotify((int) $memberId, 'تسجيل سداد اشتراك', 'تم تسجيل دفعة بقيمة ' . money($amount) . ' على اشتراك شهر ' . $month . '.');
             Session::flash('success', 'تم تسجيل الدفعة بنجاح.');
+        } elseif ($action === 'single_pay') {
+            $subId = (int) ($data['sub_id'] ?? 0);
+            $sub = MonthlySubscription::find($subId);
+            if (!$sub || (int) $sub['member_id'] !== (int) $memberId) {
+                Session::flash('error', 'سجل الاشتراك غير موجود.');
+                $this->redirect($back);
+                return;
+            }
+            $remaining = max(0.0, round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2));
+            if ($remaining <= 0) {
+                Session::flash('error', 'اشتراك شهر ' . $sub['month'] . ' مسدد بالكامل مسبقاً.');
+                $this->redirect($back);
+                return;
+            }
+
+            $payType = $data['pay_type'] ?? 'full';
+            $paymentDate = !empty($data['payment_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['payment_date']) ? $data['payment_date'] : date('Y-m-d');
+
+            if ($payType === 'full') {
+                $payAmount = $remaining;
+            } else {
+                $payAmount = round((float) ($data['amount'] ?? 0), 2);
+                if ($payAmount <= 0) {
+                    Session::flash('error', 'يرجى إدخال مبلغ صحيح للدفعة.');
+                    $this->redirect($back);
+                    return;
+                }
+                if ($payAmount > $remaining) {
+                    Session::flash('error', 'مبلغ الدفعة يتجاوز المتبقي على اشتراك شهر ' . $sub['month'] . ' (' . money($remaining) . ').');
+                    $this->redirect($back);
+                    return;
+                }
+            }
+
+            $newPaid = round((float) $sub['amount_paid'] + $payAmount, 2);
+            $status = $newPaid >= (float) $sub['amount_due'] ? 'paid' : 'partial';
+
+            MonthlySubscription::update($sub['id'], [
+                'amount_paid' => $newPaid,
+                'status' => $status,
+            ]);
+
+            $desc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'];
+            Transaction::record((int) $memberId, 'subscription', $sub['id'], $payAmount, current_admin_id(), $desc, $paymentDate);
+            Notification::systemNotify((int) $memberId, 'تسجيل سداد اشتراك', 'تم تسجيل دفعة بقيمة ' . money($payAmount) . ' على اشتراك شهر ' . $sub['month'] . '.');
+
+            Session::flash('success', $status === 'paid' ? "تم سداد اشتراك شهر {$sub['month']} بالكامل بنجاح." : "تم تسجيل دفعة بقيمة " . money($payAmount) . " على اشتراك شهر {$sub['month']} بنجاح.");
         } else {
             Session::flash('error', 'نوع العملية غير صحيح.');
         }
@@ -456,7 +525,7 @@ class SubscriptionsController extends Controller
                 if ($tx) {
                     $txUpdate = [
                         'amount' => $newPaid,
-                        'description' => ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'],
+                        'notes' => ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'],
                     ];
                     if ($paymentDate) {
                         $txUpdate['transaction_date'] = $paymentDate;

@@ -336,17 +336,30 @@ $catLabels = transaction_categories();
                                 <th><?= is_rtl() ? 'الاستحقاق' : 'Due Date' ?></th>
                                 <th><?= __('due_amount') ?></th>
                                 <th><?= __('paid_amount') ?></th>
+                                <th><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></th>
                                 <th><?= __('status') ?></th>
                             </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($subscriptions as $s): [$l,$v] = status_badge($s['status']); ?>
-                            <tr>
+                        <?php foreach ($subscriptions as $s): 
+                            [$l,$v] = status_badge($s['status']); 
+                            $dueVal = (float) $s['amount_due'];
+                            $paidVal = (float) $s['amount_paid'];
+                            $remVal = max(0.0, round($dueVal - $paidVal, 2));
+                            $isOverdue = ($remVal > 0 && \App\Models\MonthlySubscription::effectiveDue($s) < date('Y-m-d'));
+                        ?>
+                            <tr class="<?= $isOverdue ? 'bg-rose-50/30' : '' ?>">
                                 <td class="font-numeric font-bold text-slate-900"><?= e($s['month']) ?></td>
                                 <td class="font-numeric text-xs text-slate-500"><?= date_ar($s['due_date']) ?></td>
-                                <td class="font-numeric font-bold"><?= money($s['amount_due']) ?></td>
-                                <td class="font-numeric font-bold text-emerald-600"><?= money($s['amount_paid']) ?></td>
-                                <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                                <td class="font-numeric font-bold text-slate-900"><?= money($dueVal) ?></td>
+                                <td class="font-numeric font-bold <?= $paidVal > 0 ? 'text-emerald-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>
+                                <td class="font-numeric font-bold <?= $remVal > 0 ? 'text-rose-600' : 'text-emerald-700' ?>"><?= money($remVal) ?></td>
+                                <td>
+                                    <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>
+                                    <?php if ($s['status'] === 'partial' && $isOverdue): ?>
+                                        <small class="d-block text-rose-600 font-bold text-[10px] mt-0.5"><i class="bi bi-clock-history"></i> <?= is_rtl() ? 'متأخر' : 'Overdue' ?></small>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>

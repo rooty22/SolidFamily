@@ -156,7 +156,7 @@ return [
 
     // Statuses
     'status_paid' => 'مسدد',
-    'status_partial' => 'مسدد جزئياً',
+    'status_partial' => 'سداد جزئي',
     'status_unpaid' => 'غير مسدد',
     'status_pending' => 'قيد المراجعة',
     'status_approved' => 'مقبول',
@@ -169,7 +169,7 @@ return [
     'status_failed' => 'فشل الإرسال',
     'status_new' => 'جديد',
     'status_read' => 'مقروء',
-    'status_late' => 'متأخرة',
+    'status_late' => 'متأخر',
     'status_late_both' => 'متأخر (اشتراك وقرض)',
     'status_late_subscription' => 'متأخر (اشتراك شهري)',
     'status_late_loan' => 'متأخر (أقساط قروض)',

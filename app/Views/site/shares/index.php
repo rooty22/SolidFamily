@@ -201,16 +201,37 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
             <div class="empty-state"><i class="bi bi-calendar-x"></i><?= __('no_records_yet') ?></div>
         <?php else: ?>
         <table class="table-modern">
-            <thead><tr><th><?= __('month') ?></th><th><?= __('due_date') ?></th><th><?= __('due_amount') ?></th><th><?= __('paid_amount') ?></th><th><?= __('status') ?></th></tr></thead>
-            <tbody>
-            <?php foreach ($history as $h): [$l, $v] = status_badge($h['status']); ?>
+            <thead>
                 <tr>
+                    <th><?= __('month') ?></th>
+                    <th><?= __('due_date') ?></th>
+                    <th><?= __('due_amount') ?></th>
+                    <th><?= __('paid_amount') ?></th>
+                    <th><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></th>
+                    <th><?= __('status') ?></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($history as $h): 
+                [$l, $v] = status_badge($h['status']); 
+                $dueVal = (float) $h['amount_due'];
+                $paidVal = (float) $h['amount_paid'];
+                $remVal = max(0.0, round($dueVal - $paidVal, 2));
+                $isOverdue = ($remVal > 0 && \App\Models\MonthlySubscription::effectiveDue($h) < date('Y-m-d'));
+            ?>
+                <tr class="<?= $isOverdue ? 'bg-rose-50/30' : '' ?>">
                     <td class="fw-bold font-num"><?= e($h['month']) ?></td>
                     <td class="font-num"><?= date_ar($h['due_date']) ?>
                         <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small><?php endif; ?></td>
-                    <td class="font-num"><?= money($h['amount_due']) ?></td>
-                    <td class="font-num"><?= money($h['amount_paid']) ?></td>
-                    <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                    <td class="font-num fw-bold"><?= money($dueVal) ?></td>
+                    <td class="font-num fw-bold <?= $paidVal > 0 ? 'text-brand-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>
+                    <td class="font-num fw-bold <?= $remVal > 0 ? 'text-danger' : 'text-success' ?>"><?= money($remVal) ?></td>
+                    <td>
+                        <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>
+                        <?php if ($h['status'] === 'partial' && $isOverdue): ?>
+                            <small class="d-block text-danger fw-bold text-[10px] mt-0.5"><i class="bi bi-clock-history"></i> <?= is_rtl() ? 'متأخر' : 'Overdue' ?></small>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

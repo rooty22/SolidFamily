@@ -28,7 +28,7 @@ class MonthlySubscription extends Model
     }
 
     /**
-     * Compute dynamic status for a subscription row: 'paid', 'late', 'partial', or 'unpaid'.
+     * Compute dynamic status for a subscription row: 'paid', 'partial', 'late', or 'unpaid'.
      */
     public static function statusOf(array $row): string
     {
@@ -37,36 +37,45 @@ class MonthlySubscription extends Model
         if ($due <= 0 || $paid >= $due) {
             return 'paid';
         }
+        if ($paid > 0) {
+            return 'partial';
+        }
         if (self::effectiveDue($row) < date('Y-m-d')) {
             return 'late';
         }
-        return $paid > 0 ? 'partial' : 'unpaid';
+        return 'unpaid';
     }
 
     /**
-     * Month-level view of all of a member's lot rows for one month. The month is only "paid" when EVERYTHING due is
-     * collected, "late" when any open part is past due, "partial" when some money is in but not all, "unpaid" otherwise.
+     * Month-level view of all of a member's lot rows for one month.
      */
     public static function summarize(array $rows): array
     {
         $due = round(array_sum(array_map('floatval', array_column($rows, 'amount_due'))), 2);
         $paid = round(array_sum(array_map('floatval', array_column($rows, 'amount_paid'))), 2);
-        $status = ($due <= 0 || $paid >= $due) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
 
         $openDueDates = [];
         $isLate = false;
         $today = date('Y-m-d');
         foreach ($rows as $r) {
-            if ((float) $r['amount_due'] > (float) $r['amount_paid']) {
-                $openDueDates[] = $r['due_date'];
+            if ((float) ($r['amount_due'] ?? 0) > (float) ($r['amount_paid'] ?? 0)) {
+                if (!empty($r['due_date'])) {
+                    $openDueDates[] = $r['due_date'];
+                }
                 if (self::effectiveDue($r) < $today) {
                     $isLate = true;
                 }
             }
         }
 
-        if ($status !== 'paid' && $isLate) {
+        if ($due <= 0 || $paid >= $due) {
+            $status = 'paid';
+        } elseif ($paid > 0) {
+            $status = 'partial';
+        } elseif ($isLate) {
             $status = 'late';
+        } else {
+            $status = 'unpaid';
         }
 
         return [
@@ -75,6 +84,7 @@ class MonthlySubscription extends Model
             'amount_paid' => min($paid, $due),
             'remaining' => max(0.0, round($due - $paid, 2)),
             'due_date' => $openDueDates ? min($openDueDates) : ($rows[0]['due_date'] ?? null),
+            'is_late' => $isLate,
         ];
     }
 
