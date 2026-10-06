@@ -1353,3 +1353,10 @@ html[dir="ltr"] .form-control-icon-both {
 
 
 
+
+/* Tailwind (CDN) also defines `.collapse { visibility: collapse }`, which hid every Bootstrap collapse right after
+   its opening animation (the panel flashed for a moment, then vanished). Bootstrap controls display, so keep it visible. */
+.collapse,
+.collapsing {
+    visibility: visible !important;
+}

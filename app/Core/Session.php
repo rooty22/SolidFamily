@@ -28,6 +28,12 @@ class Session
             ]);
             session_start();
 
+            // A cookie issued before the split could carry both identities; each portal only trusts its own,
+            // so a leftover admin_id never makes the member site act as admin (or the reverse).
+            foreach (is_admin_path() ? ['member_id', 'member_name'] : ['admin_id', 'admin_name'] as $foreign) {
+                unset($_SESSION[$foreign]);
+            }
+
             // Old input is flash data: read it for this request and drop it, so it never lingers in later visits.
             self::$oldInput = $_SESSION['_old'] ?? [];
             unset($_SESSION['_old']);

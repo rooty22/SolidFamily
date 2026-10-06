@@ -18,11 +18,6 @@ class Middleware
     {
         return function () {
             if (!Auth::adminCheck()) {
-                if (Auth::memberCheck()) {
-                    Session::flash('error', 'لا تملك صلاحيات إدارة الصندوق للوصول إلى هذه الصفحة.');
-                    header('Location: ' . url('home'));
-                    exit;
-                }
                 header('Location: ' . url('admin/login'));
                 exit;
             }

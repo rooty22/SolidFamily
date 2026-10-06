@@ -52,7 +52,8 @@ class AuthController extends Controller
 
         if ($member && !\App\Models\Member::isAdmin($member)) {
             Session::flash('error', 'هذا الحساب مسجل كمشترك عادي ولا يمتلك صلاحيات إدارة الصندوق. يرجى تسجيل الدخول عبر بوابة المشتركين.');
-            $this->redirect('login');
+            Session::setOld(['email' => '']);
+            $this->redirect('admin/login');
             return;
         }
 
@@ -103,7 +104,7 @@ class AuthController extends Controller
             $member = \App\Models\Member::findBy('email', $email);
             if ($member && !\App\Models\Member::isAdmin($member)) {
                 Session::flash('error', 'هذا البريد يخص حساب مشترك. يرجى استعادة كلمة المرور عبر بوابة المشتركين.');
-                $this->redirect('forgot-password');
+                $this->redirect('admin/forgot-password');
                 return;
             }
             Session::flash('error', 'لا يوجد حساب إداري مرتبط بهذا البريد الإلكتروني.');

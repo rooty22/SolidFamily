@@ -163,9 +163,6 @@ class AuthController extends Controller
         if (Auth::memberCheck()) {
             $this->redirect('home');
         }
-        if (Auth::adminCheck()) {
-            $this->redirect('admin/dashboard');
-        }
         $this->view('site/auth/login', ['pageTitle' => __('login')], 'site/auth-layout');
     }
 
@@ -183,7 +180,8 @@ class AuthController extends Controller
 
         if ($isAdminIdentifier) {
             Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن تسجيل الدخول به من بوابة المشتركين. يرجى تسجيل الدخول عبر بوابة الإدارة.');
-            $this->redirect('admin/login');
+            Session::setOld(['national_id' => '']);
+            $this->redirect('login');
             return;
         }
 
@@ -229,7 +227,8 @@ class AuthController extends Controller
         // 6. Block if the account has administrative status
         if ($member && Member::isAdmin($member)) {
             Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن تسجيل الدخول به من بوابة المشتركين. يرجى تسجيل الدخول عبر بوابة الإدارة.');
-            $this->redirect('admin/login');
+            Session::setOld(['national_id' => '']);
+            $this->redirect('login');
             return;
         }
 

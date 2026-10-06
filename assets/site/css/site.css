@@ -1225,3 +1225,9 @@ html[dir="ltr"] .form-control-icon-both {
 
 /* Equal-height KPI cards inside Bootstrap rows (home dashboard) */
 .row > [class*="col-"] > .stat-card { height: 100%; }
+
+/* Tailwind (CDN) defines `.collapse { visibility: collapse }`, which hides Bootstrap collapses right after they open. */
+.collapse,
+.collapsing {
+    visibility: visible !important;
+}
