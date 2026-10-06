@@ -16,13 +16,17 @@ class AuthController extends Controller
 
     public function showLogin(): void
     {
+        if (Auth::adminCheck()) {
+            $this->redirect('admin/dashboard');
+            return;
+        }
         $this->view('admin/auth/login', ['pageTitle' => __('login')], 'admin/auth-layout');
     }
 
     public function login(): void
     {
         $this->verifyCsrf();
-        $email = mb_strtolower((string) $this->input('email'));
+        $email = mb_strtolower(trim((string) $this->input('email')));
         $password = (string) $this->input('password');
 
         if (RateLimiter::loginBlocked('admin', $email)) {
@@ -34,8 +38,25 @@ class AuthController extends Controller
                     : "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد دقيقة واحدة.");
             Session::flash('error', $msg);
             $this->redirect('admin/login');
+            return;
         }
 
+        // 1. Strictly block regular members from logging in through the admin portal
+        $member = \App\Models\Member::findBy('email', $email);
+        if (!$member) {
+            $member = \App\Models\Member::findBy('national_id', $email);
+        }
+        if (!$member) {
+            $member = \App\Models\Member::findBy('mobile', $email);
+        }
+
+        if ($member && !\App\Models\Member::isAdmin($member)) {
+            Session::flash('error', 'هذا الحساب مسجل كمشترك عادي ولا يمتلك صلاحيات إدارة الصندوق. يرجى تسجيل الدخول عبر بوابة المشتركين.');
+            $this->redirect('login');
+            return;
+        }
+
+        // 2. Fetch admin from admins table
         $admin = Admin::findBy('email', $email);
 
         if (!$admin || !password_verify($password, $admin['password'])) {
@@ -43,6 +64,7 @@ class AuthController extends Controller
             Session::flash('error', 'البريد الإلكتروني أو كلمة المرور غير صحيحة.');
             Session::setOld(['email' => $email]);
             $this->redirect('admin/login');
+            return;
         }
 
         RateLimiter::loginSucceeded('admin', $email);
@@ -66,19 +88,27 @@ class AuthController extends Controller
     public function sendOtp(): void
     {
         $this->verifyCsrf();
-        $email = mb_strtolower((string) $this->input('email'));
+        $email = mb_strtolower(trim((string) $this->input('email')));
 
         $validator = Validator::make(['email' => $email])->required('email', 'البريد الإلكتروني')->email('email', 'البريد الإلكتروني');
         if ($validator->fails()) {
             Session::flash('error', $validator->firstError());
             $this->redirect('admin/forgot-password');
+            return;
         }
 
         $admin = Admin::findBy('email', $email);
 
         if (!$admin) {
-            Session::flash('error', 'لا يوجد حساب مرتبط بهذا البريد الإلكتروني.');
+            $member = \App\Models\Member::findBy('email', $email);
+            if ($member && !\App\Models\Member::isAdmin($member)) {
+                Session::flash('error', 'هذا البريد يخص حساب مشترك. يرجى استعادة كلمة المرور عبر بوابة المشتركين.');
+                $this->redirect('forgot-password');
+                return;
+            }
+            Session::flash('error', 'لا يوجد حساب إداري مرتبط بهذا البريد الإلكتروني.');
             $this->redirect('admin/forgot-password');
+            return;
         }
 
         Session::set('admin_reset_email', $email);
@@ -86,6 +116,7 @@ class AuthController extends Controller
         if (otp_is_disabled()) {
             Session::set('admin_reset_verified', true);
             $this->redirect('admin/forgot-password/reset');
+            return;
         }
 
         $code = OtpCode::generate($email, 'admin_reset');

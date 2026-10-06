@@ -15,7 +15,11 @@ $isEn = is_en();
             <?php endif; ?>
         </a>
         <h3 class="text-2xl font-black text-slate-900 mb-1"><?= __('admin_portal') ?></h3>
-        <p class="text-slate-500 text-sm font-medium"><?= e($siteName) ?></p>
+        <p class="text-slate-500 text-sm font-medium mb-2"><?= e($siteName) ?></p>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+            <i class="bi bi-shield-lock-fill text-sky-600"></i>
+            <span><?= is_rtl() ? 'بوابة مسؤولي ومجلس إدارة الصندوق فقط' : 'Authorized Administrators Only' ?></span>
+        </div>
     </div>
 
     <?php $error = flash('error'); $success = flash('success'); ?>
