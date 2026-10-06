@@ -156,7 +156,9 @@ return [
 
     // Statuses
     'status_paid' => 'Paid',
+    'status_paid_late' => 'Paid Late',
     'status_partial' => 'Partial',
+    'status_partial_late' => 'Partial (Late)',
     'status_unpaid' => 'Unpaid',
     'status_pending' => 'Pending Review',
     'status_approved' => 'Approved',

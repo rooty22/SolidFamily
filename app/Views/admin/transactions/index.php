@@ -56,7 +56,15 @@
         <?php foreach ($transactions as $t): ?>
             <tr>
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($t['transaction_date']) ?></bdi></td>
-                <td><span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold"><?= $categoryLabels[$t['category']] ?? $t['category'] ?></span></td>
+                <td>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold"><?= $categoryLabels[$t['category']] ?? $t['category'] ?></span>
+                    <?php if (!empty($t['display_details'])): ?>
+                        <div class="text-[11px] text-slate-600 font-semibold mt-1 flex items-center gap-1">
+                            <i class="bi bi-info-circle text-slate-400"></i>
+                            <span><?= e($t['display_details']) ?></span>
+                        </div>
+                    <?php endif; ?>
+                </td>
                 <td class="fw-bold text-slate-900"><?= e($t['member_name']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($t['amount']) ?></td>
                 <td class="text-xs text-slate-600"><?= e($t['admin_name'] ?? '-') ?></td>

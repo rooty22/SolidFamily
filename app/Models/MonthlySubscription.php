@@ -28,19 +28,28 @@ class MonthlySubscription extends Model
     }
 
     /**
-     * Compute dynamic status for a subscription row: 'paid', 'partial', 'late', or 'unpaid'.
+     * Compute dynamic status for a subscription row: 'paid', 'paid_late', 'partial', 'partial_late', 'late', or 'unpaid'.
      */
     public static function statusOf(array $row): string
     {
         $due = (float) ($row['amount_due'] ?? 0);
         $paid = (float) ($row['amount_paid'] ?? 0);
+        $effDue = self::effectiveDue($row);
+        $payDate = $row['payment_date'] ?? null;
+
         if ($due <= 0 || $paid >= $due) {
+            if ($payDate && $payDate > $effDue) {
+                return 'paid_late';
+            }
             return 'paid';
         }
         if ($paid > 0) {
+            if ($payDate && $payDate > $effDue) {
+                return 'partial_late';
+            }
             return 'partial';
         }
-        if (self::effectiveDue($row) < date('Y-m-d')) {
+        if ($effDue < date('Y-m-d')) {
             return 'late';
         }
         return 'unpaid';
@@ -69,9 +78,23 @@ class MonthlySubscription extends Model
         }
 
         if ($due <= 0 || $paid >= $due) {
-            $status = 'paid';
+            $hasPaidLate = false;
+            foreach ($rows as $r) {
+                if (($r['status'] ?? '') === 'paid_late') {
+                    $hasPaidLate = true;
+                    break;
+                }
+            }
+            $status = $hasPaidLate ? 'paid_late' : 'paid';
         } elseif ($paid > 0) {
-            $status = 'partial';
+            $hasPartialLate = false;
+            foreach ($rows as $r) {
+                if (($r['status'] ?? '') === 'partial_late') {
+                    $hasPartialLate = true;
+                    break;
+                }
+            }
+            $status = $hasPartialLate ? 'partial_late' : 'partial';
         } elseif ($isLate) {
             $status = 'late';
         } else {
@@ -115,7 +138,11 @@ class MonthlySubscription extends Model
     {
         self::purgeStalePreStartRows($memberId);
         $rows = self::raw(
-            'SELECT s.*, l.status AS lot_status
+            'SELECT s.*, l.status AS lot_status,
+                    (SELECT t.transaction_date 
+                     FROM transactions t 
+                     WHERE t.category = "subscription" AND t.related_id = s.id 
+                     ORDER BY t.id DESC LIMIT 1) AS payment_date
              FROM monthly_subscriptions s
              LEFT JOIN share_lots l ON l.id = s.lot_id
              WHERE s.member_id = ? AND NOT (s.amount_due = 0 AND s.amount_paid = 0)

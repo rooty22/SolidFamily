@@ -143,6 +143,9 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/shares', [SharesController::class, 'index']);
     $router->post('/shares/value', [SharesController::class, 'updateShareValue']);
     $router->post('/shares/{id}', [SharesController::class, 'updateMemberShares']);
+    $router->post('/shares/{id}/merge', [SharesController::class, 'mergeShares']);
+    $router->post('/shares/{id}/cancel-lot/{lotId}', [SharesController::class, 'cancelLot']);
+    $router->post('/shares/{id}/add-lot', [SharesController::class, 'addLot']);
 
     $router->get('/share-requests', [AdminShareRequestsController::class, 'index']);
     $router->get('/share-requests/{id}', [AdminShareRequestsController::class, 'show']);
@@ -159,6 +162,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/founding', [AdminFoundingController::class, 'index']);
     $router->get('/founding/{memberId}', [AdminFoundingController::class, 'show']);
     $router->post('/founding/{memberId}/pay', [AdminFoundingController::class, 'recordPayment']);
+    $router->post('/founding/{memberId}/plan', [AdminFoundingController::class, 'setPlan']);
 
     $router->get('/loan-requests', [LoanRequestsController::class, 'index']);
     $router->get('/loan-requests/{id}', [LoanRequestsController::class, 'show']);

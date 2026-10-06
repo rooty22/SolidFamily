@@ -272,8 +272,14 @@ class SubscriptionsController extends Controller
                 }
                 $remaining = round((float) $sub['amount_due'] - (float) $sub['amount_paid'], 2);
                 if ($remaining > 0) {
+                    $lotLabel = '';
+                    if (!empty($sub['lot_id'])) {
+                        $mActiveLots = ShareLot::activeFor((int) $memberId);
+                        $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
+                        $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+                    }
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
-                    Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month, $paymentDate);
+                    Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month . $lotLabel, $paymentDate);
                     $paidAny = true;
                 }
             }
@@ -382,7 +388,13 @@ class SubscriptionsController extends Controller
                 'status' => $status,
             ]);
 
-            $desc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'];
+            $lotLabel = '';
+            if (!empty($sub['lot_id'])) {
+                $mActiveLots = ShareLot::activeFor((int) $memberId);
+                $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
+                $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+            }
+            $desc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'] . $lotLabel;
             Transaction::record((int) $memberId, 'subscription', $sub['id'], $payAmount, current_admin_id(), $desc, $paymentDate);
             Notification::systemNotify((int) $memberId, 'تسجيل سداد اشتراك', 'تم تسجيل دفعة بقيمة ' . money($payAmount) . ' على اشتراك شهر ' . $sub['month'] . '.');
 
@@ -544,17 +556,25 @@ class SubscriptionsController extends Controller
                     'category' => 'subscription',
                     'related_id' => (int) $subId,
                 ]);
+                $lotLabel = '';
+                if (!empty($sub['lot_id'])) {
+                    $mActiveLots = ShareLot::activeFor((int) $memberId);
+                    $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
+                    $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+                }
+                $noteDesc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'] . $lotLabel;
+
                 if ($tx) {
                     $txUpdate = [
                         'amount' => $newPaid,
-                        'notes' => ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'],
+                        'notes' => $noteDesc,
                     ];
                     if ($paymentDate) {
                         $txUpdate['transaction_date'] = $paymentDate;
                     }
                     Transaction::update($tx['id'], $txUpdate);
                 } else {
-                    Transaction::record((int) $memberId, 'subscription', (int) $subId, $newPaid, current_admin_id(), ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'], $paymentDate);
+                    Transaction::record((int) $memberId, 'subscription', (int) $subId, $newPaid, current_admin_id(), $noteDesc, $paymentDate);
                 }
             }
             $pdo->commit();

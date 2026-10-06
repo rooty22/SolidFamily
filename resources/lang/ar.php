@@ -156,7 +156,9 @@ return [
 
     // Statuses
     'status_paid' => 'مسدد',
+    'status_paid_late' => 'سداد متأخر',
     'status_partial' => 'سداد جزئي',
+    'status_partial_late' => 'سداد جزئي متأخر',
     'status_unpaid' => 'غير مسدد',
     'status_pending' => 'قيد المراجعة',
     'status_approved' => 'مقبول',

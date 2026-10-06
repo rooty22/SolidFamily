@@ -318,22 +318,109 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
     <?php endif; ?>
 </div>
 
+<?php
+// Compute Balances: Overall and Per-Share Lot
+$lotStats = [];
+foreach ($lots as $idx => $lot) {
+    $lid = (int) $lot['id'];
+    $lotRows = array_filter($history, fn($r) => (int) ($r['lot_id'] ?? 0) === $lid);
+    $dueSum = round(array_sum(array_map('floatval', array_column($lotRows, 'amount_due'))), 2);
+    $paidSum = round(array_sum(array_map('floatval', array_column($lotRows, 'amount_paid'))), 2);
+    $remSum = max(0.0, round($dueSum - $paidSum, 2));
+    $lotStats[$lid] = [
+        'id' => $lid,
+        'idx' => $idx + 1,
+        'label' => is_rtl() ? ('السهم رقم ' . ($idx + 1)) : ('Share #' . ($idx + 1)),
+        'shares_count' => (int) $lot['shares_count'],
+        'total_due' => $dueSum,
+        'total_paid' => $paidSum,
+        'total_remaining' => $remSum,
+        'rows_count' => count($lotRows),
+    ];
+}
+$totalAllDue = round(array_sum(array_map('floatval', array_column($history, 'amount_due'))), 2);
+$totalAllPaid = round(array_sum(array_map('floatval', array_column($history, 'amount_paid'))), 2);
+$totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
+?>
+
 <!-- Subscriptions Ledger Table (سجل الاشتراكات والدفعات) -->
 <div class="card-panel">
-    <div class="panel-head flex items-center justify-between">
+    <div class="panel-head flex items-center justify-between flex-wrap gap-2">
         <h3 class="flex items-center gap-2">
             <i class="bi bi-clock-history text-emerald-600"></i>
             <span><?= is_rtl() ? 'سجل الاشتراكات وحركة الدفعات' : 'Subscriptions & Payment Ledger' ?></span>
         </h3>
-        <span class="text-xs text-slate-500 font-numeric font-bold"><?= count($history) ?> <?= is_rtl() ? 'سجلات' : 'records' ?></span>
+        <span class="badge-status badge-info font-numeric font-bold" id="adminVisibleRowsBadge"><?= count($history) ?> <?= is_rtl() ? 'سجلات' : 'records' ?></span>
     </div>
+
+    <!-- Overall Balances Overview Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 mb-4">
+        <div class="text-center p-2.5 rounded-xl bg-white border border-slate-100 shadow-xs">
+            <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المبالغ المستحقة' : 'Total Amount Due' ?></div>
+            <div class="font-numeric font-bold text-slate-900 text-lg"><?= money($totalAllDue) ?></div>
+        </div>
+        <div class="text-center p-2.5 rounded-xl bg-white border border-slate-100 shadow-xs">
+            <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المبالغ المسددة' : 'Total Amount Paid' ?></div>
+            <div class="font-numeric font-bold text-emerald-600 text-lg"><?= money($totalAllPaid) ?></div>
+        </div>
+        <div class="text-center p-2.5 rounded-xl bg-white border border-slate-100 shadow-xs">
+            <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المبالغ المتبقية (الرصيد)' : 'Total Remaining Balance' ?></div>
+            <div class="font-numeric font-bold <?= $totalAllRem > 0 ? 'text-rose-600' : 'text-emerald-700' ?> text-lg"><?= money($totalAllRem) ?></div>
+        </div>
+    </div>
+
+    <!-- Per-Lot Balances Overview (if 2+ lots) -->
+    <?php if (count($lots) > 1): ?>
+    <div class="mb-4">
+        <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+            <i class="bi bi-pie-chart text-purple-600"></i>
+            <span><?= is_rtl() ? 'أرصدة كل سهم على حدة:' : 'Balances Per Share Lot:' ?></span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <?php foreach ($lotStats as $lid => $ls): ?>
+            <div class="p-3 bg-purple-50/40 rounded-xl border border-purple-100 flex items-center justify-between">
+                <div>
+                    <div class="font-bold text-xs text-purple-900 flex items-center gap-1">
+                        <span><?= e($ls['label']) ?></span>
+                        <span class="text-[11px] text-purple-600 font-normal">(<?= number_format($ls['shares_count']) ?> سهم)</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">
+                        <?= is_rtl() ? 'مستحق: ' . money($ls['total_due']) . ' | مسدد: ' . money($ls['total_paid']) : 'Due: ' . money($ls['total_due']) ?>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <span class="badge font-numeric <?= $ls['total_remaining'] > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800' ?> text-xs font-bold px-2.5 py-1 rounded-lg">
+                        <?= is_rtl() ? 'متبقي ' . money($ls['total_remaining']) : money($ls['total_remaining']) ?>
+                    </span>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Lot Filter Tabs / Buttons -->
+    <?php if (count($lots) > 1): ?>
+    <div class="flex items-center gap-1.5 flex-wrap pb-3 mb-3 border-b border-slate-100">
+        <span class="text-xs font-bold text-slate-500 me-1"><i class="bi bi-funnel"></i> <?= is_rtl() ? 'تصفية حسب السهم:' : 'Filter Lot:' ?></span>
+        <button type="button" class="btn btn-xs btn-admin-lot-tab active" data-lot-id="all" onclick="filterAdminLots('all', this)">
+            <?= is_rtl() ? 'جميع الأسهم (الكل)' : 'All Shares' ?>
+        </button>
+        <?php foreach ($lotStats as $lid => $ls): ?>
+        <button type="button" class="btn btn-xs btn-admin-lot-tab" data-lot-id="<?= $lid ?>" onclick="filterAdminLots('<?= $lid ?>', this)">
+            <?= e($ls['label']) ?>
+        </button>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
     <div class="table-responsive">
-        <table class="table-modern">
+        <table class="table-modern" id="adminSubsTable">
             <thead>
                 <tr>
                     <th><?= is_rtl() ? 'الشهر' : 'Month' ?></th>
                     <th><?= is_rtl() ? 'الحصة / السهم' : 'Share / Lot' ?></th>
-                    <th><?= is_rtl() ? 'موعد الاستحقاق' : 'Due Date' ?></th>
+                    <th><?= is_rtl() ? 'تاريخ السداد / الاستحقاق' : 'Payment / Due Date' ?></th>
                     <th><?= is_rtl() ? 'المبلغ المستحق' : 'Amount Due' ?></th>
                     <th><?= is_rtl() ? 'المبلغ المدفوع' : 'Amount Paid' ?></th>
                     <th><?= is_rtl() ? 'المبلغ المتبقي' : 'Amount Remaining' ?></th>
@@ -355,7 +442,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                     $lotIdx = array_search((int)$h['lot_id'], array_column($lots, 'id'));
                 }
             ?>
-                <tr class="<?= $isOverdue ? 'bg-rose-50/30' : '' ?>">
+                <tr class="admin-sub-row <?= $isOverdue ? 'bg-rose-50/30' : '' ?>" data-lot-id="<?= (int)($h['lot_id'] ?? 0) ?>">
                     <td class="fw-bold font-numeric text-slate-900"><?= e($h['month']) ?></td>
                     <td class="text-slate-600 text-xs">
                         <?php if ($lotIdx !== false): ?>
@@ -372,9 +459,21 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         <?php endif; ?>
                     </td>
                     <td class="font-numeric text-slate-700">
-                        <?= date_ar($h['due_date']) ?>
+                        <?php if ($paidVal > 0 && !empty($h['payment_date'])): ?>
+                            <div class="font-bold text-slate-900">
+                                <i class="bi bi-calendar2-check text-emerald-600 me-1"></i>
+                                <bdi dir="ltr"><?= date_ar($h['payment_date']) ?></bdi>
+                            </div>
+                            <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></div>
+                        <?php else: ?>
+                            <div class="font-bold text-slate-700">
+                                <i class="bi bi-calendar-event text-slate-400 me-1"></i>
+                                <bdi dir="ltr"><?= date_ar($h['due_date']) ?></bdi>
+                            </div>
+                            <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'موعد الاستحقاق' : 'Due Date' ?></div>
+                        <?php endif; ?>
                         <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?>
-                            <small class="d-block text-slate-400"><?= is_rtl() ? 'مهلة حتى ' . date_ar($h['grace_until']) : 'Grace until ' . date_ar($h['grace_until']) ?></small>
+                            <small class="d-block text-slate-400 text-[10px]"><?= is_rtl() ? 'مهلة حتى ' . date_ar($h['grace_until']) : 'Grace until ' . date_ar($h['grace_until']) ?></small>
                         <?php endif; ?>
                     </td>
                     <td class="font-numeric font-bold text-slate-900"><?= money($dueVal) ?></td>
@@ -557,3 +656,41 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
     </div>
 </div>
 <?php endif; endforeach; ?>
+
+<script>
+function filterAdminLots(lotId, btn) {
+    document.querySelectorAll('.btn-admin-lot-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const rows = document.querySelectorAll('.admin-sub-row');
+    rows.forEach(r => {
+        const rLot = r.getAttribute('data-lot-id');
+        if (lotId === 'all' || rLot === String(lotId)) {
+            r.style.display = '';
+        } else {
+            r.style.display = 'none';
+        }
+    });
+}
+</script>
+<style>
+.btn-admin-lot-tab {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 11px;
+    transition: all 0.15s;
+}
+.btn-admin-lot-tab:hover {
+    background: #f1f5f9;
+}
+.btn-admin-lot-tab.active {
+    background: #6366f1;
+    color: #fff;
+    border-color: #6366f1;
+}
+</style>
+

@@ -212,7 +212,9 @@ function status_badge(string $status): array
 {
     $variants = [
         'paid' => 'success',
+        'paid_late' => 'warning',
         'partial' => 'warning',
+        'partial_late' => 'warning',
         'unpaid' => 'secondary',
         'pending' => 'warning',
         'approved' => 'success',
@@ -237,7 +239,9 @@ function status_badge(string $status): array
     if ($label === $key) {
         $arFallbacks = [
             'paid' => 'مسدد',
+            'paid_late' => 'سداد متأخر',
             'partial' => 'سداد جزئي',
+            'partial_late' => 'سداد جزئي متأخر',
             'unpaid' => 'غير مسدد',
             'pending' => 'قيد المراجعة',
             'approved' => 'مقبول',

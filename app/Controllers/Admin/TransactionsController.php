@@ -42,10 +42,17 @@ class TransactionsController extends Controller
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output', 'w');
         $labels = $this->getCategoryLabels();
-        $headers = [__('date'), __('transaction_category'), __('member'), __('amount'), __('admin_user')];
+        $headers = [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', __('member'), __('amount'), __('admin_user')];
         csv_put($out, $headers);
         foreach ($transactions as $t) {
-            csv_put($out, [$t['transaction_date'], $labels[$t['category']] ?? $t['category'], $t['member_name'], $t['amount'], $t['admin_name'] ?? '-']);
+            csv_put($out, [
+                $t['transaction_date'],
+                $labels[$t['category']] ?? $t['category'],
+                $t['display_details'] ?? '-',
+                $t['member_name'],
+                $t['amount'],
+                $t['admin_name'] ?? '-'
+            ]);
         }
         fclose($out);
         exit;
@@ -57,11 +64,18 @@ class TransactionsController extends Controller
         $labels = $this->getCategoryLabels();
         $rows = [];
         foreach ($this->fetch() as $t) {
-            $rows[] = [$t['transaction_date'], $labels[$t['category']] ?? $t['category'], $t['member_name'], $t['amount'], $t['admin_name'] ?? '-'];
+            $rows[] = [
+                $t['transaction_date'],
+                $labels[$t['category']] ?? $t['category'],
+                $t['display_details'] ?? '-',
+                $t['member_name'],
+                $t['amount'],
+                $t['admin_name'] ?? '-'
+            ];
         }
         $this->view('admin/reports/print', [
             'title' => __('transactions'),
-            'headers' => [__('date'), __('transaction_category'), __('member'), __('amount'), __('admin_user')],
+            'headers' => [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', __('member'), __('amount'), __('admin_user')],
             'rows' => $rows,
         ]);
     }

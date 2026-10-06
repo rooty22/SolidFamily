@@ -31,6 +31,29 @@ foreach ($byMonth as $monthRows) {
 // The month's badge: partial as soon as part of it is collected but not all (e.g. a share added after paying).
 $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
 [$curLabel, $curVariant] = status_badge($currentRows ? $curSummary['status'] : 'paid');
+
+// Compute Balances: Overall and Per-Share Lot
+$lotStats = [];
+foreach ($lots as $idx => $lot) {
+    $lid = (int) $lot['id'];
+    $lotRows = array_filter($history, fn($r) => (int) ($r['lot_id'] ?? 0) === $lid);
+    $dueSum = round(array_sum(array_map('floatval', array_column($lotRows, 'amount_due'))), 2);
+    $paidSum = round(array_sum(array_map('floatval', array_column($lotRows, 'amount_paid'))), 2);
+    $remSum = max(0.0, round($dueSum - $paidSum, 2));
+    $lotStats[$lid] = [
+        'id' => $lid,
+        'idx' => $idx + 1,
+        'label' => is_rtl() ? ('السهم رقم ' . ($idx + 1)) : ('Share #' . ($idx + 1)),
+        'shares_count' => (int) $lot['shares_count'],
+        'total_due' => $dueSum,
+        'total_paid' => $paidSum,
+        'total_remaining' => $remSum,
+        'rows_count' => count($lotRows),
+    ];
+}
+$totalAllDue = round(array_sum(array_map('floatval', array_column($history, 'amount_due'))), 2);
+$totalAllPaid = round(array_sum(array_map('floatval', array_column($history, 'amount_paid'))), 2);
+$totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
 ?>
 <div class="page-head">
     <div>
@@ -194,48 +217,200 @@ $curSummary = \App\Models\MonthlySubscription::summarize($currentRows);
     <?php endif; ?>
 </div>
 
+<!-- Balances & Shares History Split Section -->
 <div class="split">
     <div class="card-panel">
-        <div class="panel-head"><h3><i class="bi bi-clock-history"></i> <?= __('monthly_subs_history') ?></h3><span class="text-muted small font-num"><?= count($history) ?></span></div>
+        <div class="panel-head flex-wrap gap-2">
+            <div>
+                <h3><i class="bi bi-clock-history"></i> <?= __('monthly_subs_history') ?></h3>
+                <p class="text-xs text-slate-500 mb-0"><?= is_rtl() ? 'كشف الاشتراكات الشهرية وتفاصيل السداد والأرصدة' : 'Monthly subscription records and payment details' ?></p>
+            </div>
+            <span class="badge-status badge-info font-num" id="visibleRowsBadge"><?= count($history) ?></span>
+        </div>
+
+        <!-- Overall Balances Overview Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 mb-4">
+            <div class="text-center p-2 rounded-xl bg-white border border-slate-100 shadow-xs">
+                <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المستحق' : 'Total Due' ?></div>
+                <div class="font-numeric font-bold text-slate-900 text-base" id="statTotalDue"><?= money($totalAllDue) ?></div>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-white border border-slate-100 shadow-xs">
+                <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المسدد' : 'Total Paid' ?></div>
+                <div class="font-numeric font-bold text-emerald-600 text-base" id="statTotalPaid"><?= money($totalAllPaid) ?></div>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-white border border-slate-100 shadow-xs">
+                <div class="text-xs text-slate-500 mb-0.5"><?= is_rtl() ? 'إجمالي المتبقي (الرصيد)' : 'Total Remaining' ?></div>
+                <div class="font-numeric font-bold <?= $totalAllRem > 0 ? 'text-rose-600' : 'text-emerald-700' ?> text-base" id="statTotalRem"><?= money($totalAllRem) ?></div>
+            </div>
+        </div>
+
+        <!-- Per-Lot Balances Overview (if 2+ lots) -->
+        <?php if (count($lots) > 1): ?>
+        <div class="mb-4">
+            <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                <i class="bi bi-pie-chart text-purple-600"></i>
+                <span><?= is_rtl() ? 'أرصدة كل سهم على حدة:' : 'Balances Per Share:' ?></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <?php foreach ($lotStats as $lid => $ls): ?>
+                <div class="p-3 bg-purple-50/40 rounded-xl border border-purple-100 flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-xs text-purple-900 flex items-center gap-1">
+                            <span><?= e($ls['label']) ?></span>
+                            <span class="text-[11px] text-purple-600 font-normal">(<?= number_format($ls['shares_count']) ?> سهم)</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">
+                            <?= is_rtl() ? 'مستحق: ' . money($ls['total_due']) . ' | مسدد: ' . money($ls['total_paid']) : 'Due: ' . money($ls['total_due']) ?>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge font-numeric <?= $ls['total_remaining'] > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800' ?> text-xs font-bold px-2 py-1 rounded-lg">
+                            <?= is_rtl() ? 'متبقي ' . money($ls['total_remaining']) : money($ls['total_remaining']) ?>
+                        </span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Lot Filter Tabs / Buttons -->
+        <?php if (count($lots) > 1): ?>
+        <div class="flex items-center gap-1.5 flex-wrap pb-3 mb-3 border-b border-slate-100">
+            <span class="text-xs font-bold text-slate-500 me-1"><i class="bi bi-funnel"></i> <?= is_rtl() ? 'تصفية حسب السهم:' : 'Filter Lot:' ?></span>
+            <button type="button" class="btn btn-xs btn-lot-tab active" data-lot-id="all" onclick="filterMemberLots('all', this)">
+                <?= is_rtl() ? 'جميع الأسهم (الكل)' : 'All Shares' ?>
+            </button>
+            <?php foreach ($lotStats as $lid => $ls): ?>
+            <button type="button" class="btn btn-xs btn-lot-tab" data-lot-id="<?= $lid ?>" onclick="filterMemberLots('<?= $lid ?>', this)">
+                <?= e($ls['label']) ?>
+            </button>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
         <?php if (empty($history)): ?>
             <div class="empty-state"><i class="bi bi-calendar-x"></i><?= __('no_records_yet') ?></div>
         <?php else: ?>
-        <table class="table-modern">
-            <thead>
-                <tr>
-                    <th><?= __('month') ?></th>
-                    <th><?= __('due_date') ?></th>
-                    <th><?= __('due_amount') ?></th>
-                    <th><?= __('paid_amount') ?></th>
-                    <th><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></th>
-                    <th><?= __('status') ?></th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($history as $h): 
-                [$l, $v] = status_badge($h['status']); 
-                $dueVal = (float) $h['amount_due'];
-                $paidVal = (float) $h['amount_paid'];
-                $remVal = max(0.0, round($dueVal - $paidVal, 2));
-                $isOverdue = ($remVal > 0 && \App\Models\MonthlySubscription::effectiveDue($h) < date('Y-m-d'));
-            ?>
-                <tr class="<?= $isOverdue ? 'bg-rose-50/30' : '' ?>">
-                    <td class="fw-bold font-num"><?= e($h['month']) ?></td>
-                    <td class="font-num"><?= date_ar($h['due_date']) ?>
-                        <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?><small class="d-block text-muted"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small><?php endif; ?></td>
-                    <td class="font-num fw-bold"><?= money($dueVal) ?></td>
-                    <td class="font-num fw-bold <?= $paidVal > 0 ? 'text-brand-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>
-                    <td class="font-num fw-bold <?= $remVal > 0 ? 'text-danger' : 'text-success' ?>"><?= money($remVal) ?></td>
-                    <td>
-                        <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>
-                        <?php if ($h['status'] === 'partial' && $isOverdue): ?>
-                            <small class="d-block text-danger fw-bold text-[10px] mt-0.5"><i class="bi bi-clock-history"></i> <?= is_rtl() ? 'متأخر' : 'Overdue' ?></small>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table-modern" id="memberSubsTable">
+                <thead>
+                    <tr>
+                        <th><?= __('month') ?></th>
+                        <th><?= is_rtl() ? 'الحصة / السهم' : 'Share / Lot' ?></th>
+                        <th><?= is_rtl() ? 'تاريخ السداد / الاستحقاق' : 'Payment / Due Date' ?></th>
+                        <th><?= __('due_amount') ?></th>
+                        <th><?= __('paid_amount') ?></th>
+                        <th><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></th>
+                        <th><?= __('status') ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($history as $h): 
+                    [$l, $v] = status_badge($h['status']); 
+                    $dueVal = (float) $h['amount_due'];
+                    $paidVal = (float) $h['amount_paid'];
+                    $remVal = max(0.0, round($dueVal - $paidVal, 2));
+                    $isOverdue = ($remVal > 0 && \App\Models\MonthlySubscription::effectiveDue($h) < date('Y-m-d'));
+                    
+                    // Determine lot label
+                    $lotIdx = false;
+                    if (!empty($h['lot_id'])) {
+                        $lotIdx = array_search((int)$h['lot_id'], array_column($lots, 'id'));
+                    }
+                ?>
+                    <tr class="sub-row <?= $isOverdue ? 'bg-rose-50/30' : '' ?>" data-lot-id="<?= (int)($h['lot_id'] ?? 0) ?>" data-due="<?= $dueVal ?>" data-paid="<?= $paidVal ?>" data-rem="<?= $remVal ?>">
+                        <td class="fw-bold font-num text-slate-900"><?= e($h['month']) ?></td>
+                        <td class="text-xs">
+                            <?php if ($lotIdx !== false): ?>
+                                <span class="font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($lotIdx + 1) : 'Share #' . ($lotIdx + 1) ?></span>
+                                <span class="text-slate-400 font-num">(<?= number_format($h['shares_count_snapshot']) ?>)</span>
+                            <?php elseif (!empty($h['lot_id'])): ?>
+                                <span class="font-bold text-purple-700">#<?= (int)$h['lot_id'] ?></span>
+                            <?php else: ?>
+                                <span class="text-slate-400">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="font-num">
+                            <?php if ($paidVal > 0 && !empty($h['payment_date'])): ?>
+                                <div class="font-bold text-slate-900">
+                                    <i class="bi bi-calendar2-check text-emerald-600 me-1"></i>
+                                    <bdi dir="ltr"><?= date_ar($h['payment_date']) ?></bdi>
+                                </div>
+                                <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></div>
+                            <?php else: ?>
+                                <div class="font-bold text-slate-700">
+                                    <i class="bi bi-calendar-event text-slate-400 me-1"></i>
+                                    <bdi dir="ltr"><?= date_ar($h['due_date']) ?></bdi>
+                                </div>
+                                <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'موعد الاستحقاق' : 'Due Date' ?></div>
+                            <?php endif; ?>
+                            <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?>
+                                <small class="d-block text-muted text-[10px]"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small>
+                            <?php endif; ?>
+                        </td>
+                        <td class="font-num fw-bold text-slate-900"><?= money($dueVal) ?></td>
+                        <td class="font-num fw-bold <?= $paidVal > 0 ? 'text-emerald-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>
+                        <td class="font-num fw-bold <?= $remVal > 0 ? 'text-rose-600' : 'text-emerald-700' ?>"><?= money($remVal) ?></td>
+                        <td>
+                            <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>
+                            <?php if ($h['status'] === 'partial' && $isOverdue): ?>
+                                <small class="d-block text-danger fw-bold text-[10px] mt-0.5"><i class="bi bi-clock-history"></i> <?= is_rtl() ? 'متأخر' : 'Overdue' ?></small>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+        function filterMemberLots(lotId, btn) {
+            document.querySelectorAll('.btn-lot-tab').forEach(b => b.classList.remove('active', 'btn-primary'));
+            btn.classList.add('active', 'btn-primary');
+
+            let rows = document.querySelectorAll('#memberSubsTable tbody tr.sub-row');
+            let visibleCount = 0;
+            let totalDue = 0;
+            let totalPaid = 0;
+            let totalRem = 0;
+
+            rows.forEach(r => {
+                let rLot = r.getAttribute('data-lot-id');
+                if (lotId === 'all' || rLot === String(lotId)) {
+                    r.style.display = '';
+                    visibleCount++;
+                    totalDue += parseFloat(r.getAttribute('data-due') || 0);
+                    totalPaid += parseFloat(r.getAttribute('data-paid') || 0);
+                    totalRem += parseFloat(r.getAttribute('data-rem') || 0);
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+
+            let b = document.getElementById('visibleRowsBadge');
+            if (b) b.textContent = visibleCount;
+        }
+        </script>
+        <style>
+        .btn-lot-tab {
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #475569;
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 4px 12px;
+            transition: all 0.15s;
+        }
+        .btn-lot-tab:hover {
+            background: #f1f5f9;
+        }
+        .btn-lot-tab.active {
+            background: #4f46e5;
+            color: #fff;
+            border-color: #4f46e5;
+        }
+        </style>
         <?php endif; ?>
     </div>
 
