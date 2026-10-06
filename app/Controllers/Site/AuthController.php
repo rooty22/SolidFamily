@@ -160,14 +160,32 @@ class AuthController extends Controller
 
     public function showLogin(): void
     {
+        if (Auth::memberCheck()) {
+            $this->redirect('home');
+        }
+        if (Auth::adminCheck()) {
+            $this->redirect('admin/dashboard');
+        }
         $this->view('site/auth/login', ['pageTitle' => __('login')], 'site/auth-layout');
     }
 
     public function login(): void
     {
         $this->verifyCsrf();
-        $nationalId = (string) $this->input('national_id');
+        $nationalId = trim((string) $this->input('national_id'));
         $password = (string) $this->input('password');
+        $cleanInput = mb_strtolower($nationalId);
+
+        // 1. Immediately block any identifier belonging to an Admin in admins table or admin emails list
+        $adminEmails = Member::getAdminEmails();
+        $isAdminIdentifier = in_array($cleanInput, $adminEmails, true)
+            || \App\Models\Admin::findBy('email', $cleanInput) !== null;
+
+        if ($isAdminIdentifier) {
+            Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن تسجيل الدخول به من بوابة المشتركين. يرجى تسجيل الدخول عبر بوابة الإدارة.');
+            $this->redirect('admin/login');
+            return;
+        }
 
         if (RateLimiter::loginBlocked('member', $nationalId)) {
             $sec = RateLimiter::loginRetryAfter('member', $nationalId);
@@ -178,21 +196,28 @@ class AuthController extends Controller
                     : "تم تجاوز عدد محاولات تسجيل الدخول، الرجاء المحاولة بعد دقيقة واحدة.");
             Session::flash('error', $msg);
             $this->redirect('login');
+            return;
         }
 
+        // Search for member by national_id or email
         $member = Member::findBy('national_id', $nationalId);
+        if (!$member && filter_var($nationalId, FILTER_VALIDATE_EMAIL)) {
+            $member = Member::findBy('email', $nationalId);
+        }
+
+        // 2. Block if the account has administrative status
+        if ($member && Member::isAdmin($member)) {
+            Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن تسجيل الدخول به من بوابة المشتركين. يرجى تسجيل الدخول عبر بوابة الإدارة.');
+            $this->redirect('admin/login');
+            return;
+        }
 
         if (!$member || !password_verify($password, $member['password'])) {
-            $adminEmails = Member::getAdminEmails();
-            if (in_array(mb_strtolower(trim($nationalId)), $adminEmails, true)) {
-                Session::flash('error', 'هذا المعرّف يخص إدارة الصندوق. يرجى تسجيل الدخول من خلال بوابة الإدارة.');
-                $this->redirect('admin/login');
-                return;
-            }
             RateLimiter::loginFailed('member', $nationalId);
             Session::flash('error', 'رقم الهوية أو كلمة المرور غير صحيحة.');
             Session::setOld(['national_id' => $nationalId]);
             $this->redirect('login');
+            return;
         }
 
         RateLimiter::loginSucceeded('member', $nationalId);
@@ -200,6 +225,7 @@ class AuthController extends Controller
         if ($member['status'] !== 'active') {
             Session::flash('error', 'تم إيقاف هذا الحساب، الرجاء التواصل مع الإدارة.');
             $this->redirect('login');
+            return;
         }
 
         Auth::loginMember($member);

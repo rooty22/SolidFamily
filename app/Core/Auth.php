@@ -62,6 +62,11 @@ class Auth
             Session::flash('error', 'تم إيقاف هذا الحساب، الرجاء التواصل مع الإدارة.');
             return false;
         }
+        if (Member::isAdmin($member)) {
+            self::logoutMember();
+            Session::flash('error', 'هذا الحساب مخصص لإدارة الصندوق ولا يمكن استخدامه كحساب مشترك. يرجى الدخول من بوابة الإدارة.');
+            return false;
+        }
         return true;
     }
 

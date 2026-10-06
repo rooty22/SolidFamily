@@ -39,7 +39,16 @@ $isEn = is_en();
                 <span class="absolute inset-y-0 <?= is_rtl() ? 'right-0' : 'left-0' ?> w-11 flex items-center justify-center pointer-events-none text-slate-400">
                     <i class="bi bi-person-vcard text-lg"></i>
                 </span>
-                <input type="text" name="national_id" class="form-control form-control-icon-start" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" required autofocus>
+                <input type="text" name="national_id" id="national_id_input" class="form-control form-control-icon-start" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" required autofocus>
+            </div>
+            <div id="admin-login-hint" class="hidden mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                <span class="flex items-center gap-1.5 font-medium">
+                    <i class="bi bi-shield-exclamation text-amber-600"></i>
+                    <span><?= is_rtl() ? 'حسابات إدارة الصندوق تسجل الدخول من البوابة الإدارية.' : 'Admin accounts log in via the Admin Portal.' ?></span>
+                </span>
+                <a href="<?= url('admin/login') ?>" class="font-bold underline text-amber-950 hover:text-amber-800">
+                    <?= is_rtl() ? 'الانتقال لبوابة الإدارة' : 'Go to Admin Portal' ?> &larr;
+                </a>
             </div>
         </div>
 
@@ -80,3 +89,22 @@ $isEn = is_en();
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('national_id_input');
+    var hint = document.getElementById('admin-login-hint');
+    if (input && hint) {
+        function checkAdmin() {
+            var val = (input.value || '').trim().toLowerCase();
+            if (val.includes('@') || val.includes('admin')) {
+                hint.classList.remove('hidden');
+            } else {
+                hint.classList.add('hidden');
+            }
+        }
+        input.addEventListener('input', checkAdmin);
+        checkAdmin();
+    }
+});
+</script>
