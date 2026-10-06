@@ -39,16 +39,7 @@ $isEn = is_en();
                 <span class="absolute inset-y-0 <?= is_rtl() ? 'right-0' : 'left-0' ?> w-11 flex items-center justify-center pointer-events-none text-slate-400">
                     <i class="bi bi-person-vcard text-lg"></i>
                 </span>
-                <input type="text" name="national_id" id="national_id_input" class="form-control form-control-icon-start" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" required autofocus>
-            </div>
-            <div id="admin-login-hint" class="hidden mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
-                <span class="flex items-center gap-1.5 font-medium">
-                    <i class="bi bi-shield-exclamation text-amber-600"></i>
-                    <span><?= is_rtl() ? 'حسابات إدارة الصندوق تسجل الدخول من البوابة الإدارية.' : 'Admin accounts log in via the Admin Portal.' ?></span>
-                </span>
-                <a href="<?= url('admin/login') ?>" class="font-bold underline text-amber-950 hover:text-amber-800">
-                    <?= is_rtl() ? 'الانتقال لبوابة الإدارة' : 'Go to Admin Portal' ?> &larr;
-                </a>
+                <input type="text" name="national_id" class="form-control form-control-icon-start" placeholder="10xxxxxxxx" value="<?= old('national_id') ?>" required autofocus>
             </div>
         </div>
 
@@ -75,36 +66,12 @@ $isEn = is_en();
 
         <div class="pt-4 border-t border-slate-100 text-center space-y-2.5">
             <p class="text-slate-600 text-sm mb-0"><?= __('no_account_prompt') ?> <a href="<?= url('register') ?>" class="font-bold text-emerald-700 hover:underline"><?= __('request_new_membership') ?></a></p>
-            <div class="flex items-center justify-center gap-4 text-xs font-bold text-slate-400">
+            <div class="flex items-center justify-center text-xs font-bold text-slate-400">
                 <a href="<?= url('/') ?>" class="hover:text-slate-600 transition-colors inline-flex items-center gap-1">
                     <i class="bi bi-house-door"></i>
                     <span><?= __('back_to_home') ?></span>
-                </a>
-                <span class="text-slate-300">•</span>
-                <a href="<?= url('admin/login') ?>" class="text-slate-500 hover:text-sky-700 transition-colors inline-flex items-center gap-1">
-                    <i class="bi bi-shield-lock"></i>
-                    <span><?= $isEn ? 'Admin Portal' : 'دخول إدارة الصندوق' ?></span>
                 </a>
             </div>
         </div>
     </form>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var input = document.getElementById('national_id_input');
-    var hint = document.getElementById('admin-login-hint');
-    if (input && hint) {
-        function checkAdmin() {
-            var val = (input.value || '').trim().toLowerCase();
-            if (val.includes('@') || val.includes('admin')) {
-                hint.classList.remove('hidden');
-            } else {
-                hint.classList.add('hidden');
-            }
-        }
-        input.addEventListener('input', checkAdmin);
-        checkAdmin();
-    }
-});
-</script>
