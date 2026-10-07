@@ -88,6 +88,8 @@ class DashboardController extends Controller
 
         $loanRequestsCount = (int) $db->query('SELECT COUNT(*) as c FROM loan_requests')->fetch()['c'];
         $shareRequestsCount = (int) $db->query('SELECT COUNT(*) as c FROM share_requests')->fetch()['c'];
+        $pendingLoanRequestsCount = (int) $db->query("SELECT COUNT(*) as c FROM loan_requests WHERE status = 'pending'")->fetch()['c'];
+        $pendingShareRequestsCount = (int) $db->query("SELECT COUNT(*) as c FROM share_requests WHERE status = 'pending'")->fetch()['c'];
 
         $collected = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category IN ('subscription','founding','loan_installment','loan_admin_fee')")->fetch()['s'];
         $disbursed = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category = 'loan_disbursement'")->fetch()['s'];
@@ -165,7 +167,7 @@ class DashboardController extends Controller
 
         return compact(
             'totalMembers', 'totalShares', 'subRow', 'foundRow', 'loanRow',
-            'loanRequestsCount', 'shareRequestsCount', 'fundBalance', 'bankBalance',
+            'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
             'lateLoansCount', 'monthlyTrend', 'export'

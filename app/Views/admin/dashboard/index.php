@@ -323,8 +323,8 @@
                         <i class="bi bi-file-earmark-text-fill text-amber-600"></i>
                         <span><?= __('manage_loan_requests') ?></span>
                     </span>
-                    <?php if ($stats['loanRequestsCount'] > 0): ?>
-                        <span class="badge-status badge-warning font-num"><?= $stats['loanRequestsCount'] ?></span>
+                    <?php if ($stats['pendingLoanRequestsCount'] > 0): ?>
+                        <span class="badge-status badge-warning font-num"><?= $stats['pendingLoanRequestsCount'] ?></span>
                     <?php endif; ?>
                 </a>
                 <a href="<?= url('admin/share-requests') ?>" class="btn btn-soft text-start !justify-between">
@@ -332,8 +332,8 @@
                         <i class="bi bi-arrow-left-right text-sky-600"></i>
                         <span><?= __('manage_share_requests') ?></span>
                     </span>
-                    <?php if ($stats['shareRequestsCount'] > 0): ?>
-                        <span class="badge-status badge-info font-num"><?= $stats['shareRequestsCount'] ?></span>
+                    <?php if ($stats['pendingShareRequestsCount'] > 0): ?>
+                        <span class="badge-status badge-info font-num"><?= $stats['pendingShareRequestsCount'] ?></span>
                     <?php endif; ?>
                 </a>
                 <a href="<?= url('admin/members/create') ?>" class="btn btn-soft text-start !justify-between">

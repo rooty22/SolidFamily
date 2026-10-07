@@ -30,6 +30,52 @@
     </form>
 </div>
 
+<?php if (!empty($summary)): ?>
+<div class="rounded-2xl p-4 p-md-5 mb-4 text-white shadow-lg" style="background: linear-gradient(135deg, #0f172a 0%, #0c4a6e 55%, #0284c7 100%);">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-5">
+            <div class="flex items-center gap-2 text-sky-200 text-xs font-bold mb-1">
+                <i class="bi bi-calculator-fill"></i>
+                <span><?= is_rtl() ? 'إجمالي نتيجة التصفية' : 'Filtered Results Total' ?></span>
+            </div>
+            <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;"><?= money($summary['total']) ?></div>
+            <div class="text-sky-100/80 text-xs font-bold mt-1">
+                <?= is_rtl() ? 'من ' . (int) $summary['count'] . ' معاملة' : 'from ' . (int) $summary['count'] . ' transactions' ?>
+                <?php if (!empty($filters['from']) || !empty($filters['to'])): ?>
+                    · <bdi dir="ltr"><?= !empty($filters['from']) ? date_ar($filters['from']) : '...' ?> - <?= !empty($filters['to']) ? date_ar($filters['to']) : '...' ?></bdi>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="row g-2">
+                <div class="col-sm-6">
+                    <div class="rounded-xl p-3" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.15);">
+                        <div class="text-emerald-200 text-[11px] font-bold"><i class="bi bi-arrow-down-circle-fill"></i> <?= is_rtl() ? 'الوارد (اشتراكات وأقساط ورسوم)' : 'Incoming (subscriptions, installments, fees)' ?></div>
+                        <div class="font-numeric font-extrabold text-lg mt-1"><?= money($summary['incoming']) ?></div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="rounded-xl p-3" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.15);">
+                        <div class="text-amber-200 text-[11px] font-bold"><i class="bi bi-arrow-up-circle-fill"></i> <?= is_rtl() ? 'المصروف (قروض)' : 'Disbursed (loans)' ?></div>
+                        <div class="font-numeric font-extrabold text-lg mt-1"><?= money($summary['disbursed']) ?></div>
+                    </div>
+                </div>
+            </div>
+            <?php if (count($summary['byCategory']) > 1): ?>
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+                <?php foreach ($summary['byCategory'] as $cat => $catTotal): ?>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold" style="background: rgba(255,255,255,0.12);">
+                        <span><?= e($categoryLabels[$cat] ?? $cat) ?></span>
+                        <span class="font-numeric text-sky-200"><?= money($catTotal) ?></span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="d-flex justify-content-end gap-2 mb-3">
     <a href="<?= url('admin/transactions/export') ?>?<?= http_build_query($filters) ?>" class="btn-soft-primary text-xs">
         <i class="bi bi-file-earmark-spreadsheet"></i>

@@ -25,9 +25,35 @@ class TransactionsController extends Controller
 
     public function index(): void
     {
+        $transactions = $this->fetch();
+        $filtered = false;
+        foreach (['category', 'search', 'from', 'to'] as $key) {
+            if (trim((string) $this->input($key, '')) !== '') {
+                $filtered = true;
+                break;
+            }
+        }
+
+        $summary = null;
+        if ($filtered) {
+            $summary = ['count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => []];
+            foreach ($transactions as $t) {
+                $amount = (float) $t['amount'];
+                $summary['total'] += $amount;
+                if ($t['category'] === 'loan_disbursement') {
+                    $summary['disbursed'] += $amount;
+                } else {
+                    $summary['incoming'] += $amount;
+                }
+                $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + $amount;
+            }
+            arsort($summary['byCategory']);
+        }
+
         $this->view('admin/transactions/index', [
             'pageTitle' => __('transactions'),
-            'transactions' => $this->fetch(),
+            'transactions' => $transactions,
+            'summary' => $summary,
             'categoryLabels' => $this->getCategoryLabels(),
             'filters' => $this->all(),
         ], 'admin/layout');
