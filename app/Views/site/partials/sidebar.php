@@ -6,9 +6,13 @@ $pendingLoan = !$isAdminMember ? \App\Models\LoanRequest::count(['member_id' => 
 ?>
 <aside class="sidebar">
     <div class="sidebar-brand">
-        <div class="logo-badge"><?= is_rtl() ? 'ص' : 'F' ?></div>
+        <?php if ($sbLogo = site_logo_url()): ?>
+            <img src="<?= e($sbLogo) ?>" alt="<?= e(site_name()) ?>" class="h-9 w-auto max-w-[42px] object-contain rounded-lg">
+        <?php else: ?>
+            <div class="logo-badge"><?= is_rtl() ? 'ص' : 'F' ?></div>
+        <?php endif; ?>
         <div>
-            <div class="brand-title"><?= __('brand_name') ?></div>
+            <div class="brand-title"><?= e(site_name()) ?></div>
             <div class="brand-sub"><?= __('member_portal') ?></div>
         </div>
     </div>

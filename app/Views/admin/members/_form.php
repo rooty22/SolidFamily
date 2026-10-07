@@ -190,18 +190,18 @@ $isEn = is_en();
     <div class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200/80">
         <h4 class="text-xs font-black uppercase tracking-wider text-amber-900 mb-3 flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">4</span>
-            <span><?= $isEn ? 'Administrative Role & Loan Exemption' : 'الصفة الإدارية والإعفاء من القروض' ?></span>
+            <span><?= $isEn ? 'Administrative Role' : 'الصفة الإدارية' ?></span>
         </h4>
         <div class="p-3.5 bg-white rounded-xl border border-amber-200/70">
             <div class="form-check form-switch mb-0">
                 <input type="hidden" name="is_admin" value="0">
                 <input class="form-check-input cursor-pointer" type="checkbox" role="switch" id="isAdminSwitch" name="is_admin" value="1" <?= !empty($m['is_admin']) ? 'checked' : '' ?>>
                 <label class="form-check-label font-bold text-xs text-slate-800 cursor-pointer me-2" for="isAdminSwitch">
-                    <?= $isEn ? 'Assign as Administrative Account (Exempt from Loans & Installments)' : 'تعيين كحساب إداري (معفى تماماً من القروض والأقساط التمويلية)' ?>
+                    <?= $isEn ? 'Assign as Administrative Account' : 'تعيين كحساب إداري' ?>
                 </label>
             </div>
             <p class="text-[11px] text-slate-500 mt-1.5 mb-0 ms-1">
-                <?= $isEn ? 'Admin accounts are dedicated to system/fund management. They are barred from taking loans, requesting financing, and will never show loan installments or loan debt.' : 'حسابات الإدارة مخصصة لإدارة الصندوق والإشراف عليه؛ ولا يمكنها الاقتراض أو طلب تمويل، ولا تظهر عليها أي أقساط أو ديون قروض.' ?>
+                <?= $isEn ? 'This only designates the account as an administrative one. It does not change loans or installments for this member.' : 'هذا التعيين صفة إدارية فقط، ولا يؤثر على القروض أو الأقساط الخاصة بالمشترك.' ?>
             </p>
         </div>
 </div>

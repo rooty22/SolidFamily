@@ -29,7 +29,7 @@ class Member extends Model
 
     /**
      * Check if a member record or member ID represents an administrative account.
-     * Admin accounts are exempt from loans, cannot take loans, and have no loan installments.
+     * This is only a designation; admin accounts are treated like any other member for loans and installments.
      */
     public static function isAdmin(array|int|null $member): bool
     {
@@ -108,19 +108,17 @@ class Member extends Model
         $lateSubIds = array_map('intval', $subStmt->fetchAll(\PDO::FETCH_COLUMN));
         $lateSubMap = array_fill_keys($lateSubIds, true);
 
-        // 2. Members with overdue loan installments (Admin accounts are exempt from loans)
+        // 2. Members with overdue loan installments
         $loanStmt = $db->prepare("SELECT DISTINCT l.member_id
             FROM loans l
             JOIN loan_installments li ON li.loan_id = l.id
             JOIN members m ON m.id = l.member_id
             WHERE 1=1 {$statusClause}
-              AND (m.is_admin IS NULL OR m.is_admin = 0)
               AND l.status IN ('active', 'partial')
               AND li.amount_paid < li.amount
               AND li.due_date < :today");
         $loanStmt->execute(['today' => $today]);
         $lateLoanIds = array_map('intval', $loanStmt->fetchAll(\PDO::FETCH_COLUMN));
-        $lateLoanIds = array_values(array_filter($lateLoanIds, fn($id) => !self::isAdmin($id)));
         $lateLoanMap = array_fill_keys($lateLoanIds, true);
 
         $allLateIds = array_values(array_unique(array_merge($lateSubIds, $lateLoanIds)));
@@ -176,26 +174,21 @@ class Member extends Model
             }
         }
 
-        // Loans (Administrative accounts are completely exempt from loans and installments)
-        if ($isAdmin) {
-            $lateInstallments = 0;
-            $overdueLoanAmount = 0.0;
-        } else {
-            $loanStmt = $db->prepare("SELECT
-                COUNT(*) as late_installments,
-                COALESCE(SUM(li.amount - li.amount_paid), 0) as amount_overdue
-                FROM loan_installments li
-                JOIN loans l ON l.id = li.loan_id
-                WHERE l.member_id = :mid
-                  AND l.status IN ('active', 'partial')
-                  AND li.amount_paid < li.amount
-                  AND li.due_date < :today");
-            $loanStmt->execute(['mid' => $memberId, 'today' => $today]);
-            $loanRow = $loanStmt->fetch();
+        // Loans
+        $loanStmt = $db->prepare("SELECT
+            COUNT(*) as late_installments,
+            COALESCE(SUM(li.amount - li.amount_paid), 0) as amount_overdue
+            FROM loan_installments li
+            JOIN loans l ON l.id = li.loan_id
+            WHERE l.member_id = :mid
+              AND l.status IN ('active', 'partial')
+              AND li.amount_paid < li.amount
+              AND li.due_date < :today");
+        $loanStmt->execute(['mid' => $memberId, 'today' => $today]);
+        $loanRow = $loanStmt->fetch();
 
-            $lateInstallments = (int) ($loanRow['late_installments'] ?? 0);
-            $overdueLoanAmount = (float) ($loanRow['amount_overdue'] ?? 0);
-        }
+        $lateInstallments = (int) ($loanRow['late_installments'] ?? 0);
+        $overdueLoanAmount = (float) ($loanRow['amount_overdue'] ?? 0);
 
         $lateSub = $lateSubMonths > 0;
         $lateLoan = $lateInstallments > 0;

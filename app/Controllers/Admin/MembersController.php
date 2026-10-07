@@ -48,7 +48,7 @@ class MembersController extends Controller
             $isAdmin = Member::isAdmin($m);
             $m['is_admin'] = $isAdmin;
             $isLateSub = isset($lateInfo['lateSubMap'][$mId]);
-            $isLateLoan = !$isAdmin && isset($lateInfo['lateLoanMap'][$mId]);
+            $isLateLoan = isset($lateInfo['lateLoanMap'][$mId]);
             $isLate = $isLateSub || $isLateLoan;
 
             if ($isLateSub && $isLateLoan) {
@@ -170,7 +170,7 @@ class MembersController extends Controller
         $isAdminMember = Member::isAdmin($member);
         $founding = FoundingAmount::ensureForMember((int) $id);
         $subscriptions = MonthlySubscription::forMember((int) $id);
-        $loans = $isAdminMember ? [] : Loan::forMember((int) $id);
+        $loans = Loan::forMember((int) $id);
         $transactions = Transaction::withMember(['member_id' => $id]);
         $overdueDetails = Member::getMemberOverdueDetails((int) $id);
 

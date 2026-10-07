@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= isset($pageTitle) ? e($pageTitle) . ' - ' : '' ?><?= __('brand_name') ?></title>
+    <title><?= isset($pageTitle) ? e($pageTitle) . ' - ' : '' ?><?= e(site_name()) ?></title>
 
     <!-- Favicon -->
     <?php if ($__faviconUrl = site_favicon_url()): ?>

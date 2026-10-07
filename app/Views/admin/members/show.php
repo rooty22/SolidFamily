@@ -101,14 +101,8 @@ $catLabels = transaction_categories();
 
     <!-- Loans Count / Admin Role -->
     <div class="metric-tile metric-amber">
-        <?php if (!empty($isAdminMember)): ?>
-            <div class="metric-label"><?= is_rtl() ? 'صفة الحساب' : 'Account Role' ?></div>
-            <div class="metric-value text-sm font-bold text-amber-800 mt-1"><?= is_rtl() ? 'معفى من القروض' : 'Exempt from Loans' ?></div>
-            <div class="text-[11px] font-bold text-slate-400 mt-0.5"><?= is_rtl() ? 'حساب إداري' : 'Admin Role' ?></div>
-        <?php else: ?>
             <div class="metric-label"><?= __('loans_count_stat') ?></div>
             <div class="metric-value font-numeric text-amber-700"><?= count($loans) ?></div>
-        <?php endif; ?>
     </div>
 
     <!-- Founding Status -->
@@ -381,17 +375,9 @@ $catLabels = transaction_categories();
                     </div>
                     <span><?= __('loans') ?></span>
                 </h3>
-                <?php if (empty($isAdminMember)): ?>
-                    <a href="<?= url('admin/loans') ?>?q=<?= urlencode($member['name']) ?>" class="btn btn-sm btn-soft font-bold"><?= __('view_all') ?></a>
-                <?php endif; ?>
+                <a href="<?= url('admin/loans') ?>?q=<?= urlencode($member['name']) ?>" class="btn btn-sm btn-soft font-bold"><?= __('view_all') ?></a>
             </div>
-            <?php if (!empty($isAdminMember)): ?>
-                <div class="empty-state py-8">
-                    <i class="bi bi-shield-check text-3xl text-amber-500 mb-2"></i>
-                    <span class="font-bold text-slate-800 text-sm"><?= is_rtl() ? 'حساب إداري معفى من القروض' : 'Admin Account - Exempt from Loans' ?></span>
-                    <small class="text-slate-500 mt-1 max-w-sm mx-auto block leading-relaxed"><?= is_rtl() ? 'هذا المشترك يحمل صفة إدارية وهو معفى تماماً من القروض والأقساط التمويلية ولا يمكن صرف قروض له.' : 'This member holds administrative status and is completely exempt from loans and financing installments.' ?></small>
-                </div>
-            <?php elseif (empty($loans)): ?>
+            <?php if (empty($loans)): ?>
                 <div class="empty-state py-8">
                     <i class="bi bi-cash text-3xl text-slate-400 mb-2"></i>
                     <span><?= __('no_loans_found_simple') ?></span>

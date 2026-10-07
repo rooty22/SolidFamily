@@ -187,7 +187,7 @@ endforeach;
         </div>
 
         <div class="pt-6 border-t border-slate-900 text-center text-xs text-slate-500 pb-16 md:pb-0">
-            &copy; <?= date('Y') ?> <?= __('brand_name') ?>. <?= is_rtl() ? 'جميع الحقوق محفوظة.' : 'All rights reserved.' ?>
+            &copy; <?= date('Y') ?> <?= e(site_name()) ?>. <?= is_rtl() ? 'جميع الحقوق محفوظة.' : 'All rights reserved.' ?>
         </div>
     </div>
 </footer>

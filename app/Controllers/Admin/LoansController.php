@@ -62,8 +62,7 @@ class LoansController extends Controller
     {
         $requestId = $this->input('request_id');
         $loanRequest = $requestId ? LoanRequest::find((int) $requestId) : null;
-        $allMembers = Member::all('name ASC');
-        $members = array_values(array_filter($allMembers, fn($m) => !Member::isAdmin($m)));
+        $members = Member::all('name ASC');
         $feePercent = (float) Setting::get('loan_admin_fee_percent', 0);
 
         $this->view('admin/loans/create', [
@@ -97,10 +96,8 @@ class LoansController extends Controller
             ->integer('loan_request_id', 'رقم الطلب', 1);
 
         $targetMember = Member::find((int) ($data['member_id'] ?? 0));
-        if (!$validator->fails() && (!$targetMember || Member::isAdmin($targetMember))) {
-            Session::flash('error', ($targetMember && Member::isAdmin($targetMember))
-                ? 'حساب الإدارة غير مؤهل للحصول على قروض، ولا يمكن صرف قرض له.'
-                : 'المشترك المحدد غير موجود.');
+        if (!$validator->fails() && !$targetMember) {
+            Session::flash('error', 'المشترك المحدد غير موجود.');
             $this->redirect($retry);
             return;
         }
