@@ -443,7 +443,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                 }
             ?>
                 <tr class="admin-sub-row <?= $isOverdue ? 'bg-rose-50/30' : '' ?>" data-lot-id="<?= (int)($h['lot_id'] ?? 0) ?>">
-                    <td class="fw-bold font-numeric text-slate-900"><?= e($h['month']) ?></td>
+                    <td class="fw-bold font-numeric text-slate-900"><?= e(month_label($h['month'])) ?></td>
                     <td class="text-slate-600 text-xs">
                         <?php if ($lotIdx !== false): ?>
                             <span class="font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($lotIdx + 1) : 'Share #' . ($lotIdx + 1) ?></span>
@@ -506,7 +506,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                                     <span><?= is_rtl() ? 'تعديل' : 'Edit' ?></span>
                                 </button>
                                 <!-- Cancel Payment Form -->
-                                <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/reset-payment/' . $h['id']) ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من إلغاء سداد اشتراك شهر ' . e($h['month']) . '؟ سيتم إعادة حالة الشهر إلى غير مسدد وحذف المعاملة المالية المرتبطة بالكامل.' : 'Are you sure you want to cancel payment for month ' . e($h['month']) . '?' ?>');" class="d-inline m-0">
+                                <form method="post" action="<?= url('admin/subscriptions/' . $member['id'] . '/reset-payment/' . $h['id']) ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من إلغاء سداد اشتراك شهر ' . e(month_label($h['month'])) . '؟ سيتم إعادة حالة الشهر إلى غير مسدد وحذف المعاملة المالية المرتبطة بالكامل.' : 'Are you sure you want to cancel payment for month ' . e(month_label($h['month'])) . '?' ?>');" class="d-inline m-0">
                                     <?= csrf_field() ?>
                                     <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2.5 text-xs rounded-lg inline-flex items-center gap-1 font-bold" title="<?= is_rtl() ? 'إلغاء السداد وحذف المعاملة' : 'Cancel Payment' ?>">
                                         <i class="bi bi-arrow-counterclockwise"></i>
@@ -539,7 +539,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
             <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
                 <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
                     <i class="bi bi-cash-coin text-emerald-600"></i>
-                    <span><?= is_rtl() ? "تسجيل سداد لاشتراك شهر {$h['month']}" : "Record Payment for {$h['month']}" ?></span>
+                    <span><?= is_rtl() ? "تسجيل سداد لاشتراك شهر " . month_label($h['month']) . "" : "Record Payment for " . month_label($h['month']) . "" ?></span>
                 </h5>
                 <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -552,7 +552,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
                         <div class="flex justify-between">
                             <span class="text-slate-600 font-bold"><?= is_rtl() ? 'الشهر المستحق:' : 'Month:' ?></span>
-                            <span class="font-numeric font-extrabold text-slate-900"><?= e($h['month']) ?></span>
+                            <span class="font-numeric font-extrabold text-slate-900"><?= e(month_label($h['month'])) ?></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-600 font-bold"><?= is_rtl() ? 'المبلغ المستحق:' : 'Amount Due:' ?></span>
@@ -621,7 +621,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
             <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
                 <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
                     <i class="bi bi-pencil-square text-emerald-600"></i>
-                    <span><?= is_rtl() ? "تعديل سداد اشتراك شهر {$h['month']}" : "Edit Payment for Month {$h['month']}" ?></span>
+                    <span><?= is_rtl() ? "تعديل سداد اشتراك شهر " . month_label($h['month']) . "" : "Edit Payment for Month " . month_label($h['month']) . "" ?></span>
                 </h5>
                 <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

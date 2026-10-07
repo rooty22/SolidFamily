@@ -118,7 +118,7 @@
         <thead><tr><th>المبلغ</th><th>تاريخ الدفع</th><th>ملاحظات</th></tr></thead>
         <tbody>
         <?php foreach ($payments as $p): ?>
-            <tr><td class="fw-bold"><?= money($p['amount']) ?></td><td><?= date_ar($p['payment_date']) ?></td><td><?= e($p['notes'] ?: '-') ?></td></tr>
+            <tr><td class="fw-bold"><?= money($p['amount']) ?></td><td><?= date_ar($p['payment_date']) ?></td><td><?= e(localize_dates($p['notes'] ?: '-')) ?></td></tr>
         <?php endforeach; ?>
         <?php if (empty($payments)): ?>
             <tr><td colspan="3"><div class="empty-state"><i class="bi bi-receipt"></i>لا توجد دفعات مسجلة</div></td></tr>

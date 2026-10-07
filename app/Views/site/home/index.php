@@ -26,7 +26,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
             <?php endif; ?>
             <h2 class="text-2xl sm:text-3xl font-black mb-1"><?= __('welcome_back', ['name' => e($member['name'])]) ?></h2>
             <p class="text-brand-200 text-xs sm:text-sm max-w-xl">
-                <?= __('member_summary_desc', ['month' => date('Y-m')]) ?>
+                <?= __('member_summary_desc', ['month' => month_label(date('Y-m'))]) ?>
             </p>
         </div>
         <div class="flex items-center gap-2">
@@ -276,7 +276,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
                             <div>
                                 <div class="font-bold text-slate-900"><?= $catLabels[$t['category']] ?? $t['category'] ?></div>
                                 <?php if (!empty($t['notes'])): ?>
-                                    <div class="text-xs text-slate-400"><?= e($t['notes']) ?></div>
+                                    <div class="text-xs text-slate-400"><?= e(localize_dates($t['notes'])) ?></div>
                                 <?php endif; ?>
                             </div>
                         </div>

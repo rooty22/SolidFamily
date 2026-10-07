@@ -132,7 +132,7 @@ class DashboardController extends Controller
         $monthlyTrend = [];
         for ($i = 5; $i >= 0; $i--) {
             $month = date('Y-m', strtotime("-{$i} months", strtotime($currentMonth . '-01')));
-            $monthlyTrend[] = $sums[$month] ?? ['month' => $month, 'paid' => 0, 'due' => 0];
+            $monthlyTrend[] = ($sums[$month] ?? ['month' => $month, 'paid' => 0, 'due' => 0]) + ['month_label' => month_label($month)];
         }
 
         $export = [

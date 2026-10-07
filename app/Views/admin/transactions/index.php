@@ -61,7 +61,7 @@
                     <?php if (!empty($t['display_details'])): ?>
                         <div class="text-[11px] text-slate-600 font-semibold mt-1 flex items-center gap-1">
                             <i class="bi bi-info-circle text-slate-400"></i>
-                            <span><?= e($t['display_details']) ?></span>
+                            <span><?= e(localize_dates($t['display_details'])) ?></span>
                         </div>
                     <?php endif; ?>
                 </td>

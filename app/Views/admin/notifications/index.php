@@ -74,7 +74,7 @@
         <tbody>
         <?php foreach ($notifications as $n): [$l, $v] = status_badge($n['status']); ?>
             <tr>
-                <td class="fw-bold"><?= e($n['title']) ?><div class="text-muted" style="font-size:12px;"><?= e(mb_substr($n['body'], 0, 60)) ?></div></td>
+                <td class="fw-bold"><?= e($n['title']) ?><div class="text-muted" style="font-size:12px;"><?= e(mb_substr(localize_dates($n['body']), 0, 60)) ?></div></td>
                 <td><?= $n['target_type'] === 'all' ? (is_rtl() ? 'جميع المشتركين' : 'All Members') : e($n['target_member_name'] ?? (is_rtl() ? 'غير معروف' : 'Unknown')) ?></td>
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($n['created_at'], 'd/m/Y H:i') ?></bdi></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>

@@ -69,7 +69,7 @@ class Transaction extends Model
                         $r['display_details'] = $notes;
                     }
                 } else {
-                    $monthPart = !empty($r['sub_month']) ? ' لشهر ' . $r['sub_month'] : '';
+                    $monthPart = !empty($r['sub_month']) ? ' لشهر ' . month_label($r['sub_month']) : '';
                     $r['display_details'] = 'اشتراك شهري' . $monthPart . ($lotLabel ? ' (' . $lotLabel . ')' : '');
                 }
             } elseif ($r['category'] === 'founding') {

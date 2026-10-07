@@ -343,7 +343,7 @@ $catLabels = transaction_categories();
                             $isOverdue = ($remVal > 0 && \App\Models\MonthlySubscription::effectiveDue($s) < date('Y-m-d'));
                         ?>
                             <tr class="<?= $isOverdue ? 'bg-rose-50/30' : '' ?>">
-                                <td class="font-numeric font-bold text-slate-900"><?= e($s['month']) ?></td>
+                                <td class="font-numeric font-bold text-slate-900"><?= e(month_label($s['month'])) ?></td>
                                 <td class="font-numeric text-xs text-slate-500"><?= date_ar($s['due_date']) ?></td>
                                 <td class="font-numeric font-bold text-slate-900"><?= money($dueVal) ?></td>
                                 <td class="font-numeric font-bold <?= $paidVal > 0 ? 'text-emerald-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>

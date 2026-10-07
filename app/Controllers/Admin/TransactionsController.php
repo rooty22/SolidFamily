@@ -46,9 +46,9 @@ class TransactionsController extends Controller
         csv_put($out, $headers);
         foreach ($transactions as $t) {
             csv_put($out, [
-                $t['transaction_date'],
+                date_ar($t['transaction_date']),
                 $labels[$t['category']] ?? $t['category'],
-                $t['display_details'] ?? '-',
+                localize_dates($t['display_details'] ?? '-'),
                 $t['member_name'],
                 $t['amount'],
                 $t['admin_name'] ?? '-'
@@ -65,9 +65,9 @@ class TransactionsController extends Controller
         $rows = [];
         foreach ($this->fetch() as $t) {
             $rows[] = [
-                $t['transaction_date'],
+                date_ar($t['transaction_date']),
                 $labels[$t['category']] ?? $t['category'],
-                $t['display_details'] ?? '-',
+                localize_dates($t['display_details'] ?? '-'),
                 $t['member_name'],
                 $t['amount'],
                 $t['admin_name'] ?? '-'

@@ -58,7 +58,7 @@ $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(d
                 <div class="n-icon <?= $tone ?>"><i class="bi <?= $icon ?>"></i></div>
                 <div class="flex-grow-1">
                     <div class="n-title"><?= e($n['title']) ?></div>
-                    <div class="n-body"><?= nl2br(e($n['body'])) ?></div>
+                    <div class="n-body"><?= nl2br(e(localize_dates($n['body']))) ?></div>
                     <div class="n-time font-num"><i class="bi bi-clock"></i> <bdi dir="ltr"><?= date_ar($n['created_at'], 'd/m/Y H:i') ?></bdi></div>
                 </div>
             </div>
@@ -75,7 +75,7 @@ $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(d
             <?php else: ?>
             <div class="info-list">
                 <?php if ($subscription): [$sl, $sv] = status_badge($subscription['status']); $left = $daysLeft(\App\Models\MonthlySubscription::effectiveDue($subscription)); ?>
-                <div class="info-row"><span><?= __('subscription_month', ['month' => e($subscription['month'])]) ?></span><b><span class="badge-status badge-<?= $sv ?>"><?= $sl ?></span></b></div>
+                <div class="info-row"><span><?= __('subscription_month', ['month' => e(month_label($subscription['month']))]) ?></span><b><span class="badge-status badge-<?= $sv ?>"><?= $sl ?></span></b></div>
                 <div class="info-row"><span><?= __('remaining_amount') ?></span><b class="font-num"><?= money(max(0, $subscription['amount_due'] - $subscription['amount_paid'])) ?></b></div>
                 <div class="info-row"><span><?= __('due_date') ?></span><b class="font-num"><?= date_ar($subscription['due_date']) ?>
                     <?php if ($subscription['status'] !== 'paid'): ?><small class="<?= $left < 0 ? 'text-danger' : 'text-muted' ?>"> (<?= relative_days_label($left) ?>)</small><?php endif; ?></b></div>

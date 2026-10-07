@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
         new Chart(subsCtx, {
             type: 'bar',
             data: {
-                labels: trend.map(r => r.month),
+                labels: trend.map(r => r.month_label || r.month),
                 datasets: [
                     {
                         label: isRtl ? 'المستحق الشهري' : 'Monthly Due',

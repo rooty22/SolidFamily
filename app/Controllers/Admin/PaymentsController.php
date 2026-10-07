@@ -51,7 +51,7 @@ class PaymentsController extends Controller
         $headers = [__('member'), __('transaction_category'), __('amount'), __('date'), __('admin_user')];
         csv_put($out, $headers);
         foreach ($payments as $p) {
-            csv_put($out, [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], $p['transaction_date'], $p['admin_name'] ?? '-']);
+            csv_put($out, [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-']);
         }
         fclose($out);
         exit;
@@ -63,7 +63,7 @@ class PaymentsController extends Controller
         $labels = $this->getCategoryLabels();
         $rows = [];
         foreach ($this->paymentFilters() as $p) {
-            $rows[] = [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], $p['transaction_date'], $p['admin_name'] ?? '-'];
+            $rows[] = [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-'];
         }
         $this->view('admin/reports/print', [
             'title' => __('payments'),

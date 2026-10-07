@@ -103,7 +103,8 @@ function old(string $key, $default = '')
 
 function flash(string $key)
 {
-    return \App\Core\Session::flash($key);
+    $value = \App\Core\Session::flash($key);
+    return is_string($value) ? localize_dates($value) : $value;
 }
 
 function csrf_field(): string
@@ -179,6 +180,23 @@ function date_ar(?string $date, string $format = 'd/m/Y'): string
 
     $ts = strtotime($cleanDate);
     return $ts ? date($format, $ts) : '-';
+}
+
+/** A "Y-m" billing month shown as month/year (m/Y), consistent with the day/month/year used everywhere else. */
+function month_label(?string $month): string
+{
+    if ($month && preg_match('/^(\d{4})-(\d{2})$/', trim($month), $m)) {
+        return $m[2] . '/' . $m[1];
+    }
+    return (string) $month;
+}
+
+/** Rewrites ISO dates (Y-m-d) and months (Y-m) inside free text to d/m/Y and m/Y. */
+function localize_dates(?string $text): string
+{
+    $text = (string) $text;
+    $text = preg_replace('/(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])/', '$3/$2/$1', $text);
+    return preg_replace('/(?<![\d\/-])(20\d{2})-(0[1-9]|1[0-2])(?![\d-])/', '$2/$1', $text);
 }
 
 function format_date(?string $date, bool $withTime = false): string

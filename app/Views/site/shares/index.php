@@ -70,7 +70,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
     <div class="stat-card"><div class="stat-icon bg-grad-green"><i class="bi bi-calendar2-check-fill"></i></div>
         <div><div class="stat-label"><?= __('monthly_subscription') ?></div><div class="stat-value font-num"><?= money($monthly) ?></div><div class="stat-sub"><?= __('before_day_of_month', ['day' => (int) $dueDay]) ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-amber"><i class="bi bi-clipboard2-check-fill"></i></div>
-        <div><div class="stat-label"><?= __('month_status_label', ['month' => e($currentMonth)]) ?></div><div class="stat-value" style="font-size:16px;"><span class="badge-status badge-<?= $curVariant ?>"><?= $curLabel ?></span></div>
+        <div><div class="stat-label"><?= __('month_status_label', ['month' => e(month_label($currentMonth))]) ?></div><div class="stat-value" style="font-size:16px;"><span class="badge-status badge-<?= $curVariant ?>"><?= $curLabel ?></span></div>
             <div class="stat-sub font-num"><?= __('paid_and_late_summary', ['paid' => $paidCount, 'late' => '<span class="' . ($lateCount > 0 ? 'text-danger fw-bold' : '') . '">' . $lateCount . '</span>']) ?></div></div></div>
 </div>
 
@@ -320,7 +320,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                     }
                 ?>
                     <tr class="sub-row <?= $isOverdue ? 'bg-rose-50/30' : '' ?>" data-lot-id="<?= (int)($h['lot_id'] ?? 0) ?>" data-due="<?= $dueVal ?>" data-paid="<?= $paidVal ?>" data-rem="<?= $remVal ?>">
-                        <td class="fw-bold font-num text-slate-900"><?= e($h['month']) ?></td>
+                        <td class="fw-bold font-num text-slate-900"><?= e(month_label($h['month'])) ?></td>
                         <td class="text-xs">
                             <?php if ($lotIdx !== false): ?>
                                 <span class="font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($lotIdx + 1) : 'Share #' . ($lotIdx + 1) ?></span>

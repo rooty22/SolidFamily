@@ -23,8 +23,8 @@ class Notification extends Model
     public static function systemNotify(int $memberId, string $title, string $body, ?string $dedupeKey = null): bool
     {
         $data = [
-            'title' => $title,
-            'body' => $body,
+            'title' => localize_dates($title),
+            'body' => localize_dates($body),
             'target_type' => 'specific',
             'target_member_id' => $memberId,
             'category' => 'system',

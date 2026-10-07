@@ -13,7 +13,7 @@ $hasSubFilters = ($status !== '' || $q !== '');
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs mb-4">
     <div>
         <h1 class="text-xl font-bold text-slate-900"><?= __('subscriptions_index_title') ?></h1>
-        <p class="text-xs text-slate-500 mt-0.5"><?= __('subscriptions_index_desc', ['month' => e($currentMonth)]) ?></p>
+        <p class="text-xs text-slate-500 mt-0.5"><?= __('subscriptions_index_desc', ['month' => e(month_label($currentMonth))]) ?></p>
     </div>
     <div class="flex items-center gap-3">
         <form method="get" action="<?= url('admin/subscriptions') ?>" class="search-box" style="min-width:280px;">
@@ -73,7 +73,7 @@ $hasSubFilters = ($status !== '' || $q !== '');
                 <th><?= __('shares') ?></th>
                 <th><?= __('share_value_col') ?></th>
                 <th><?= __('monthly_due_col') ?></th>
-                <th><?= __('month_status_col', ['month' => e($currentMonth)]) ?></th>
+                <th><?= __('month_status_col', ['month' => e(month_label($currentMonth))]) ?></th>
                 <th><?= __('paid_months_col') ?></th>
                 <th><?= __('late_months_col') ?></th>
                 <th class="text-end"><?= __('actions') ?></th>
