@@ -15,6 +15,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
              selectedLotId: <?= !empty($lotsData) ? (int) $lotsData[0]['id'] : 'null' ?>,
              foundingMet: <?= !empty($foundingMet) ? 'true' : 'false' ?>,
              amount: '', 
+             feePercent: <?= (float) \App\Models\Setting::get('loan_admin_fee_percent', 0) ?>,
              months: 6, 
              reason: 'personal', 
              get currentLot() { 
@@ -28,6 +29,9 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
              },
              get installment() { 
                  return (this.amount > 0 && this.months > 0) ? this.amount / this.months : 0; 
+             },
+             get total() {
+                 return this.amount > 0 ? Math.round(this.amount * (1 + this.feePercent / 100) * 100) / 100 : 0;
              },
              get over() { 
                  return this.max > 0 && this.amount > this.max; 
@@ -152,6 +156,12 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                         <label class="form-label"><?= __('estimated_monthly_installment') ?></label>
                         <div class="form-control d-flex align-items-center justify-content-between" style="background:var(--body-bg);">
                             <b class="font-num" x-text="installment.toLocaleString('en-US', {maximumFractionDigits: 2})">0</b><span class="text-muted small"><?= __('riyal_per_month') ?></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><?= is_rtl() ? 'إجمالي القرض (شاملاً العمولة والمصاريف الإدارية)' : 'Total loan (including commission and admin fees)' ?></label>
+                        <div class="form-control d-flex align-items-center justify-content-between" style="background:var(--body-bg);">
+                            <b class="font-num" x-text="total.toLocaleString('en-US', {maximumFractionDigits: 2})">0</b><span class="text-muted small"><?= is_rtl() ? 'ريال' : 'SAR' ?></span>
                         </div>
                     </div>
                     <div class="col-12" x-show="reason === 'other'" x-cloak style="display:none;">

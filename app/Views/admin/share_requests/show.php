@@ -96,6 +96,27 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                                 <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600 w-1/3">تاريخ التقديم</td>
                                 <td class="py-3 px-4 text-xs font-medium text-slate-700 font-numeric"><bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i') ?></bdi></td>
                             </tr>
+                            <?php if ($request['type'] === 'merge'): ?>
+                            <?php
+                                $reqLotIds = \App\Models\ShareLot::parseLotIds($request['lot_ids'] ?? null);
+                                $memberLots = \App\Models\ShareLot::activeFor((int) $member['id']);
+                            ?>
+                            <tr>
+                                <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600 w-1/3"><?= is_rtl() ? 'الحصص المطلوب دمجها' : 'Lots to merge' ?></td>
+                                <td class="py-3 px-4 text-xs font-medium text-slate-700">
+                                    <?php if ($reqLotIds === null): ?>
+                                        <?= is_rtl() ? 'كل حصص المشترك النشطة' : 'All active lots' ?>
+                                    <?php else: ?>
+                                        <?php foreach ($memberLots as $mi => $ml): if (!in_array((int) $ml['id'], $reqLotIds, true)) { continue; } ?>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-bold me-1 mb-1"><?= is_rtl() ? 'السهم رقم ' . ($mi + 1) : 'Share #' . ($mi + 1) ?> <span class="font-numeric">(<?= number_format($ml['shares_count']) ?>)</span></span>
+                                        <?php endforeach; ?>
+                                        <?php if ($isPending && count(\App\Models\ShareLot::activeAmong((int) $member['id'], $reqLotIds)) < 2): ?>
+                                            <span class="text-rose-600 font-bold"><?= is_rtl() ? 'بعض الحصص لم تعد نشطة' : 'Some lots are no longer active' ?></span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
                             <?php if (!empty($request['admin_note'])): ?>
                             <tr>
                                 <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600">ملاحظة الإدارة المسجلة</td>

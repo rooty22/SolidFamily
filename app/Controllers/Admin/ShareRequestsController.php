@@ -78,8 +78,10 @@ class ShareRequestsController extends Controller
         $member = Member::find($request['member_id']);
         $newCount = (int) $member['shares_count'];
 
-        if ($request['type'] === 'merge' && count(ShareLot::activeFor((int) $member['id'])) < 2) {
-            Session::flash('error', 'لا يمكن الموافقة على الدمج: المشترك ليس لديه دفعتا أسهم منفصلتان على الأقل. يمكنك رفض الطلب.');
+        // A merge request names the lots to merge (lot_ids); older requests have none and mean every active lot.
+        $mergeLotIds = $request['type'] === 'merge' ? ShareLot::parseLotIds($request['lot_ids'] ?? null) : null;
+        if ($request['type'] === 'merge' && count(ShareLot::activeAmong((int) $member['id'], $mergeLotIds)) < 2) {
+            Session::flash('error', 'لا يمكن الموافقة على الدمج: الحصص المطلوب دمجها لم تعد متاحة (أقل من حصتين نشطتين). يمكنك رفض الطلب.');
             $this->redirect('admin/share-requests');
         }
 
@@ -91,7 +93,6 @@ class ShareRequestsController extends Controller
         // members.shares_count stays the single total used everywhere else (loans, founding amount, ...).
         // share_lots is the separate, finer-grained record that actually drives monthly subscription billing:
         // each "add" is its own lot with its own due date until a "merge" request folds every lot into one.
-        $carriedPaid = 0.0;
         // No due day typed by the admin: the new/merged lot pins the day the member already has, so it does not
         // drift if that day changes later. A member with no day yet keeps following the site setting.
         $lotDueDay = $dueDay ?? ($member['subscription_due_day'] !== null ? (int) $member['subscription_due_day'] : null);
@@ -113,26 +114,8 @@ class ShareRequestsController extends Controller
             // with a real payment already on it is left alone -- cancelling doesn't erase money paid.
             $this->voidStaleLotRows((int) $member['id'], array_diff($before, $after), false);
         } elseif ($request['type'] === 'merge') {
-            $before = array_column(ShareLot::activeFor($member['id']), 'id');
-
-            // Capture what was already paid on each lot's current-month row before merging, so it can be
-            // carried onto the new combined row instead of lost or, worse, charged for again.
-            foreach ($before as $oldLotId) {
-                $oldRow = MonthlySubscription::first(['member_id' => $member['id'], 'month' => date('Y-m'), 'lot_id' => $oldLotId]);
-                $carriedPaid += (float) ($oldRow['amount_paid'] ?? 0);
-            }
-
-            $mergedLot = ShareLot::mergeAllFor($member['id'], $lotDueDay, (int) $id);
-
-            // mergeAllFor() is a no-op (returns the same lot untouched) when there was nothing -- or only
-            // one lot -- to merge; only a genuinely new lot means old rows were actually superseded. When it
-            // is real, every old row is voided regardless of what was paid on it -- that amount was already
-            // captured into $carriedPaid above and gets applied to the new merged row further down.
-            if ($mergedLot && !in_array((int) $mergedLot['id'], $before, true)) {
-                $this->voidStaleLotRows((int) $member['id'], $before, true);
-            } else {
-                $carriedPaid = 0.0;
-            }
+            // Carries this month's payments of the merged lots onto the new lot's row and voids the old rows.
+            $mergedLot = ShareLot::mergeWithBilling((int) $member['id'], $mergeLotIds, $lotDueDay, (int) $id);
         }
 
         $memberUpdate = ['shares_count' => $newCount];
@@ -140,25 +123,11 @@ class ShareRequestsController extends Controller
             $memberUpdate['subscription_due_day'] = $dueDay;
         }
         Member::update($member['id'], $memberUpdate);
-        $newRows = MonthlySubscription::ensureMonthExistsForMember((int) $member['id'], date('Y-m'));
+        MonthlySubscription::ensureMonthExistsForMember((int) $member['id'], date('Y-m'));
         // Pin the founding amount's own due day to TODAY the moment it first becomes owed, rather than waiting for
         // whoever next opens the founding page (which could be days later) -- it's a distinct day from the
         // subscription's, so it must be captured exactly when the share behind it is actually approved.
         FoundingAmount::ensureForMember((int) $member['id']);
-
-        if ($request['type'] === 'merge' && $carriedPaid > 0) {
-            $activeLot = ShareLot::activeFor($member['id'])[0] ?? null;
-            foreach ($newRows as $row) {
-                if ($activeLot && (int) $row['lot_id'] === (int) $activeLot['id']) {
-                    $paid = min((float) $row['amount_due'], $carriedPaid);
-                    MonthlySubscription::update($row['id'], [
-                        'amount_paid' => $paid,
-                        'status' => $paid >= (float) $row['amount_due'] ? 'paid' : ($paid > 0 ? 'partial' : $row['status']),
-                    ]);
-                    break;
-                }
-            }
-        }
 
         $requestUpdate = [
             'status' => 'approved',

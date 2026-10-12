@@ -62,10 +62,17 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
                     <?php endif; ?>
                 </div>
                 <div class="mb-3" x-show="type === 'merge'" x-cloak style="display:none;">
-                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-0">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span><?= is_rtl() ? 'سيتم دمج جميع حصصك الحالية بإجمالي (' . number_format($member['shares_count']) . ') سهم في حصة واحدة.' : 'All your active share lots totaling (' . number_format($member['shares_count']) . ') shares will be merged into one.' ?></span>
+                    <label class="form-label"><?= is_rtl() ? 'اختر الحصص المراد دمجها (حصتان على الأقل)' : 'Choose the lots to merge (at least two)' ?></label>
+                    <div class="d-flex flex-column gap-2">
+                        <?php foreach ($activeLots as $i => $lot): ?>
+                            <label class="d-flex align-items-center gap-2 border rounded-3 px-3 py-2" style="cursor:pointer;">
+                                <input type="checkbox" class="form-check-input mt-0" name="lot_ids[]" value="<?= (int) $lot['id'] ?>" checked>
+                                <span class="fw-bold"><?= is_rtl() ? 'السهم رقم ' . ($i + 1) : 'Share #' . ($i + 1) ?></span>
+                                <span class="text-muted small font-num ms-auto"><?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?> · <bdi dir="ltr"><?= date_ar(substr($lot['created_at'], 0, 10)) ?></bdi></span>
+                            </label>
+                        <?php endforeach; ?>
                     </div>
+                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= is_rtl() ? 'الحصص التي لم تختارها تبقى كما هي دون دمج.' : 'Lots you leave unticked stay as they are.' ?></div>
                 </div>
                 <div class="mb-3" x-show="type !== 'merge'">
                     <label class="form-label"><?= __('shares_count') ?></label>

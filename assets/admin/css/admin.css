@@ -84,19 +84,58 @@ a {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 14px;
+    height: 14px;
 }
 ::-webkit-scrollbar-track {
     background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #94a3b8;
     border-radius: 8px;
+    border: 3px solid #f1f5f9;
+    min-height: 48px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #64748b;
 }
+/* Firefox has no scrollbar arrows or width control beyond this. */
+html {
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+/* Large floating scroll buttons (up / down), added by admin.js, so scrolling never depends on a tiny scrollbar. */
+.scroll-fab {
+    position: fixed;
+    inset-inline-end: 18px;
+    bottom: 22px;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.scroll-fab button {
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--primary, #064e3b);
+    color: #fff;
+    font-size: 24px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .28);
+    cursor: pointer;
+    opacity: .92;
+    transition: transform .15s ease, opacity .15s ease, background .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.scroll-fab button:hover { opacity: 1; background: var(--primary-hover, #047857); }
+.scroll-fab button:active { transform: scale(.93); }
+.scroll-fab button[hidden] { display: none; }
+@media print { .scroll-fab { display: none !important; } }
 
 /* ==========================================================================
    Admin Shell & Navigation (RTL & LTR)

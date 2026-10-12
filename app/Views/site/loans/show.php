@@ -1,6 +1,8 @@
 <?php
 [$label, $variant] = status_badge($loan['status']);
-$pct = $loan['amount'] > 0 ? min(100, round($loan['amount_paid'] / $loan['amount'] * 100)) : 0;
+$totalWithFee = loan_member_total($loan);
+$paidWithFee = loan_member_paid($loan);
+$pct = $totalWithFee > 0 ? min(100, round($paidWithFee / $totalWithFee * 100)) : 0;
 $remainingCount = count(array_filter($installments, fn($i) => $i['status'] !== 'paid'));
 $next = null;
 foreach ($installments as $i) {
@@ -21,9 +23,9 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
 
 <div class="kpi-grid">
     <div class="stat-card"><div class="stat-icon bg-grad-purple"><i class="bi bi-cash-stack"></i></div>
-        <div><div class="stat-label"><?= __('loan_value') ?></div><div class="stat-value font-num"><?= money($loan['amount']) ?></div></div></div>
+        <div><div class="stat-label"><?= __('loan_value') ?></div><div class="stat-value font-num"><?= money($totalWithFee) ?></div><div class="stat-sub"><?= is_rtl() ? 'شاملاً العمولة والمصاريف الإدارية' : 'Including commission and admin fees' ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-green"><i class="bi bi-check2-circle"></i></div>
-        <div><div class="stat-label"><?= __('paid_amount') ?></div><div class="stat-value font-num"><?= money($loan['amount_paid']) ?></div></div></div>
+        <div><div class="stat-label"><?= __('paid_amount') ?></div><div class="stat-value font-num"><?= money($paidWithFee) ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-red"><i class="bi bi-wallet2"></i></div>
         <div><div class="stat-label"><?= __('remaining_amount') ?></div><div class="stat-value font-num"><?= money($loan['amount_remaining']) ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-amber"><i class="bi bi-list-ol"></i></div>
@@ -74,7 +76,6 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
                 <?php endif; ?>
                 <div class="info-row"><span><?= __('installments_count') ?></span><b class="font-num"><?= (int) $loan['installments_count'] ?></b></div>
                 <div class="info-row"><span><?= __('installment_value') ?></span><b class="font-num"><?= money($loan['installment_value']) ?></b></div>
-                <div class="info-row"><span><?= __('admin_fee') ?></span><b class="font-num"><?= money($loan['admin_fee_amount']) ?></b></div>
             </div>
         </div>
     </div>

@@ -63,7 +63,11 @@ class HomeController extends Controller
             )['c'];
         }
 
-        $transactions = Transaction::withMember(['member_id' => $member['id']]);
+        // The loan's commission / admin fee is folded into the loan total the member sees, so it is not listed separately.
+        $transactions = array_values(array_filter(
+            Transaction::withMember(['member_id' => $member['id']]),
+            fn($t) => $t['category'] !== 'loan_admin_fee'
+        ));
 
         $this->view('site/home/index', [
             'pageTitle' => __('home'),

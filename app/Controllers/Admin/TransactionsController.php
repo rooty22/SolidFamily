@@ -20,6 +20,17 @@ class TransactionsController extends Controller
             'from' => $this->input('from', ''),
             'to' => $this->input('to', ''),
         ];
+
+        // "Month" is a shortcut for the first-to-last day of that month (YYYY-MM); an explicit from/to wins over it.
+        $month = (string) $this->input('month', '');
+        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+            if ($filters['from'] === '') {
+                $filters['from'] = $month . '-01';
+            }
+            if ($filters['to'] === '') {
+                $filters['to'] = date('Y-m-t', strtotime($month . '-01'));
+            }
+        }
         return Transaction::withMember($filters);
     }
 
@@ -27,28 +38,27 @@ class TransactionsController extends Controller
     {
         $transactions = $this->fetch();
         $filtered = false;
-        foreach (['category', 'search', 'from', 'to'] as $key) {
+        foreach (['category', 'search', 'from', 'to', 'month'] as $key) {
             if (trim((string) $this->input($key, '')) !== '') {
                 $filtered = true;
                 break;
             }
         }
 
-        $summary = null;
-        if ($filtered) {
-            $summary = ['count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => []];
-            foreach ($transactions as $t) {
-                $amount = (float) $t['amount'];
-                $summary['total'] += $amount;
-                if ($t['category'] === 'loan_disbursement') {
-                    $summary['disbursed'] += $amount;
-                } else {
-                    $summary['incoming'] += $amount;
-                }
-                $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + $amount;
+        // Always shown: the total of the filtered result, or of the whole site's ledger when no filter is applied,
+        // so it can be matched against the bank statement either way.
+        $summary = ['filtered' => $filtered, 'count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => []];
+        foreach ($transactions as $t) {
+            $amount = (float) $t['amount'];
+            $summary['total'] += $amount;
+            if ($t['category'] === 'loan_disbursement') {
+                $summary['disbursed'] += $amount;
+            } else {
+                $summary['incoming'] += $amount;
             }
-            arsort($summary['byCategory']);
+            $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + $amount;
         }
+        arsort($summary['byCategory']);
 
         $this->view('admin/transactions/index', [
             'pageTitle' => __('transactions'),

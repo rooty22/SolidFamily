@@ -249,3 +249,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 });
+
+// Large floating scroll-up / scroll-down buttons (the browser scrollbar arrows are too small to hit comfortably).
+(function () {
+    function build() {
+        var fab = document.createElement('div');
+        fab.className = 'scroll-fab';
+        fab.innerHTML =
+            '<button type="button" class="scroll-fab-up" aria-label="Scroll to top" title="Top" hidden><i class="bi bi-chevron-up"></i></button>' +
+            '<button type="button" class="scroll-fab-down" aria-label="Scroll to bottom" title="Bottom" hidden><i class="bi bi-chevron-down"></i></button>';
+        document.body.appendChild(fab);
+        var up = fab.querySelector('.scroll-fab-up');
+        var down = fab.querySelector('.scroll-fab-down');
+
+        function root() { return document.scrollingElement || document.documentElement; }
+        function sync() {
+            var el = root();
+            var max = el.scrollHeight - el.clientHeight;
+            up.hidden = el.scrollTop < 120;
+            down.hidden = max - el.scrollTop < 120;
+        }
+        up.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+        down.addEventListener('click', function () { window.scrollTo({ top: root().scrollHeight, behavior: 'smooth' }); });
+        window.addEventListener('scroll', sync, { passive: true });
+        window.addEventListener('resize', sync);
+        window.addEventListener('load', sync);
+        sync();
+        // Content that grows after load (tables, collapses) changes whether there is anything left to scroll.
+        if (window.ResizeObserver) { new ResizeObserver(sync).observe(document.body); }
+    }
+    if (document.body) { build(); } else { document.addEventListener('DOMContentLoaded', build); }
+})();

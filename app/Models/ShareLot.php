@@ -134,16 +134,37 @@ class ShareLot extends Model
         return $removed;
     }
 
-    /** Combine every active lot into a single new one; the old lots are marked 'merged'. Returns the new lot, or null if there was nothing to merge. */
-    public static function mergeAllFor(int $memberId, ?int $dueDay, ?int $sourceRequestId = null): ?array
+    /** The member's active lots whose ids are in $lotIds (null = every active lot), oldest first. */
+    public static function activeAmong(int $memberId, ?array $lotIds): array
     {
         $active = self::activeFor($memberId);
-        if (count($active) < 2) {
-            return $active[0] ?? null;
+        if ($lotIds === null) {
+            return $active;
+        }
+        $wanted = array_map('intval', $lotIds);
+        return array_values(array_filter($active, fn($l) => in_array((int) $l['id'], $wanted, true)));
+    }
+
+    /** Parses share_requests.lot_ids ("3,5") into a list of ids; null (every active lot) when it is empty or unset. */
+    public static function parseLotIds(?string $csv): ?array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string) $csv)), fn($i) => $i > 0)));
+        return $ids ?: null;
+    }
+
+    /**
+     * Combine the given active lots (null = every active lot) into a single new one; those lots are marked 'merged' and
+     * any other lot of the member is left untouched. Returns the new lot, or null when fewer than two lots were selected.
+     */
+    public static function mergeLots(int $memberId, ?array $lotIds, ?int $dueDay, ?int $sourceRequestId = null): ?array
+    {
+        $selected = self::activeAmong($memberId, $lotIds);
+        if (count($selected) < 2) {
+            return null;
         }
 
-        $totalShares = array_sum(array_column($active, 'shares_count'));
-        foreach ($active as $lot) {
+        $totalShares = array_sum(array_column($selected, 'shares_count'));
+        foreach ($selected as $lot) {
             self::update($lot['id'], ['status' => 'merged']);
         }
 
@@ -156,6 +177,46 @@ class ShareLot extends Model
         ]);
 
         return self::find($id);
+    }
+
+    /**
+     * mergeLots() plus the billing side: what was already paid this month on the merged lots' rows is carried onto the
+     * new lot's row (never lost, never charged twice) and the old rows are voided. Returns the new lot, or null when
+     * fewer than two lots were selected (nothing changes).
+     */
+    public static function mergeWithBilling(int $memberId, ?array $lotIds, ?int $dueDay, ?int $sourceRequestId = null): ?array
+    {
+        $month = date('Y-m');
+        $selectedIds = array_map(fn($l) => (int) $l['id'], self::activeAmong($memberId, $lotIds));
+
+        $carriedPaid = 0.0;
+        foreach ($selectedIds as $oldLotId) {
+            $oldRow = MonthlySubscription::first(['member_id' => $memberId, 'month' => $month, 'lot_id' => $oldLotId]);
+            $carriedPaid += (float) ($oldRow['amount_paid'] ?? 0);
+        }
+
+        $merged = self::mergeLots($memberId, $lotIds, $dueDay, $sourceRequestId);
+        if (!$merged) {
+            return null;
+        }
+
+        MonthlySubscription::voidRowsOfLots($memberId, $selectedIds, true, $month);
+        $rows = MonthlySubscription::ensureMonthExistsForMember($memberId, $month);
+
+        if ($carriedPaid > 0) {
+            foreach ($rows as $row) {
+                if ((int) $row['lot_id'] === (int) $merged['id']) {
+                    $paid = min((float) $row['amount_due'], $carriedPaid);
+                    MonthlySubscription::update($row['id'], [
+                        'amount_paid' => $paid,
+                        'status' => $paid >= (float) $row['amount_due'] ? 'paid' : ($paid > 0 ? 'partial' : $row['status']),
+                    ]);
+                    break;
+                }
+            }
+        }
+
+        return $merged;
     }
 
     /**

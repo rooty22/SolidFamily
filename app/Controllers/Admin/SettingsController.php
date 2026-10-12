@@ -5,6 +5,8 @@ namespace App\Controllers\Admin;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Models\Admin;
+use App\Models\Member;
 use App\Models\Setting;
 use App\Models\ContentPage;
 
@@ -18,6 +20,7 @@ class SettingsController extends Controller
             'pageTitle' => __('system_settings'),
             'settings' => Setting::getAll(),
             'pages' => $pages,
+            'adminAccount' => \App\Core\Auth::admin() ? Admin::find((int) \App\Core\Auth::admin()['id']) : null,
         ], 'admin/layout');
     }
 
@@ -186,6 +189,77 @@ class SettingsController extends Controller
         }
 
         Session::flash('success', 'تم حفظ جميع الإعدادات والهوية والقوائم بنجاح.');
+        $this->redirect('admin/settings');
+    }
+
+    /** Changes the signed-in administrator's name, sign-in email and password; the current password confirms every change. */
+    public function updateAccount(): void
+    {
+        $this->verifyCsrf();
+        $sessionAdmin = \App\Core\Auth::admin();
+        $admin = $sessionAdmin ? Admin::find((int) $sessionAdmin['id']) : null;
+        if (!$admin) {
+            $this->redirect('admin/login');
+        }
+
+        $data = $this->all();
+        $name = trim((string) ($data['admin_name'] ?? ''));
+        $email = mb_strtolower(trim((string) ($data['admin_email'] ?? '')));
+        $newPassword = (string) ($data['new_password'] ?? '');
+
+        $validator = Validator::make([
+            'admin_name' => $name,
+            'admin_email' => $email,
+            'new_password' => $newPassword,
+            'new_password_confirmation' => (string) ($data['new_password_confirmation'] ?? ''),
+        ])
+            ->required('admin_name', 'اسم المدير')->max('admin_name', 150, 'اسم المدير')
+            ->required('admin_email', 'البريد الإلكتروني')->email('admin_email', 'البريد الإلكتروني')->max('admin_email', 150, 'البريد الإلكتروني');
+        if ($newPassword !== '') {
+            $validator->min('new_password', 8, 'كلمة السر الجديدة')->max('new_password', 72, 'كلمة السر الجديدة')
+                ->matches('new_password_confirmation', 'new_password', 'تأكيد كلمة السر الجديدة');
+        }
+        if ($validator->fails()) {
+            Session::flash('error', $validator->firstError());
+            $this->redirect('admin/settings');
+        }
+
+        if (!password_verify((string) ($data['current_password'] ?? ''), $admin['password'])) {
+            Session::flash('error', 'كلمة السر الحالية غير صحيحة، لم يتم حفظ أي تغيير.');
+            $this->redirect('admin/settings');
+        }
+
+        $oldEmail = mb_strtolower(trim((string) $admin['email']));
+        $linkedMember = null;
+        if ($email !== $oldEmail) {
+            $taken = Admin::findBy('email', $email);
+            if ($taken && (int) $taken['id'] !== (int) $admin['id']) {
+                Session::flash('error', 'هذا البريد مستخدم لحساب إداري آخر.');
+                $this->redirect('admin/settings');
+            }
+            // The administrator's own subscriber record (same email) keeps its administrative flag and follows the new email.
+            $linkedMember = Member::findBy('email', $oldEmail);
+            $clash = Member::findBy('email', $email);
+            if ($clash && (!$linkedMember || (int) $clash['id'] !== (int) $linkedMember['id'])) {
+                Session::flash('error', 'هذا البريد مسجل لمشترك آخر، اختر بريداً مختلفاً.');
+                $this->redirect('admin/settings');
+            }
+        }
+
+        $update = ['name' => $name, 'email' => $email];
+        if ($newPassword !== '') {
+            $update['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
+        }
+        Admin::update((int) $admin['id'], $update);
+
+        if ($linkedMember && $email !== $oldEmail) {
+            Member::update((int) $linkedMember['id'], ['email' => $email, 'is_admin' => 1]);
+        }
+
+        // Keep the signed-in session on the new details.
+        \App\Core\Auth::loginAdmin(Admin::find((int) $admin['id']));
+
+        Session::flash('success', $newPassword !== '' ? 'تم تحديث بيانات حساب المدير وكلمة السر بنجاح.' : 'تم تحديث بيانات حساب المدير بنجاح.');
         $this->redirect('admin/settings');
     }
 

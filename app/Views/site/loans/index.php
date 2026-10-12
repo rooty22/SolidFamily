@@ -64,11 +64,11 @@
             <div class="empty-state"><i class="bi bi-cash"></i><?= __('no_loans_yet') ?><br><small class="text-muted"><?= __('no_loans_desc') ?></small></div>
         <?php else: ?>
         <div class="loans-grid">
-            <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['status']); $pct = (float) $l['amount'] > 0 ? min(100, round($l['amount_paid'] / $l['amount'] * 100)) : 0; ?>
+            <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['status']); $lTotal = loan_member_total($l); $lPaid = loan_member_paid($l); $pct = $lTotal > 0 ? min(100, round($lPaid / $lTotal * 100)) : 0; ?>
             <a href="<?= url('loans/' . $l['id']) ?>" class="loan-item text-decoration-none">
                 <div class="top">
                     <div>
-                        <div class="amount font-num"><?= money($l['amount']) ?></div>
+                        <div class="amount font-num"><?= money($lTotal) ?></div>
                         <div class="meta">
                             <?= $reasonLabels[$l['reason']] ?? $l['reason'] ?> · <?= date_ar($l['loan_date']) ?>
                             <?php if (!empty($l['lot_id'])): ?>
@@ -83,7 +83,7 @@
                     <div class="progress-caption"><span><?= __('repayment_ratio') ?></span><b class="font-num"><?= $pct ?>%</b></div>
                 </div>
                 <div class="nums">
-                    <div><small><?= __('paid_amount') ?></small><span class="text-success font-num"><?= money($l['amount_paid']) ?></span></div>
+                    <div><small><?= __('paid_amount') ?></small><span class="text-success font-num"><?= money($lPaid) ?></span></div>
                     <div><small><?= __('remaining_amount') ?></small><span class="text-danger font-num"><?= money($l['amount_remaining']) ?></span></div>
                     <div><small><?= __('installments') ?></small><span class="font-num"><?= (int) $l['installments_count'] ?></span></div>
                 </div>

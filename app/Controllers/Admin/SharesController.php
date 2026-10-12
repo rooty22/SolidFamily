@@ -71,7 +71,7 @@ class SharesController extends Controller
         $this->redirect('admin/shares');
     }
 
-    /** Merge all active share lots of a member into one lot */
+    /** Merge the share lots the admin selected (two or more) into one lot; the member's other lots stay as they are */
     public function mergeShares(string $id): void
     {
         $this->verifyCsrf();
@@ -82,18 +82,21 @@ class SharesController extends Controller
             return;
         }
 
-        $activeLots = \App\Models\ShareLot::activeFor((int) $id);
-        if (count($activeLots) < 2) {
-            Session::flash('error', 'لا يمكن الدمج لأن المشترك لديه حصة واحدة فقط.');
+        // The admin ticks which of the member's lots to merge (input() drops arrays, so read the POST body directly).
+        $picked = is_array($_POST['lot_ids'] ?? null) ? array_map('intval', array_filter($_POST['lot_ids'], 'is_scalar')) : [];
+        $selected = \App\Models\ShareLot::activeAmong((int) $id, $picked);
+        if (count($selected) < 2) {
+            Session::flash('error', 'اختر حصتين نشطتين على الأقل من حصص المشترك لدمجهما.');
             $this->redirect('admin/shares');
             return;
         }
 
         $dueDay = $member['subscription_due_day'] !== null ? (int) $member['subscription_due_day'] : null;
-        \App\Models\ShareLot::mergeAllFor((int) $id, $dueDay);
-        
-        \App\Models\MonthlySubscription::ensureMonthExistsForMember((int) $id, date('Y-m'));
-        Session::flash('success', 'تم دمج جميع حصص الأسهم في سهم واحد بنجاح.');
+        $merged = \App\Models\ShareLot::mergeWithBilling((int) $id, array_map(fn($l) => (int) $l['id'], $selected), $dueDay);
+
+        Session::flash('success', $merged
+            ? 'تم دمج ' . count($selected) . ' حصص في سهم واحد بنجاح (' . (int) $merged['shares_count'] . ' سهم).'
+            : 'تعذّر دمج الحصص المختارة.');
         $this->redirect('admin/shares');
     }
 

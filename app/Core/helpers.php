@@ -153,6 +153,20 @@ function dir_attr(): string
     return \App\Core\Lang::dir();
 }
 
+/**
+ * A loan as the member sees it: ONE total that already includes the commission / admin fee (e.g. 1000 + 2% = 1020),
+ * never itemised. The fee is collected when the loan is disbursed, so it counts as already paid: paid + remaining = total.
+ */
+function loan_member_total(array $loan): float
+{
+    return round((float) ($loan['amount'] ?? 0) + (float) ($loan['admin_fee_amount'] ?? 0), 2);
+}
+
+function loan_member_paid(array $loan): float
+{
+    return round((float) ($loan['amount_paid'] ?? 0) + (float) ($loan['admin_fee_amount'] ?? 0), 2);
+}
+
 function money_plain(?float $amount, int $decimals = 2): string
 {
     return number_format((float) $amount, $decimals);

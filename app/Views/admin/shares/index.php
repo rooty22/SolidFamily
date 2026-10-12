@@ -86,12 +86,13 @@
                             <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
                                 <div class="flex items-center gap-2">
                                     <?php if (count($mLots) >= 2): ?>
-                                        <form method="post" action="<?= url('admin/shares/' . $m['id'] . '/merge') ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من دمج جميع حصص الأسهم لهذا المشترك في سهم واحد؟' : 'Are you sure you want to merge all share lots into one?' ?>');" class="m-0">
+                                        <form id="mergeForm<?= $m['id'] ?>" method="post" action="<?= url('admin/shares/' . $m['id'] . '/merge') ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من دمج الحصص المختارة في سهم واحد؟' : 'Merge the selected lots into one?' ?>');" class="m-0 flex items-center gap-2">
                                             <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-sm btn-outline-purple font-bold inline-flex items-center gap-1.5">
+                                            <button type="submit" id="mergeBtn<?= $m['id'] ?>" class="btn btn-sm btn-outline-purple font-bold inline-flex items-center gap-1.5" disabled>
                                                 <i class="bi bi-arrows-collapse"></i>
-                                                <span><?= is_rtl() ? 'دمج الأسهم في سهم واحد' : 'Merge All Lots' ?></span>
+                                                <span><?= is_rtl() ? 'دمج الحصص المختارة' : 'Merge Selected Lots' ?></span>
                                             </button>
+                                            <span class="text-[11px] text-slate-500"><?= is_rtl() ? 'علّم حصتين أو أكثر من الجدول ثم اضغط دمج.' : 'Tick two or more lots below, then merge.' ?></span>
                                         </form>
                                     <?php else: ?>
                                         <span class="text-xs text-slate-400"><?= is_rtl() ? 'الدمج متاح عند وجود حصتين أو أكثر.' : 'Merge available for 2+ lots.' ?></span>
@@ -130,6 +131,7 @@
                                 <table class="table-modern text-xs">
                                     <thead>
                                         <tr>
+                                            <?php if (count($mLots) >= 2): ?><th style="width:36px" title="<?= is_rtl() ? 'اختيار للدمج' : 'Select to merge' ?>"><i class="bi bi-arrows-collapse"></i></th><?php endif; ?>
                                             <th>#</th>
                                             <th><?= is_rtl() ? 'الحصة' : 'Lot' ?></th>
                                             <th><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
@@ -141,11 +143,14 @@
                                     <tbody>
                                         <?php if (empty($mLots)): ?>
                                             <tr>
-                                                <td colspan="6" class="text-center text-slate-400 py-3"><?= is_rtl() ? 'لا توجد حصص نشطة للمشترك.' : 'No active lots.' ?></td>
+                                                <td colspan="7" class="text-center text-slate-400 py-3"><?= is_rtl() ? 'لا توجد حصص نشطة للمشترك.' : 'No active lots.' ?></td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($mLots as $lIdx => $lot): ?>
                                                 <tr>
+                                                    <?php if (count($mLots) >= 2): ?>
+                                                        <td><input type="checkbox" class="form-check-input merge-pick-<?= $m['id'] ?>" name="lot_ids[]" value="<?= (int) $lot['id'] ?>" form="mergeForm<?= $m['id'] ?>" aria-label="<?= is_rtl() ? 'اختيار السهم رقم ' . ($lIdx + 1) . ' للدمج' : 'Select share #' . ($lIdx + 1) . ' to merge' ?>"></td>
+                                                    <?php endif; ?>
                                                     <td class="font-numeric fw-bold">#<?= $lIdx + 1 ?></td>
                                                     <td class="font-bold text-purple-700">
                                                         <?= is_rtl() ? 'السهم رقم ' . ($lIdx + 1) : 'Share #' . ($lIdx + 1) ?>
@@ -192,6 +197,21 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if (count($mLots) >= 2): ?>
+                                <script>
+                                    (function () {
+                                        var picks = document.querySelectorAll('.merge-pick-<?= (int) $m['id'] ?>');
+                                        var btn = document.getElementById('mergeBtn<?= (int) $m['id'] ?>');
+                                        function sync() {
+                                            var n = 0;
+                                            picks.forEach(function (c) { if (c.checked) n++; });
+                                            btn.disabled = n < 2;
+                                        }
+                                        picks.forEach(function (c) { c.addEventListener('change', sync); });
+                                        sync();
+                                    })();
+                                </script>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

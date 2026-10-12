@@ -41,6 +41,7 @@ class ShareRequestsController extends Controller
         return [
             'cancelableShares' => max(0, $owned - $pendingCancel),
             'canMerge' => $lotCount >= 2 && !$pendingMerge,
+            'activeLots' => ShareLot::activeFor((int) $member['id']),
             'mergeBlockReason' => $owned < 1 ? 'none_owned' : ($lotCount < 2 ? 'single_lot' : ($pendingMerge ? 'pending' : null)),
         ];
     }
@@ -77,6 +78,7 @@ class ShareRequestsController extends Controller
         }
 
         $sharesCount = 0;
+        $lotIds = null;
         if ($type !== 'merge') {
             $validator = Validator::make(['shares_count' => $rawCount])
                 ->required('shares_count', 'عدد الأسهم')
@@ -92,10 +94,16 @@ class ShareRequestsController extends Controller
                 $this->redirect('share-requests');
             }
         } else {
-            $activeLots = \App\Models\ShareLot::activeFor((int) $member['id']);
-            $sharesCount = !empty($activeLots)
-                ? (int) array_sum(array_column($activeLots, 'shares_count'))
-                : (int) ($member['shares_count'] ?? 0);
+            // The member picks which lots to merge; at least two of their own active lots are required.
+            // input() drops array values, so the checkbox list is read straight from the POST body.
+            $picked = is_array($_POST['lot_ids'] ?? null) ? array_filter($_POST['lot_ids'], 'is_scalar') : [];
+            $selected = ShareLot::activeAmong((int) $member['id'], array_map('intval', $picked));
+            if (count($selected) < 2) {
+                Session::flash('error', 'اختر حصتين على الأقل من حصصك لدمجهما.');
+                $this->redirect('share-requests');
+            }
+            $lotIds = implode(',', array_map(fn($l) => (int) $l['id'], $selected));
+            $sharesCount = (int) array_sum(array_column($selected, 'shares_count'));
         }
 
         ShareRequest::create([
@@ -103,7 +111,7 @@ class ShareRequestsController extends Controller
             'type' => $type,
             'shares_count' => $sharesCount,
             'status' => 'pending',
-        ]);
+        ] + ($lotIds !== null ? ['lot_ids' => $lotIds] : []));
 
         Session::flash('success', 'تم إرسال طلبك للإدارة للمراجعة.');
         $this->redirect('share-requests');

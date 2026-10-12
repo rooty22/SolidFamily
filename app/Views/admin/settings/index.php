@@ -81,6 +81,10 @@ foreach (site_social_links_raw() as $i => $link) {
                     <i class="bi bi-cash-stack"></i>
                     <span><?= is_rtl() ? 'الضوابط المالية' : 'Financial Policy' ?></span>
                 </button>
+                <button type="button" @click="tab = 'account'" :class="tab === 'account' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0">
+                    <i class="bi bi-person-gear text-sky-600"></i>
+                    <span><?= is_rtl() ? 'حساب المدير' : 'Admin Account' ?></span>
+                </button>
                 <button type="button" @click="tab = 'otp'" :class="tab === 'otp' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-2 shrink-0">
                     <i class="bi bi-shield-lock-fill text-amber-500"></i>
                     <span><?= is_rtl() ? 'الأمان، التحقق، وبوابات SMS' : 'Security, OTP & SMS Gateway' ?></span>
@@ -888,6 +892,48 @@ foreach (site_social_links_raw() as $i => $link) {
             <button type="button" @click="submitSettings()" class="px-7 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 inline-flex items-center gap-2 transition-all">
                 <i class="bi bi-check2-circle text-lg"></i>
                 <span>حفظ جميع الإعدادات والتغييرات</span>
+            </button>
+        </div>
+    </form>
+
+    <!-- Admin account (login email + password): its own form so it never mixes with the platform settings above -->
+    <form x-show="tab === 'account'" x-cloak style="display:none;" method="post" action="<?= url('admin/settings/account') ?>" autocomplete="off" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+        <?= csrf_field() ?>
+        <div>
+            <h3 class="text-base font-bold text-slate-900 mb-1"><?= is_rtl() ? 'بيانات حساب المدير (تسجيل الدخول)' : 'Administrator account (sign-in)' ?></h3>
+            <p class="text-xs text-slate-500"><?= is_rtl() ? 'غيّر بريد الدخول وكلمة السر للحساب الإداري. يلزم إدخال كلمة السر الحالية لتأكيد أي تغيير.' : 'Change the administrator sign-in email and password. Your current password is required to confirm any change.' ?></p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'اسم المدير' : 'Administrator name' ?></label>
+                <input type="text" name="admin_name" maxlength="150" value="<?= e($adminAccount['name'] ?? '') ?>" required class="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-300">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'البريد الإلكتروني (للدخول واستعادة كلمة السر)' : 'Email (sign-in & password recovery)' ?></label>
+                <input type="email" name="admin_email" maxlength="150" value="<?= e($adminAccount['email'] ?? '') ?>" required dir="ltr" class="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-300">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'كلمة السر الجديدة (اتركها فارغة لعدم التغيير)' : 'New password (leave blank to keep)' ?></label>
+                <input type="password" name="new_password" minlength="8" maxlength="72" autocomplete="new-password" class="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-300">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1"><?= is_rtl() ? 'تأكيد كلمة السر الجديدة' : 'Confirm new password' ?></label>
+                <input type="password" name="new_password_confirmation" minlength="8" maxlength="72" autocomplete="new-password" class="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-300">
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200">
+            <label class="block text-xs font-bold text-amber-900 mb-1"><?= is_rtl() ? 'كلمة السر الحالية (مطلوبة للتأكيد)' : 'Current password (required)' ?></label>
+            <input type="password" name="current_password" required autocomplete="current-password" class="w-full md:w-1/2 text-xs py-2.5 px-3 rounded-xl border border-amber-300 bg-white">
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p class="text-[11px] text-slate-500"><i class="bi bi-info-circle"></i> <?= is_rtl() ? 'رقم الهاتف والواتساب والبريد الرسمي المعروضة للمشتركين تُعدَّل من تبويب «بيانات التواصل».' : 'The public phone, WhatsApp and official email shown to members are edited in the “Contact” tab.' ?>
+                <a href="#" @click.prevent="tab = 'contact'" class="text-emerald-700 font-bold"><?= is_rtl() ? 'فتح بيانات التواصل' : 'Open contact tab' ?></a></p>
+            <button type="submit" class="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-sm inline-flex items-center gap-2 transition-all">
+                <i class="bi bi-shield-check"></i>
+                <span><?= is_rtl() ? 'حفظ بيانات حساب المدير' : 'Save administrator account' ?></span>
             </button>
         </div>
     </form>

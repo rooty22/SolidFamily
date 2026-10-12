@@ -1,10 +1,10 @@
 <div class="card-panel mb-4">
     <form method="get" action="<?= url('admin/transactions') ?>" class="row g-3 align-items-end">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('search_by_member_name') ?></label>
             <input type="text" name="search" class="form-control" placeholder="<?= __('member_name_placeholder') ?>" value="<?= e($filters['search'] ?? '') ?>">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('transaction_category') ?></label>
             <select name="category" class="form-select">
                 <option value=""><?= __('all') ?></option>
@@ -12,6 +12,10 @@
                 <option value="<?= $key ?>" <?= ($filters['category'] ?? '') === $key ? 'selected' : '' ?>><?= $lbl ?></option>
                 <?php endforeach; ?>
             </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label text-xs font-bold text-slate-700"><?= is_rtl() ? 'الشهر' : 'Month' ?></label>
+            <input type="month" name="month" class="form-control font-numeric" value="<?= e($filters['month'] ?? '') ?>">
         </div>
         <div class="col-md-2">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('from_date') ?></label>
@@ -36,7 +40,7 @@
         <div class="col-lg-5">
             <div class="flex items-center gap-2 text-sky-200 text-xs font-bold mb-1">
                 <i class="bi bi-calculator-fill"></i>
-                <span><?= is_rtl() ? 'إجمالي نتيجة التصفية' : 'Filtered Results Total' ?></span>
+                <span><?php if (!empty($summary['filtered'])): ?><?= is_rtl() ? 'إجمالي نتيجة التصفية' : 'Filtered Results Total' ?><?php else: ?><?= is_rtl() ? 'الإجمالي الكلي لكل معاملات الموقع' : 'Site-wide Total (all transactions)' ?><?php endif; ?></span>
             </div>
             <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;"><?= money($summary['total']) ?></div>
             <div class="text-sky-100/80 text-xs font-bold mt-1">

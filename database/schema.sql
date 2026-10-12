@@ -59,6 +59,7 @@ CREATE TABLE share_requests (
     member_id INT UNSIGNED NOT NULL,
     type ENUM('add','merge','cancel') NOT NULL,
     shares_count INT UNSIGNED NULL,
+    lot_ids VARCHAR(255) NULL COMMENT 'merge requests: comma-separated share_lots ids to merge, NULL = every active lot',
     status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
     admin_note VARCHAR(500) NULL,
     reviewed_by INT UNSIGNED NULL,
