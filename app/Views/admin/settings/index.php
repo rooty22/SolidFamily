@@ -567,7 +567,7 @@ foreach (site_social_links_raw() as $i => $link) {
                         </div>
                         <span class="text-[11px] text-slate-400 mt-1 block">
                             <?= is_rtl()
-                                ? 'هذا هو اليوم المستخدم فقط لمن لم يُحدَّد له يوم خاص. لكل مشترك يوم استحقاق مستقل يمكن ضبطه من ملفه (تعديل البيانات)، ولكل دفعة أسهم (لوطة) يومها الخاص أيضاً يُحدَّد عند الموافقة على طلب الأسهم — وهذا التعديل هنا لا يغيّرهما.'
+                                ? 'هذا هو اليوم المستخدم فقط لمن لم يُحدَّد له يوم خاص. لكل مشترك يوم استحقاق مستقل يمكن ضبطه من ملفه (تعديل البيانات)، ولكل دفعة أسهم (لوحة) يومها الخاص أيضاً يُحدَّد عند الموافقة على طلب الأسهم — وهذا التعديل هنا لا يغيّرهما.'
                                 : 'This is used only for members with no due day of their own. Each member can be given an individual due day from their profile (edit), and each share lot gets its own at approval time — changing this setting never overrides either.' ?>
                         </span>
                     </div>

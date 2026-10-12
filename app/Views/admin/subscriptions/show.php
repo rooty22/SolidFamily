@@ -96,10 +96,10 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
     if (count($payableLots) === 1) {
         $only = $payableLots[0];
         $onlyIdx = array_search($only['id'], array_column($lots, 'id'));
-        return '<input type="hidden" name="lot_id" value="' . (int) $only['id'] . '"><div class="mb-2"><label class="form-label text-xs font-bold text-slate-700 mb-1">' . (is_rtl() ? 'الدفعة (لوطة الأسهم)' : 'Share Lot') . '</label>'
+        return '<input type="hidden" name="lot_id" value="' . (int) $only['id'] . '"><div class="mb-2"><label class="form-label text-xs font-bold text-slate-700 mb-1">' . (is_rtl() ? 'الدفعة (لوحة الأسهم)' : 'Share Lot') . '</label>'
             . '<div class="form-control bg-light text-xs font-bold text-slate-800">' . e($label($onlyIdx !== false ? $onlyIdx : 0, $only)) . '</div></div>';
     }
-    $html = '<div class="mb-2"><label class="form-label text-xs font-bold text-slate-700 mb-1">' . (is_rtl() ? 'الدفعة (لوطة الأسهم)' : 'Share Lot') . '</label><select name="lot_id" class="form-select text-xs font-bold" required>';
+    $html = '<div class="mb-2"><label class="form-label text-xs font-bold text-slate-700 mb-1">' . (is_rtl() ? 'الدفعة (لوحة الأسهم)' : 'Share Lot') . '</label><select name="lot_id" class="form-select text-xs font-bold" required>';
     foreach ($payableLots as $pLot) {
         $pIdx = array_search($pLot['id'], array_column($lots, 'id'));
         $html .= '<option value="' . (int) $pLot['id'] . '">' . e($label($pIdx !== false ? $pIdx : 0, $pLot)) . '</option>';
