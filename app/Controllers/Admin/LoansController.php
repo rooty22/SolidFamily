@@ -314,6 +314,10 @@ class LoansController extends Controller
         $this->redirect('admin/loans/' . $id);
     }
 
+    /**
+     * Records a repayment. The amount is applied to the chosen installment first and any excess flows on to the
+     * following installments in order, so a member may pay more than one installment or settle the whole balance at once.
+     */
     public function recordPayment(string $id): void
     {
         $this->verifyCsrf();
@@ -324,9 +328,11 @@ class LoansController extends Controller
         $back = 'admin/loans/' . $id;
 
         $data = $this->all();
+        $data += ['payment_date' => ''];
         $validator = Validator::make($data)
             ->required('installment_id', 'القسط')->integer('installment_id', 'القسط', 1)
-            ->required('amount', 'المبلغ')->decimal('amount', 'المبلغ', 0.01, 10000000);
+            ->required('amount', 'المبلغ')->decimal('amount', 'المبلغ', 0.01, 10000000)
+            ->date('payment_date', 'السداد');
         if ($validator->fails()) {
             Session::flash('error', $validator->firstError());
             $this->redirect($back);
@@ -334,6 +340,21 @@ class LoansController extends Controller
 
         if ($loan['status'] === 'closed') {
             Session::flash('error', 'القرض مغلق ولا يقبل دفعات جديدة.');
+            $this->redirect($back);
+        }
+
+        $paymentDate = date('Y-m-d');
+        if ($data['payment_date'] !== '') {
+            foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $fmt) {
+                $parsed = \DateTime::createFromFormat('!' . $fmt, $data['payment_date']);
+                if ($parsed && $parsed->format($fmt) === $data['payment_date']) {
+                    $paymentDate = $parsed->format('Y-m-d');
+                    break;
+                }
+            }
+        }
+        if ($paymentDate < $loan['loan_date']) {
+            Session::flash('error', 'تاريخ السداد لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
             $this->redirect($back);
         }
 
@@ -346,26 +367,42 @@ class LoansController extends Controller
             $this->redirect($back);
         }
 
-        $remainingOnInstallment = round((float) $installment['amount'] - (float) $installment['amount_paid'], 2);
-        if ($remainingOnInstallment <= 0) {
+        // Installments that can absorb this payment: the chosen one and every later one that still has a balance.
+        $targets = array_values(array_filter(
+            LoanInstallment::forLoan((int) $id),
+            fn($i) => (int) $i['installment_number'] >= (int) $installment['installment_number']
+                && round((float) $i['amount'] - (float) $i['amount_paid'], 2) > 0
+        ));
+        if (!$targets) {
             Session::flash('error', 'هذا القسط مسدد بالكامل.');
             $this->redirect($back);
         }
-        if ($amount > $remainingOnInstallment) {
-            Session::flash('error', 'المبلغ يتجاوز المتبقي على القسط (' . money($remainingOnInstallment) . ').');
+        $available = round(array_sum(array_map(fn($i) => (float) $i['amount'] - (float) $i['amount_paid'], $targets)), 2);
+        if ($amount > $available) {
+            Session::flash('error', 'المبلغ يتجاوز المتبقي على القرض من هذا القسط فما بعده (' . money($available) . ').');
             $this->redirect($back);
         }
 
         $pdo = Database::connection();
         $pdo->beginTransaction();
         try {
-            $newPaid = round((float) $installment['amount_paid'] + $amount, 2);
-            $status = $newPaid >= (float) $installment['amount'] ? 'paid' : 'partial';
-            LoanInstallment::update($installmentId, [
-                'amount_paid' => $newPaid,
-                'status' => $status,
-                'paid_at' => $status === 'paid' ? date('Y-m-d H:i:s') : $installment['paid_at'],
-            ]);
+            $left = $amount;
+            $touched = [];
+            foreach ($targets as $t) {
+                if ($left <= 0) {
+                    break;
+                }
+                $apply = min($left, round((float) $t['amount'] - (float) $t['amount_paid'], 2));
+                $left = round($left - $apply, 2);
+                $newPaid = round((float) $t['amount_paid'] + $apply, 2);
+                LoanInstallment::update((int) $t['id'], [
+                    'amount_paid' => $newPaid,
+                    'status' => $newPaid >= (float) $t['amount'] ? 'paid' : 'partial',
+                    'paid_at' => $paymentDate . ' 00:00:00',
+                ]);
+                Transaction::record((int) $loan['member_id'], 'loan_installment', (int) $t['id'], $apply, current_admin_id(), 'سداد قسط رقم ' . $t['installment_number'], $paymentDate);
+                $touched[] = $t['installment_number'];
+            }
 
             $installments = LoanInstallment::forLoan((int) $id);
             $totalPaid = array_sum(array_column($installments, 'amount_paid'));
@@ -378,15 +415,15 @@ class LoansController extends Controller
                 'status' => $loanStatus,
             ]);
 
-            Transaction::record($loan['member_id'], 'loan_installment', $installmentId, $amount, current_admin_id(), 'سداد قسط رقم ' . $installment['installment_number']);
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
         }
 
-        Notification::systemNotify($loan['member_id'], 'تسجيل سداد قسط', 'تم تسجيل سداد بقيمة ' . money($amount) . ' على القسط رقم ' . $installment['installment_number'] . '.');
-        Session::flash('success', 'تم تسجيل دفعة القسط بنجاح.');
+        $which = count($touched) > 1 ? 'الأقساط ' . implode('، ', $touched) : 'القسط رقم ' . $touched[0];
+        Notification::systemNotify($loan['member_id'], 'تسجيل سداد قسط', 'تم تسجيل سداد بقيمة ' . money($amount) . ' بتاريخ ' . date_ar($paymentDate) . ' على ' . $which . '.');
+        Session::flash('success', $remaining <= 0 ? 'تم تسجيل الدفعة وسداد القرض بالكامل.' : 'تم تسجيل الدفعة بنجاح على ' . $which . '.');
         $this->redirect($back);
     }
 

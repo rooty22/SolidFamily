@@ -157,16 +157,33 @@ $isEn = is_en();
                             </select>
                         </div>
                         <div>
-                            <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= __('amount') ?></label>
-                            <div class="relative">
-                                <input type="number" step="0.01" min="0.01" name="amount" class="form-control font-numeric font-bold" placeholder="0.00" required>
+                            <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></label>
+                            <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="form-label text-xs font-bold text-slate-700 m-0"><?= __('amount') ?></label>
+                                <button type="button" id="payFullBtn" class="btn btn-sm btn-outline-success py-0 px-2 text-[11px] rounded-lg font-bold" data-amount="<?= round((float) $loan['amount_remaining'], 2) ?>">
+                                    <?= is_rtl() ? 'سداد كامل المتبقي (' . money($loan['amount_remaining']) . ')' : 'Pay full balance (' . money($loan['amount_remaining']) . ')' ?>
+                                </button>
                             </div>
+                            <input type="number" step="0.01" min="0.01" max="<?= round((float) $loan['amount_remaining'], 2) ?>" name="amount" id="payAmountInput" class="form-control font-numeric font-bold" placeholder="0.00" required>
+                            <p class="text-[11px] text-muted mb-0 mt-1.5">
+                                <?= is_rtl() ? 'يمكن سداد أكثر من قيمة القسط؛ يُوزَّع الزائد تلقائياً على الأقساط التالية.' : 'You may pay more than one installment; any excess is applied to the following installments.' ?>
+                            </p>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 py-3 shadow-md shadow-sky-600/20 font-bold">
                             <i class="bi bi-check2-circle text-lg"></i>
                             <span><?= __('record_payment') ?></span>
                         </button>
                     </form>
+                    <script>
+                        document.getElementById('payFullBtn').addEventListener('click', function () {
+                            var sel = document.querySelector('select[name="installment_id"]');
+                            if (sel) { sel.selectedIndex = 0; }
+                            document.getElementById('payAmountInput').value = this.dataset.amount;
+                        });
+                    </script>
                 <?php endif; ?>
             </div>
         </div>
@@ -194,6 +211,7 @@ $isEn = is_en();
                     <th><?= __('paid') ?></th>
                     <th><?= __('remaining') ?></th>
                     <th><?= __('status') ?></th>
+                    <th><?= is_rtl() ? 'تاريخ السداد' : 'Paid On' ?></th>
                     <th class="text-center"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                 </tr>
             </thead>
@@ -206,6 +224,7 @@ $isEn = is_en();
                         <td class="font-numeric text-emerald-600 font-bold"><?= money($i['amount_paid']) ?></td>
                         <td class="font-numeric text-rose-600 font-bold"><?= money($i['amount'] - $i['amount_paid']) ?></td>
                         <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                        <td class="font-numeric"><?= (float) $i['amount_paid'] > 0 && !empty($i['paid_at']) ? date_ar($i['paid_at']) : '-' ?></td>
                         <td class="text-center">
                             <?php if ((float) $i['amount_paid'] > 0): ?>
                                 <div class="d-inline-flex align-items-center gap-1.5">
