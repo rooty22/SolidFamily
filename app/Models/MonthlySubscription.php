@@ -291,6 +291,12 @@ class MonthlySubscription extends Model
             // otherwise a lot resized after the row was created would get that month for free (or stay flagged as
             // owing a debt it no longer has).
             $untouched = (float) $existing['amount_paid'] == 0.0 && $month >= date('Y-m');
+            // The same goes for the due day: an unpaid current/future row follows the day configured now, while a row
+            // with money on it or a past month keeps the date it was billed with (history is never rewritten).
+            if ($untouched && $existing['due_date'] !== $dueDate) {
+                self::update($existing['id'], ['due_date' => $dueDate]);
+                $existing['due_date'] = $dueDate;
+            }
             if ($untouched && ((int) $existing['shares_count_snapshot'] !== $sharesCount
                     || (float) $existing['share_value_snapshot'] !== $shareValue
                     || (float) $existing['amount_due'] !== $amountDue)) {
