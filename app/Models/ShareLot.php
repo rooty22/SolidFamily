@@ -17,6 +17,34 @@ class ShareLot extends Model
         return self::where(['member_id' => $memberId, 'status' => 'active'], 'created_at ASC');
     }
 
+    /**
+     * The "السهم رقم N" number of each of the member's lots, keyed by lot id. Active lots are numbered 1..n oldest first
+     * (the same order every screen already uses); lots that were merged or cancelled continue after them, so a lot is
+     * never shown by its database id and no two lots of one member share a number.
+     */
+    public static function numbersFor(int $memberId): array
+    {
+        $numbers = [];
+        $next = 1;
+        foreach (self::where(['member_id' => $memberId], "status = 'active' DESC, created_at ASC, id ASC") as $lot) {
+            $numbers[(int) $lot['id']] = $next++;
+        }
+        return $numbers;
+    }
+
+    /** "السهم رقم N" / "Share #N" for one lot; $sharesCount, when given, is appended. */
+    public static function label(int $memberId, int $lotId, ?int $sharesCount = null): string
+    {
+        $n = self::numbersFor($memberId)[$lotId] ?? null;
+        $text = $n === null
+            ? (is_rtl() ? 'سهم غير معروف' : 'Unknown share')
+            : (is_rtl() ? 'السهم رقم ' . $n : 'Share #' . $n);
+        if ($sharesCount !== null) {
+            $text .= is_rtl() ? ' (' . number_format($sharesCount) . ' سهم)' : ' (' . number_format($sharesCount) . ' shares)';
+        }
+        return $text;
+    }
+
     /** The first month (YYYY-MM) a lot bills for: the month it was created. Nothing is owed for earlier months. */
     public static function startMonth(array $lot): string
     {

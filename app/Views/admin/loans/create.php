@@ -72,7 +72,7 @@ $defaultFee = (float)($feePercent ?? 0);
                                         <span class="font-bold text-sky-950 flex items-center gap-1.5">
                                             <i class="bi bi-pie-chart-fill text-sky-600"></i>
                                             <span><?= $isEn ? 'Bound Share Lot from Request:' : 'حصة الأسهم المحددة من المشترك في الطلب:' ?></span>
-                                            <span class="font-numeric">#<?= (int) $loanRequest['lot_id'] ?></span>
+                                            <span class="font-numeric"><?= e(\App\Models\ShareLot::label((int) $loanRequest['member_id'], (int) $loanRequest['lot_id'])) ?></span>
                                         </span>
                                         <span class="badge-status badge-info"><?= $isEn ? 'Unmerged Share Lot' : 'حصة غير مدمجة' ?></span>
                                     </div>

@@ -58,7 +58,7 @@ class Transaction extends Model
                 $lotLabel = '';
                 if (!empty($r['sub_lot_id'])) {
                     $lotIdx = array_search((int) $r['sub_lot_id'], array_column($mActiveLots, 'id'));
-                    $lotLabel = ($lotIdx !== false) ? ('السهم رقم ' . ($lotIdx + 1)) : ('الحصة #' . $r['sub_lot_id']);
+                    $lotLabel = ($lotIdx !== false) ? ('السهم رقم ' . ($lotIdx + 1)) : ('السهم رقم ' . (ShareLot::numbersFor($mid)[(int) $r['sub_lot_id']] ?? ''));
                 }
                 
                 $notes = trim((string) ($r['notes'] ?? ''));

@@ -55,6 +55,57 @@ class MonthlySubscription extends Model
         return 'unpaid';
     }
 
+    /** Whole days from $from to $to (both Y-m-d); positive when $to is the later date. */
+    public static function daysBetween(string $from, string $to): int
+    {
+        return (int) round((strtotime($to . ' 00:00:00 UTC') - strtotime($from . ' 00:00:00 UTC')) / 86400);
+    }
+
+    /**
+     * How a row's dates relate, computed from today's date and the real payment date so it is always current:
+     *  - 'payment': when money was recorded -> 'early' (before the due date), 'on_time', 'in_grace' (after the due date
+     *    but inside its grace) or 'late' (after the grace), with 'days' off the due date (the grace end for 'late');
+     *  - 'due': what is still owed -> 'overdue' (days since it fell due), 'today' or 'upcoming' (days left).
+     * Either is null when it does not apply (nothing paid yet / nothing left to pay).
+     */
+    public static function timingOf(array $row): array
+    {
+        $timing = ['payment' => null, 'due' => null];
+        $dueDate = $row['due_date'] ?? null;
+        if (!$dueDate) {
+            return $timing;
+        }
+        $effDue = self::effectiveDue($row);
+        $payDate = $row['payment_date'] ?? null;
+        $paid = (float) ($row['amount_paid'] ?? 0);
+        $remaining = round((float) ($row['amount_due'] ?? 0) - $paid, 2);
+
+        if ($paid > 0 && $payDate) {
+            if ($payDate < $dueDate) {
+                $timing['payment'] = ['type' => 'early', 'days' => self::daysBetween($payDate, $dueDate)];
+            } elseif ($payDate === $dueDate) {
+                $timing['payment'] = ['type' => 'on_time', 'days' => 0];
+            } elseif ($payDate <= $effDue) {
+                $timing['payment'] = ['type' => 'in_grace', 'days' => self::daysBetween($dueDate, $payDate)];
+            } else {
+                $timing['payment'] = ['type' => 'late', 'days' => self::daysBetween($effDue, $payDate)];
+            }
+        }
+
+        if ($remaining > 0) {
+            $today = date('Y-m-d');
+            if ($effDue < $today) {
+                $timing['due'] = ['type' => 'overdue', 'days' => self::daysBetween($effDue, $today)];
+            } elseif ($effDue === $today) {
+                $timing['due'] = ['type' => 'today', 'days' => 0];
+            } else {
+                $timing['due'] = ['type' => 'upcoming', 'days' => self::daysBetween($today, $effDue)];
+            }
+        }
+
+        return $timing;
+    }
+
     /**
      * Month-level view of all of a member's lot rows for one month.
      */

@@ -83,7 +83,6 @@ class LoanController extends Controller
 
         $shares = (int) $member['shares_count'];
         $shareValue = (float) Setting::get('share_value', 0);
-        $ratio = (float) Setting::get('max_loan_ratio', 10);
         $running = Loan::rawOne(
             "SELECT COUNT(*) AS c, COALESCE(SUM(amount_remaining), 0) AS s FROM loans WHERE member_id = ? AND status IN ('active', 'partial')",
             [$member['id']]
@@ -92,17 +91,16 @@ class LoanController extends Controller
         $lots = \App\Models\ShareLot::activeFor($member['id']);
         $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
 
+        $lotNumbers = \App\Models\ShareLot::numbersFor((int) $member['id']);
         $lotsData = [];
         foreach ($lots as $lot) {
             $elig = \App\Models\ShareLot::eligibilityDetails($lot, $member, $founding);
             $lotShares = (int) $lot['shares_count'];
-            $lotCapital = $lotShares * $shareValue;
-            $lotMaxLoan = $lotCapital * $ratio;
             $lotsData[] = [
                 'id' => (int) $lot['id'],
+                'number' => $lotNumbers[(int) $lot['id']] ?? 0,
                 'shares_count' => $lotShares,
-                'capital' => $lotCapital,
-                'max_loan' => $lotMaxLoan,
+                'capital' => $lotShares * $shareValue,
                 'start_date' => $elig['start_date'],
                 'start_date_ar' => date_ar($elig['start_date']),
                 'target_date' => $elig['target_date'],
@@ -131,7 +129,6 @@ class LoanController extends Controller
         }
 
         $canRequest = ($shares > 0) && $foundingMet && $hasEligibleLot;
-        $defaultMax = !empty($lotsData) ? $lotsData[0]['max_loan'] : ($shares * $shareValue * $ratio);
 
         $this->view('site/loans/create-request', [
             'pageTitle' => __('new_loan_request'),
@@ -139,9 +136,7 @@ class LoanController extends Controller
             'commitmentText' => $commitment['content'] ?? '',
             'shares' => $shares,
             'shareValue' => $shareValue,
-            'ratio' => $ratio,
             'capital' => $shares * $shareValue,
-            'maxLoan' => $defaultMax,
             'runningCount' => (int) $running['c'],
             'runningRemaining' => (float) $running['s'],
             'pendingRequests' => LoanRequest::count(['member_id' => $member['id'], 'status' => 'pending']),
@@ -236,17 +231,6 @@ class LoanController extends Controller
         $lotElig = \App\Models\ShareLot::eligibilityDetails($selectedLot, $member, $founding);
         if (!$lotElig['six_months_met']) {
             Session::flash('error', 'تنبيه شرط المدة: لا يمكن تقديم طلب قرض على هذه الحصة قبل مرور 6 أشهر كاملة على تاريخ بداية الاشتراك (تاريخ الاستحقاق: ' . date_ar($lotElig['target_date']) . ' - متبقي ' . $lotElig['months_remaining_label'] . ').');
-            $this->redirect('loans/request');
-        }
-
-        // Eligibility: the requested amount cannot exceed the selected lot's maximum allowed loan
-        $shareValue = (float) Setting::get('share_value', 0);
-        $ratio = (float) Setting::get('max_loan_ratio', 10);
-        $lotShares = (int) ($selectedLot ? $selectedLot['shares_count'] : $member['shares_count']);
-        $maxLoan = $lotShares * $shareValue * $ratio;
-
-        if ($amount > $maxLoan) {
-            Session::flash('error', 'المبلغ المطلوب (' . money($amount) . ') يتجاوز الحد الأقصى المسموح للحصة المحددة (' . money($maxLoan) . ').');
             $this->redirect('loans/request');
         }
 

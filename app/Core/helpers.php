@@ -196,6 +196,69 @@ function date_ar(?string $date, string $format = 'd/m/Y'): string
     return $ts ? date($format, $ts) : '-';
 }
 
+/** "3 أيام" / "3 days": a day count worded with the right Arabic singular/dual/plural. */
+function days_phrase(int $n): string
+{
+    if (!is_rtl()) {
+        return $n . ($n === 1 ? ' day' : ' days');
+    }
+    if ($n === 1) {
+        return 'يوم واحد';
+    }
+    if ($n === 2) {
+        return 'يومان';
+    }
+    return $n . ($n >= 3 && $n <= 10 ? ' أيام' : ' يوماً');
+}
+
+/**
+ * Inner HTML for the "payment / due date" cell of a subscription row. Shows the real payment date when money was paid
+ * (otherwise the due date) and says, from today's date, whether it was paid early / on time / late or is still
+ * upcoming / overdue, so the dates always read correctly instead of a fixed "due date" caption.
+ */
+function subscription_date_cell(array $h, bool $graceVisible = true): string
+{
+    $rtl = is_rtl();
+    $timing = \App\Models\MonthlySubscription::timingOf($h);
+    $showPayment = (float) ($h['amount_paid'] ?? 0) > 0 && !empty($h['payment_date']);
+
+    $badge = fn(string $text, string $classes): string
+        => '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold ' . $classes . '">' . e($text) . '</span></div>';
+
+    if ($showPayment) {
+        $html = '<div class="font-bold text-slate-900"><i class="bi bi-calendar2-check text-emerald-600 me-1"></i><bdi dir="ltr">' . date_ar($h['payment_date']) . '</bdi></div>'
+            . '<div class="text-[11px] text-slate-400">' . ($rtl ? 'تاريخ السداد' : 'Payment Date') . '</div>'
+            . '<div class="text-[11px] text-slate-400">' . ($rtl ? 'موعد الاستحقاق: ' : 'Due: ') . '<bdi dir="ltr">' . date_ar($h['due_date']) . '</bdi></div>';
+        $p = $timing['payment'];
+        if ($p) {
+            $html .= match ($p['type']) {
+                'early' => $badge($rtl ? 'سُدّد مقدماً بـ ' . days_phrase($p['days']) : 'Paid ' . days_phrase($p['days']) . ' early', 'bg-sky-50 text-sky-700'),
+                'on_time' => $badge($rtl ? 'سُدّد في الموعد' : 'Paid on time', 'bg-emerald-50 text-emerald-700'),
+                'in_grace' => $badge($rtl ? 'سُدّد ضمن المهلة' : 'Paid within grace', 'bg-emerald-50 text-emerald-700'),
+                default => $badge($rtl ? 'سُدّد متأخراً ' . days_phrase($p['days']) : 'Paid ' . days_phrase($p['days']) . ' late', 'bg-amber-50 text-amber-700'),
+            };
+        }
+    } else {
+        $html = '<div class="font-bold text-slate-700"><i class="bi bi-calendar-event text-slate-400 me-1"></i><bdi dir="ltr">' . date_ar($h['due_date']) . '</bdi></div>'
+            . '<div class="text-[11px] text-slate-400">' . ($rtl ? 'موعد الاستحقاق' : 'Due Date') . '</div>';
+    }
+
+    $d = $timing['due'];
+    if ($d) {
+        $html .= match ($d['type']) {
+            'overdue' => $badge($rtl ? 'متأخر منذ ' . days_phrase($d['days']) : 'Overdue by ' . days_phrase($d['days']), 'bg-rose-50 text-rose-700'),
+            'today' => $badge($rtl ? 'يستحق اليوم' : 'Due today', 'bg-amber-50 text-amber-700'),
+            default => $badge($rtl ? 'متبقي ' . days_phrase($d['days']) . ' على الاستحقاق' : days_phrase($d['days']) . ' until due', 'bg-slate-100 text-slate-600'),
+        };
+    }
+
+    if ($graceVisible && !empty($h['grace_until']) && ($h['status'] ?? '') !== 'paid' && $h['grace_until'] >= date('Y-m-d')) {
+        $html .= '<small class="d-block text-slate-400 text-[10px]">' . ($rtl ? 'مهلة حتى ' : 'Grace until ') . date_ar($h['grace_until']) . '</small>';
+    }
+
+    return $html;
+}
+
 /** A "Y-m" billing month shown as month/year (m/Y), consistent with the day/month/year used everywhere else. */
 function month_label(?string $month): string
 {

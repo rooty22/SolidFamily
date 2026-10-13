@@ -94,7 +94,7 @@ class FoundingController extends Controller
         $lotLabel = '';
         if ($lotId) {
             $lotIdx = array_search($lotId, array_column($activeLots, 'id'));
-            $lotLabel = ($lotIdx !== false) ? ('السهم رقم ' . ($lotIdx + 1)) : ('الحصة #' . $lotId);
+            $lotLabel = ($lotIdx !== false) ? ('السهم رقم ' . ($lotIdx + 1)) : ('السهم رقم ' . (\App\Models\ShareLot::numbersFor((int) $memberId)[$lotId] ?? ''));
         }
 
         $customNotes = trim((string) ($data['notes'] ?? ''));

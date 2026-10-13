@@ -114,7 +114,7 @@ $isEn = is_en();
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200/80 text-purple-700">
                         <i class="bi bi-pie-chart-fill text-purple-600"></i>
                         <span><?= is_rtl() ? 'حصة الأسهم المرتبطة:' : 'Linked Share Lot:' ?></span>
-                        <strong class="font-numeric">#<?= (int) $loan['lot_id'] ?></strong>
+                        <strong class="font-numeric"><?= e(\App\Models\ShareLot::label((int) $loan['member_id'], (int) $loan['lot_id'])) ?></strong>
                     </span>
                 <?php endif; ?>
             </div>

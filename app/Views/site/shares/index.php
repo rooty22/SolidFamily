@@ -326,29 +326,13 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                                 <span class="font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($lotIdx + 1) : 'Share #' . ($lotIdx + 1) ?></span>
                                 <span class="text-slate-400 font-num">(<?= number_format($h['shares_count_snapshot']) ?>)</span>
                             <?php elseif (!empty($h['lot_id'])): ?>
-                                <span class="font-bold text-purple-700">#<?= (int)$h['lot_id'] ?></span>
+                                <span class="font-bold text-purple-700"><?= e(\App\Models\ShareLot::label((int) $h['member_id'], (int) $h['lot_id'])) ?></span>
+                                <span class="text-slate-400 font-num">(<?= number_format($h['shares_count_snapshot']) ?>)</span>
                             <?php else: ?>
                                 <span class="text-slate-400">-</span>
                             <?php endif; ?>
                         </td>
-                        <td class="font-num">
-                            <?php if ($paidVal > 0 && !empty($h['payment_date'])): ?>
-                                <div class="font-bold text-slate-900">
-                                    <i class="bi bi-calendar2-check text-emerald-600 me-1"></i>
-                                    <bdi dir="ltr"><?= date_ar($h['payment_date']) ?></bdi>
-                                </div>
-                                <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></div>
-                            <?php else: ?>
-                                <div class="font-bold text-slate-700">
-                                    <i class="bi bi-calendar-event text-slate-400 me-1"></i>
-                                    <bdi dir="ltr"><?= date_ar($h['due_date']) ?></bdi>
-                                </div>
-                                <div class="text-[11px] text-slate-400"><?= is_rtl() ? 'موعد الاستحقاق' : 'Due Date' ?></div>
-                            <?php endif; ?>
-                            <?php if ($graceVisible && !empty($h['grace_until']) && $h['status'] !== 'paid' && $h['grace_until'] >= date('Y-m-d')): ?>
-                                <small class="d-block text-muted text-[10px]"><?= __('subscription_grace_until', ['date' => date_ar($h['grace_until'])]) ?></small>
-                            <?php endif; ?>
-                        </td>
+                        <td class="font-num"><?= subscription_date_cell($h, $graceVisible) ?></td>
                         <td class="font-num fw-bold text-slate-900"><?= money($dueVal) ?></td>
                         <td class="font-num fw-bold <?= $paidVal > 0 ? 'text-emerald-600' : 'text-slate-400' ?>"><?= money($paidVal) ?></td>
                         <td class="font-num fw-bold <?= $remVal > 0 ? 'text-rose-600' : 'text-emerald-700' ?>"><?= money($remVal) ?></td>

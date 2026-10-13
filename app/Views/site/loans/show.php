@@ -72,7 +72,7 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
                 <div class="info-row"><span><?= __('loan_reason') ?></span><b><?= $reasonLabels[$loan['reason']] ?? $loan['reason'] ?></b></div>
                 <div class="info-row"><span><?= __('loan_date') ?></span><b class="font-num"><?= date_ar($loan['loan_date']) ?></b></div>
                 <?php if (!empty($loan['lot_id'])): ?>
-                    <div class="info-row"><span><?= is_rtl() ? 'السهم / الحصة المرتبطة' : 'Linked Share Lot' ?></span><b class="font-num text-purple-700">#<?= (int) $loan['lot_id'] ?></b></div>
+                    <div class="info-row"><span><?= is_rtl() ? 'السهم / الحصة المرتبطة' : 'Linked Share Lot' ?></span><b class="font-num text-purple-700"><?= e(\App\Models\ShareLot::label((int) $loan['member_id'], (int) $loan['lot_id'])) ?></b></div>
                 <?php endif; ?>
                 <div class="info-row"><span><?= __('installments_count') ?></span><b class="font-num"><?= (int) $loan['installments_count'] ?></b></div>
                 <div class="info-row"><span><?= __('installment_value') ?></span><b class="font-num"><?= money($loan['installment_value']) ?></b></div>

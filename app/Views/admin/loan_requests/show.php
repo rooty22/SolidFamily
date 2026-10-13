@@ -2,7 +2,6 @@
 [$label, $variant] = status_badge($request['status']); 
 $months = max(1, (int) $request['installments_months']);
 $monthlyEstimate = (float) $request['amount_requested'] / $months;
-$isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
 ?>
 
 <div class="space-y-6">
@@ -112,8 +111,8 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                             <div>
-                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'رقم الحصة' : 'Lot #' ?></span>
-                                <b class="font-numeric text-slate-800">#<?= (int) $selectedLot['id'] ?> (<?= number_format($selectedLot['shares_count']) ?> سهم)</b>
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'السهم المحدد' : 'Selected share' ?></span>
+                                <b class="font-numeric text-slate-800"><?= e(\App\Models\ShareLot::label((int) $member['id'], (int) $selectedLot['id'], (int) $selectedLot['shares_count'])) ?></b>
                             </div>
                             <div>
                                 <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></span>
@@ -121,7 +120,7 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                             </div>
                             <div>
                                 <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'سقف القرض للحصة' : 'Lot Loan Ceiling' ?></span>
-                                <b class="font-numeric text-emerald-700"><?= money($selectedLotMaxLoan) ?></b>
+                                <b class="text-emerald-700"><?= is_rtl() ? 'مفتوح' : 'Open' ?></b>
                             </div>
                             <div>
                                 <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months' ?></span>
@@ -305,19 +304,9 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                     <div class="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200/80 flex items-center justify-between">
                         <div>
                             <span class="text-xs font-bold text-sky-950 block"><?= __('statutory_loan_ceiling') ?></span>
-                            <span class="text-[10px] text-sky-700 font-semibold"><?= __('based_on_multiplier') ?></span>
+                            <span class="text-[10px] text-sky-700 font-semibold"><?= is_rtl() ? 'بدون سقف محدد' : 'No fixed limit' ?></span>
                         </div>
-                        <span class="text-base font-black text-sky-800 font-numeric"><?= money($maxEligibleLoan) ?></span>
-                    </div>
-
-                    <!-- Limit Indicator -->
-                    <div class="p-3 rounded-xl <?= $isWithinLimit ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200' ?> text-xs flex items-center gap-2">
-                        <i class="bi <?= $isWithinLimit ? 'bi-check-circle-fill text-emerald-600' : 'bi-exclamation-triangle-fill text-rose-600' ?> text-base shrink-0"></i>
-                        <span class="font-medium">
-                            <?= $isWithinLimit 
-                                ? __('loan_within_limit_msg')
-                                : __('loan_exceeds_limit_msg') ?>
-                        </span>
+                        <span class="text-base font-black text-sky-800"><?= is_rtl() ? 'مفتوح' : 'Open' ?></span>
                     </div>
 
                     <!-- Share Lots & Eligibility Conditions (Image 1 Requirement) -->
@@ -342,7 +331,7 @@ $isWithinLimit = (float) $request['amount_requested'] <= $maxEligibleLoan;
                                     <div class="p-2.5 rounded-xl border <?= $isChosen ? 'border-sky-500 ring-2 ring-sky-300 bg-sky-50/80' : 'border-slate-200/80 bg-slate-50/70' ?> text-xs">
                                         <div class="flex items-center justify-between font-bold text-slate-900 mb-1">
                                             <span class="flex items-center gap-1.5">
-                                                <span><?= is_rtl() ? 'حصة #' . (int) $lot['id'] . ' (' . number_format($lot['shares_count']) . ' سهم)' : 'Lot #' . (int) $lot['id'] . ' (' . number_format($lot['shares_count']) . ' shares)' ?></span>
+                                                <span><?= e(\App\Models\ShareLot::label((int) $member['id'], (int) $lot['id'], (int) $lot['shares_count'])) ?></span>
                                                 <?php if ($isChosen): ?>
                                                     <span class="badge-status badge-info py-0 px-2 text-[10px]"><?= is_rtl() ? 'محددة للقرض' : 'Chosen' ?></span>
                                                 <?php endif; ?>

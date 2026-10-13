@@ -276,7 +276,7 @@ class SubscriptionsController extends Controller
                     if (!empty($sub['lot_id'])) {
                         $mActiveLots = ShareLot::activeFor((int) $memberId);
                         $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
-                        $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+                        $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - السهم رقم ' . (ShareLot::numbersFor((int) $memberId)[(int) $sub['lot_id']] ?? ''));
                     }
                     MonthlySubscription::update($sub['id'], ['amount_paid' => $sub['amount_due'], 'status' => 'paid']);
                     Transaction::record((int) $memberId, 'subscription', $sub['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $month . $lotLabel, $paymentDate);
@@ -392,7 +392,7 @@ class SubscriptionsController extends Controller
             if (!empty($sub['lot_id'])) {
                 $mActiveLots = ShareLot::activeFor((int) $memberId);
                 $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
-                $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+                $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - السهم رقم ' . (ShareLot::numbersFor((int) $memberId)[(int) $sub['lot_id']] ?? ''));
             }
             $desc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'] . $lotLabel;
             Transaction::record((int) $memberId, 'subscription', $sub['id'], $payAmount, current_admin_id(), $desc, $paymentDate);
@@ -560,7 +560,7 @@ class SubscriptionsController extends Controller
                 if (!empty($sub['lot_id'])) {
                     $mActiveLots = ShareLot::activeFor((int) $memberId);
                     $lotIdx = array_search((int) $sub['lot_id'], array_column($mActiveLots, 'id'));
-                    $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - الحصة #' . $sub['lot_id']);
+                    $lotLabel = ($lotIdx !== false) ? (' - السهم رقم ' . ($lotIdx + 1)) : (' - السهم رقم ' . (ShareLot::numbersFor((int) $memberId)[(int) $sub['lot_id']] ?? ''));
                 }
                 $noteDesc = ($status === 'paid' ? 'سداد اشتراك شهر ' : 'دفعة جزئية لشهر ') . $sub['month'] . $lotLabel;
 

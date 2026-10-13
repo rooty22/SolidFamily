@@ -47,10 +47,8 @@ class LoanRequestsController extends Controller
         $queuePosition = $request['status'] === 'pending' ? LoanRequest::queuePosition((int) $id) : null;
 
         $shareValue = (float) (Setting::get('share_value', 1000) ?? 1000);
-        $maxLoanRatio = (float) (Setting::get('max_loan_ratio', 10) ?? 10);
         $memberShares = (int) ($member['shares_count'] ?? 1);
         $memberCapital = $memberShares * $shareValue;
-        $maxEligibleLoan = $memberCapital * $maxLoanRatio;
 
         $memberLoans = Loan::forMember((int) $member['id']);
         $activeLoansCount = count(array_filter($memberLoans, fn($l) => in_array($l['status'], ['active', 'partial'])));
@@ -60,8 +58,6 @@ class LoanRequestsController extends Controller
         $founding = \App\Models\FoundingAmount::ensureForMember((int) $member['id']);
 
         $selectedLot = !empty($request['lot_id']) ? \App\Models\ShareLot::find((int) $request['lot_id']) : null;
-        $selectedLotShares = $selectedLot ? (int) $selectedLot['shares_count'] : $memberShares;
-        $selectedLotMaxLoan = $selectedLotShares * $shareValue * $maxLoanRatio;
 
         $this->view('admin/loan_requests/show', [
             'pageTitle' => __('loan_request_details', ['id' => $request['id']]),
@@ -71,9 +67,7 @@ class LoanRequestsController extends Controller
             'reasonLabels' => $this->reasonLabels,
             'memberShares' => $memberShares,
             'memberCapital' => $memberCapital,
-            'maxEligibleLoan' => $maxEligibleLoan,
             'selectedLot' => $selectedLot,
-            'selectedLotMaxLoan' => $selectedLotMaxLoan,
             'activeLoansCount' => $activeLoansCount,
             'totalLoansPaid' => $totalLoansPaid,
             'memberLots' => $memberLots,

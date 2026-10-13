@@ -72,7 +72,7 @@
                         <div class="meta">
                             <?= $reasonLabels[$l['reason']] ?? $l['reason'] ?> · <?= date_ar($l['loan_date']) ?>
                             <?php if (!empty($l['lot_id'])): ?>
-                                · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= is_rtl() ? 'حصة أسهم #' . (int) $l['lot_id'] : 'Lot #' . (int) $l['lot_id'] ?></span>
+                                · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= e(\App\Models\ShareLot::label((int) $l['member_id'], (int) $l['lot_id'])) ?></span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -105,7 +105,7 @@
                     <span>
                         <?= $reasonLabels[$r['reason']] ?? $r['reason'] ?> · <?= (int) $r['installments_months'] ?> <?= __('months') ?> · <?= date_ar($r['created_at']) ?>
                         <?php if (!empty($r['lot_id'])): ?>
-                            · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= is_rtl() ? 'حصة أسهم #' . (int) $r['lot_id'] : 'Lot #' . (int) $r['lot_id'] ?></span>
+                            · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= e(\App\Models\ShareLot::label((int) $r['member_id'], (int) $r['lot_id'])) ?></span>
                         <?php endif; ?>
                     </span>
                     <?php if ($r['queue_position']): ?><span class="d-block text-warning fw-bold"><i class="bi bi-people-fill"></i> <?= __('loan_queue_position', ['position' => (int) $r['queue_position']]) ?></span><?php endif; ?>
