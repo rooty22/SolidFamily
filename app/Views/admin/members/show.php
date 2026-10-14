@@ -394,7 +394,7 @@ $catLabels = transaction_categories();
                             </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($loans as $l): [$lb,$v] = status_badge($l['status']); ?>
+                        <?php foreach ($loans as $l): [$lb,$v] = status_badge($l['display_status']); ?>
                             <tr>
                                 <td class="font-numeric font-bold text-slate-900"><?= money($l['amount']) ?></td>
                                 <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($l['loan_date']) ?></bdi></td>

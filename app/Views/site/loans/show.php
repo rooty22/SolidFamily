@@ -1,5 +1,5 @@
 <?php
-[$label, $variant] = status_badge($loan['status']);
+[$label, $variant] = status_badge(\App\Models\Loan::displayStatusFor($loan, $installments));
 $totalWithFee = loan_member_total($loan);
 $paidWithFee = loan_member_paid($loan);
 $pct = $totalWithFee > 0 ? min(100, round($paidWithFee / $totalWithFee * 100)) : 0;
@@ -38,7 +38,7 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
         <table class="table-modern">
             <thead><tr><th>#</th><th><?= __('due_date') ?></th><th><?= __('amount') ?></th><th><?= __('paid_amount') ?></th><th><?= __('status') ?></th></tr></thead>
             <tbody>
-            <?php foreach ($installments as $i): [$l, $v] = status_badge($i['status']); $isNext = $next && (int) $next['id'] === (int) $i['id']; ?>
+            <?php foreach ($installments as $i): [$l, $v] = status_badge($i['display_status']); $isNext = $next && (int) $next['id'] === (int) $i['id']; ?>
                 <tr <?= $isNext ? 'style="background:var(--warning-bg);"' : '' ?>>
                     <td class="fw-bold font-num"><?= $i['installment_number'] ?></td>
                     <td class="font-num"><?= date_ar($i['due_date']) ?><?= $isNext ? ' <span class="badge-status badge-warning">' . __('next') . '</span>' : '' ?></td>

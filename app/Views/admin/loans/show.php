@@ -1,5 +1,5 @@
 <?php 
-[$label, $variant] = status_badge($loan['status']); 
+[$label, $variant] = status_badge(\App\Models\Loan::displayStatusFor($loan, $installments));
 $pct = $loan['amount'] > 0 ? min(100, round($loan['amount_paid'] / $loan['amount'] * 100)) : 0; 
 $isEn = is_en();
 ?>
@@ -206,25 +206,23 @@ $isEn = is_en();
             <thead>
                 <tr>
                     <th>#</th>
-                    <th><?= __('due_date') ?></th>
+                    <th><?= is_rtl() ? 'الاستحقاق / السداد' : 'Due / Payment' ?></th>
                     <th><?= __('value') ?></th>
                     <th><?= __('paid') ?></th>
                     <th><?= __('remaining') ?></th>
                     <th><?= __('status') ?></th>
-                    <th><?= is_rtl() ? 'تاريخ السداد' : 'Paid On' ?></th>
                     <th class="text-center"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($installments as $i): [$l, $v] = status_badge($i['status']); ?>
+                <?php foreach ($installments as $i): [$l, $v] = status_badge($i['display_status']); ?>
                     <tr>
                         <td class="font-numeric font-bold text-slate-900"><?= $i['installment_number'] ?></td>
-                        <td class="font-numeric"><?= date_ar($i['due_date']) ?></td>
+                        <td class="font-numeric"><?= subscription_date_cell(\App\Models\LoanInstallment::asDueRow($i), false) ?></td>
                         <td class="font-numeric font-bold"><?= money($i['amount']) ?></td>
                         <td class="font-numeric text-emerald-600 font-bold"><?= money($i['amount_paid']) ?></td>
                         <td class="font-numeric text-rose-600 font-bold"><?= money($i['amount'] - $i['amount_paid']) ?></td>
                         <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
-                        <td class="font-numeric"><?= (float) $i['amount_paid'] > 0 && !empty($i['paid_at']) ? date_ar($i['paid_at']) : '-' ?></td>
                         <td class="text-center">
                             <?php if ((float) $i['amount_paid'] > 0): ?>
                                 <div class="d-inline-flex align-items-center gap-1.5">

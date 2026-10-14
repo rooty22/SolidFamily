@@ -64,7 +64,7 @@
             <div class="empty-state"><i class="bi bi-cash"></i><?= __('no_loans_yet') ?><br><small class="text-muted"><?= __('no_loans_desc') ?></small></div>
         <?php else: ?>
         <div class="loans-grid">
-            <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['status']); $lTotal = loan_member_total($l); $lPaid = loan_member_paid($l); $pct = $lTotal > 0 ? min(100, round($lPaid / $lTotal * 100)) : 0; ?>
+            <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['display_status']); $lTotal = loan_member_total($l); $lPaid = loan_member_paid($l); $pct = $lTotal > 0 ? min(100, round($lPaid / $lTotal * 100)) : 0; ?>
             <a href="<?= url('loans/' . $l['id']) ?>" class="loan-item text-decoration-none">
                 <div class="top">
                     <div>

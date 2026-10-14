@@ -34,7 +34,7 @@
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['status']); ?>
+        <?php foreach ($loans as $l): [$lb, $v] = status_badge($l['display_status']); ?>
             <tr>
                 <td class="fw-bold text-slate-900"><?= e($l['member_name']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($l['amount']) ?></td>
