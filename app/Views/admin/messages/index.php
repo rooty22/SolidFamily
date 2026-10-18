@@ -7,7 +7,7 @@
         <div class="flex items-center gap-2">
             <span class="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 inline-flex items-center gap-1.5">
                 <i class="bi bi-chat-left-text-fill text-emerald-600"></i>
-                <span><?= __('messages_count_stat', ['count' => count($messages)]) ?></span>
+                <span><?= __('messages_count_stat', ['count' => ($pager['total'] ?? count($messages))]) ?></span>
             </span>
         </div>
     </div>
@@ -54,3 +54,5 @@
         </table>
     </div>
 </div>
+
+<?= pagination_links($pager ?? []) ?>

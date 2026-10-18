@@ -17,9 +17,13 @@ class ShareRequestsController extends Controller
         ShareRequest::repairMissingMergeCounts();
         $requests = ShareRequest::where(['member_id' => $member['id']], 'created_at DESC');
 
+        $pager = paginate($requests, 10);
+
         $this->view('site/share_requests/index', $this->allowances($member) + [
             'pageTitle' => __('share_requests'),
             'requests' => $requests,
+            'requestsPage' => $pager['items'],
+            'pager' => $pager,
             'typeLabels' => share_request_types(),
             'member' => $member,
         ], 'site/layout');

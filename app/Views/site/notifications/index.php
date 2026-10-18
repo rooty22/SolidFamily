@@ -101,17 +101,68 @@ $daysLeft = fn(string $date): int => (int) floor((strtotime($date) - strtotime(d
 </div>
 
 <script>
+// Category chips pick the notifications, the pager splits them into pages.
 (function () {
+    var PAGE_SIZE = 10;
+    var RTL = <?= is_rtl() ? 'true' : 'false' ?>;
+    var list = document.getElementById('notifList');
+    if (!list) { return; }
     var bar = document.getElementById('notifFilters');
-    if (!bar) { return; }
-    bar.addEventListener('click', function (e) {
-        var chip = e.target.closest('.chip');
-        if (!chip) { return; }
-        var group = chip.getAttribute('data-group');
-        bar.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('active', c === chip); });
-        document.querySelectorAll('#notifList .notif-item').forEach(function (item) {
-            item.style.display = (group === 'all' || item.getAttribute('data-group') === group) ? '' : 'none';
+    var state = { group: 'all', page: 1 };
+    var box = document.createElement('div');
+    list.parentNode.insertBefore(box, list.nextSibling);
+
+    function render() {
+        var items = Array.prototype.slice.call(list.querySelectorAll('.notif-item'));
+        var matching = items.filter(function (i) { return state.group === 'all' || i.getAttribute('data-group') === state.group; });
+        var pages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
+        state.page = Math.min(Math.max(1, state.page), pages);
+        var from = (state.page - 1) * PAGE_SIZE;
+        items.forEach(function (i) { i.style.display = 'none'; });
+        matching.slice(from, from + PAGE_SIZE).forEach(function (i) { i.style.display = ''; });
+
+        if (pages <= 1) { box.innerHTML = ''; return; }
+        var nums = [];
+        for (var p = 1; p <= pages; p++) {
+            if (p === 1 || p === pages || Math.abs(p - state.page) <= 2) { nums.push(p); }
+        }
+        function item(label, page, active, disabled) {
+            return '<li class="page-item' + (active ? ' active' : '') + (disabled ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + page + '">' + label + '</a></li>';
+        }
+        var html = '<nav class="pager-nav d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"><div class="text-xs text-slate-500 font-semibold">'
+            + (RTL ? 'عرض ' : 'Showing ') + (from + 1) + ' - ' + Math.min(from + PAGE_SIZE, matching.length) + (RTL ? ' من ' : ' of ') + matching.length
+            + '</div><ul class="pagination pagination-sm mb-0">';
+        html += item('<i class="bi ' + (RTL ? 'bi-chevron-right' : 'bi-chevron-left') + '"></i>', state.page - 1, false, state.page <= 1);
+        var prev = 0;
+        nums.forEach(function (p) {
+            if (p - prev > 1) { html += item('…', p - 1, false, true); }
+            html += item(String(p), p, p === state.page, false);
+            prev = p;
         });
+        html += item('<i class="bi ' + (RTL ? 'bi-chevron-left' : 'bi-chevron-right') + '"></i>', state.page + 1, false, state.page >= pages);
+        box.innerHTML = html + '</ul></nav>';
+    }
+
+    box.addEventListener('click', function (e) {
+        var a = e.target.closest('a[data-page]');
+        if (!a) { return; }
+        e.preventDefault();
+        if (a.parentNode.classList.contains('disabled')) { return; }
+        state.page = parseInt(a.getAttribute('data-page'), 10);
+        render();
     });
+
+    if (bar) {
+        bar.addEventListener('click', function (e) {
+            var chip = e.target.closest('.chip');
+            if (!chip) { return; }
+            bar.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('active', c === chip); });
+            state.group = chip.getAttribute('data-group');
+            state.page = 1;
+            render();
+        });
+    }
+
+    render();
 })();
 </script>

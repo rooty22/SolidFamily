@@ -30,7 +30,7 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
         <table class="table-modern">
             <thead><tr><th><?= __('type') ?></th><th><?= __('count') ?></th><th><?= __('date') ?></th><th><?= __('status') ?></th></tr></thead>
             <tbody>
-            <?php foreach ($requests as $r): [$l, $v] = status_badge($r['status']); ?>
+            <?php foreach ($requestsPage as $r): [$l, $v] = status_badge($r['status']); ?>
                 <tr>
                     <td class="fw-bold"><?= $typeLabels[$r['type']] ?? $r['type'] ?></td>
                     <td class="font-num"><?= $r['shares_count'] ? number_format($r['shares_count']) : ($r['type'] === 'merge' ? number_format($member['shares_count']) : '-') ?></td>
@@ -40,6 +40,7 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
             <?php endforeach; ?>
             </tbody>
         </table>
+        <?= pagination_links($pager) ?>
         <?php endif; ?>
     </div>
 

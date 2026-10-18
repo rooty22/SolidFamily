@@ -533,6 +533,88 @@ function paginate_params(int $page, int $perPage = 15): array
     return [$perPage, ($page - 1) * $perPage];
 }
 
+/**
+ * Slices an already filtered / sorted list for the current page (?page=N, or $param). Totals and summaries must be
+ * computed from the full list BEFORE calling this; exports and print views keep using the full list.
+ *
+ * @return array{items: array, page: int, pages: int, total: int, perPage: int, from: int, to: int, param: string}
+ */
+function paginate(array $items, int $perPage = 20, string $param = 'page'): array
+{
+    $total = count($items);
+    $pages = max(1, (int) ceil($total / $perPage));
+    $page = min(max(1, (int) ($_GET[$param] ?? 1)), $pages);
+    $offset = ($page - 1) * $perPage;
+    $slice = array_slice($items, $offset, $perPage);
+
+    return [
+        'items' => $slice,
+        'page' => $page,
+        'pages' => $pages,
+        'total' => $total,
+        'perPage' => $perPage,
+        'from' => $total === 0 ? 0 : $offset + 1,
+        'to' => $offset + count($slice),
+        'param' => $param,
+    ];
+}
+
+/** Page links for a paginate() result, keeping every other query-string filter. Empty when there is only one page. */
+function pagination_links(array $pager, string $fragment = ''): string
+{
+    if (($pager['pages'] ?? 1) <= 1) {
+        return '';
+    }
+
+    $param = $pager['param'] ?? 'page';
+    $link = function (int $page) use ($param, $fragment): string {
+        $query = $_GET;
+        $query[$param] = $page;
+        return url(current_path()) . '?' . http_build_query($query) . ($fragment !== '' ? '#' . $fragment : '');
+    };
+
+    $current = (int) $pager['page'];
+    $last = (int) $pager['pages'];
+    $shown = array_values(array_unique(array_filter(
+        array_merge([1, $last], range(max(1, $current - 2), min($last, $current + 2))),
+        fn($p) => $p >= 1 && $p <= $last
+    )));
+    sort($shown);
+
+    $rtl = is_rtl();
+    $prevIcon = $rtl ? 'bi-chevron-right' : 'bi-chevron-left';
+    $nextIcon = $rtl ? 'bi-chevron-left' : 'bi-chevron-right';
+
+    $item = function (string $label, ?int $page, bool $active = false, bool $disabled = false) use ($link): string {
+        $cls = 'page-item' . ($active ? ' active' : '') . ($disabled ? ' disabled' : '');
+        $inner = ($disabled || $page === null)
+            ? '<span class="page-link">' . $label . '</span>'
+            : '<a class="page-link" href="' . e($link($page)) . '">' . $label . '</a>';
+        return '<li class="' . $cls . '">' . $inner . '</li>';
+    };
+
+    $html = '<nav class="pager-nav d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" aria-label="pagination">';
+    $html .= '<div class="text-xs text-slate-500 font-semibold">'
+        . ($rtl
+            ? 'عرض ' . number_format($pager['from']) . ' - ' . number_format($pager['to']) . ' من ' . number_format($pager['total'])
+            : 'Showing ' . number_format($pager['from']) . ' - ' . number_format($pager['to']) . ' of ' . number_format($pager['total']))
+        . '</div>';
+    $html .= '<ul class="pagination pagination-sm mb-0">';
+    $html .= $item('<i class="bi ' . $prevIcon . '"></i>', $current - 1, false, $current <= 1);
+    $prev = 0;
+    foreach ($shown as $p) {
+        if ($p - $prev > 1) {
+            $html .= $item('…', null, false, true);
+        }
+        $html .= $item((string) $p, $p, $p === $current);
+        $prev = $p;
+    }
+    $html .= $item('<i class="bi ' . $nextIcon . '"></i>', $current + 1, false, $current >= $last);
+    $html .= '</ul></nav>';
+
+    return $html;
+}
+
 function current_path(): string
 {
     $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';

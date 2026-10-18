@@ -12,10 +12,11 @@ class MessagesController extends Controller
 {
     public function index(): void
     {
-        $messages = ContactMessage::all('created_at DESC');
+        $pager = paginate(ContactMessage::all('created_at DESC'));
         $this->view('admin/messages/index', [
             'pageTitle' => __('messages_title'),
-            'messages' => $messages,
+            'messages' => $pager['items'],
+            'pager' => $pager,
         ], 'admin/layout');
     }
 

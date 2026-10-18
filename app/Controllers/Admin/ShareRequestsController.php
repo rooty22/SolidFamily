@@ -27,9 +27,12 @@ class ShareRequestsController extends Controller
         $conditions = $status ? ['share_requests.status' => $status] : [];
         $requests = ShareRequest::withMember($conditions);
 
+        $pager = paginate($requests);
+
         $this->view('admin/share_requests/index', [
             'pageTitle' => __('share_requests'),
-            'requests' => $requests,
+            'requests' => $pager['items'],
+            'pager' => $pager,
             'status' => $status,
             'typeLabels' => $this->typeLabels,
         ], 'admin/layout');

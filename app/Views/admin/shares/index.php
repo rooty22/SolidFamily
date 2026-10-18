@@ -260,3 +260,5 @@
         </tbody>
     </table>
 </div>
+
+<?= pagination_links($pager ?? []) ?>

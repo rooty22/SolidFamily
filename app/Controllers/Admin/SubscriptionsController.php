@@ -93,9 +93,12 @@ class SubscriptionsController extends Controller
             }));
         }
 
+        $pager = paginate($rows);
+
         $this->view('admin/subscriptions/index', [
             'pageTitle' => __('subscriptions'),
-            'rows' => $rows,
+            'rows' => $pager['items'],
+            'pager' => $pager,
             'q' => $q,
             'status' => $status,
             'counts' => $statusCounts,

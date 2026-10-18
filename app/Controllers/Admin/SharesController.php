@@ -12,7 +12,8 @@ class SharesController extends Controller
 {
     public function index(): void
     {
-        $members = Member::withoutRegistrations(Member::all('shares_count DESC'));
+        $pager = paginate(Member::withoutRegistrations(Member::all('shares_count DESC')));
+        $members = $pager['items'];
         $shareValue = (float) Setting::get('share_value', 0);
         $lotsByMember = [];
         foreach ($members as $m) {
@@ -22,6 +23,7 @@ class SharesController extends Controller
         $this->view('admin/shares/index', [
             'pageTitle' => __('shares_management'),
             'members' => $members,
+            'pager' => $pager,
             'shareValue' => $shareValue,
             'lotsByMember' => $lotsByMember,
         ], 'admin/layout');

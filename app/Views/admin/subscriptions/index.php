@@ -114,3 +114,5 @@ $hasSubFilters = ($status !== '' || $q !== '');
         </tbody>
     </table>
 </div>
+
+<?= pagination_links($pager ?? []) ?>

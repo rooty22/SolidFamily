@@ -255,7 +255,7 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
             <p class="font-bold text-slate-600 mb-1"><?= __('no_transactions') ?></p>
         </div>
     <?php else: ?>
-    <div class="table-panel">
+    <div class="table-panel" id="tx">
         <table class="table-modern">
             <thead>
                 <tr>
@@ -291,5 +291,6 @@ $foundingPercent = $foundingTotal > 0 ? min(100, round(($foundingPaid / $foundin
             </tbody>
         </table>
     </div>
+    <?= pagination_links($txPager, 'tx') ?>
     <?php endif; ?>
 </div>

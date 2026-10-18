@@ -19,11 +19,12 @@ class NotificationsController extends Controller
             'status' => $this->input('status', ''),
         ];
 
-        $notifications = Notification::withTargetName($filters);
+        $pager = paginate(Notification::withTargetName($filters));
 
         $this->view('admin/notifications/index', [
             'pageTitle' => __('notifications'),
-            'notifications' => $notifications,
+            'notifications' => $pager['items'],
+            'pager' => $pager,
             'filters' => $filters,
         ], 'admin/layout');
     }

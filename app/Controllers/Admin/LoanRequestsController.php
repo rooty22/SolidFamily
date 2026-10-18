@@ -28,9 +28,12 @@ class LoanRequestsController extends Controller
 
         $pendingOrder = array_values(array_filter($requests, fn($r) => $r['status'] === 'pending'));
 
+        $pager = paginate(array_reverse($requests));
+
         $this->view('admin/loan_requests/index', [
             'pageTitle' => __('loan_requests'),
-            'requests' => array_reverse($requests),
+            'requests' => $pager['items'],
+            'pager' => $pager,
             'pendingOrder' => $pendingOrder,
             'status' => $status,
             'reasonLabels' => $this->reasonLabels,

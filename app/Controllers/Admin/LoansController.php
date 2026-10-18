@@ -49,9 +49,12 @@ class LoansController extends Controller
             $loans = array_values(array_filter($loans, fn($l) => str_contains($l['member_name'], $q) || str_contains($l['member_mobile'], $q)));
         }
 
+        $pager = paginate($loans);
+
         $this->view('admin/loans/index', [
             'pageTitle' => __('loans'),
-            'loans' => $loans,
+            'loans' => $pager['items'],
+            'pager' => $pager,
             'q' => $q,
             'status' => $status,
             'reasonLabels' => $this->reasonLabels,

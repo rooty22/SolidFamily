@@ -29,11 +29,12 @@ class PaymentsController extends Controller
 
     public function index(): void
     {
-        $payments = $this->paymentFilters();
+        $pager = paginate($this->paymentFilters());
 
         $this->view('admin/payments/index', [
             'pageTitle' => __('payments'),
-            'payments' => $payments,
+            'payments' => $pager['items'],
+            'pager' => $pager,
             'categoryLabels' => $this->getCategoryLabels(),
             'filters' => $this->all(),
         ], 'admin/layout');

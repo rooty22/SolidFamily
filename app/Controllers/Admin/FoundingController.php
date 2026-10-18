@@ -15,7 +15,8 @@ class FoundingController extends Controller
 {
     public function index(): void
     {
-        $members = Member::withoutRegistrations(Member::all('name ASC'));
+        $pager = paginate(Member::withoutRegistrations(Member::all('name ASC')));
+        $members = $pager['items'];
         $rows = [];
         foreach ($members as $m) {
             $f = FoundingAmount::ensureForMember($m['id']);
@@ -26,6 +27,7 @@ class FoundingController extends Controller
         $this->view('admin/founding/index', [
             'pageTitle' => __('founding_amounts'),
             'rows' => $rows,
+            'pager' => $pager,
         ], 'admin/layout');
     }
 

@@ -69,6 +69,8 @@ class HomeController extends Controller
             fn($t) => $t['category'] !== 'loan_admin_fee'
         ));
 
+        $txPager = paginate($transactions, 8, 'tx_page');
+
         $this->view('site/home/index', [
             'pageTitle' => __('home'),
             'member' => $member,
@@ -82,7 +84,8 @@ class HomeController extends Controller
             'activeLoansCount' => count($activeLoans),
             'activeLoansRemaining' => $activeLoansRemaining,
             'remainingInstallments' => $remainingInstallments,
-            'transactions' => array_slice($transactions, 0, 6),
+            'transactions' => $txPager['items'],
+            'txPager' => $txPager,
         ], 'site/layout');
     }
 }

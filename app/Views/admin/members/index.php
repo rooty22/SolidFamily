@@ -114,7 +114,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             </tr>
         </thead>
         <tbody>
-            <?php $rowNo = 0; foreach ($members as $m): [$label, $variant] = status_badge($m['status']); $rowNo++; ?>
+            <?php $rowNo = ($pager["from"] ?? 1) - 1; foreach ($members as $m): [$label, $variant] = status_badge($m['status']); $rowNo++; ?>
             <tr>
                 <td class="font-numeric text-slate-500 fw-bold"><?= $rowNo ?></td>
                 <td class="fw-bold text-slate-900">
@@ -198,3 +198,5 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
         </tbody>
     </table>
 </div>
+
+<?= pagination_links($pager ?? []) ?>

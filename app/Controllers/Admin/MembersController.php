@@ -98,9 +98,12 @@ class MembersController extends Controller
             $decorated[] = $m;
         }
 
+        $pager = paginate($decorated);
+
         $this->view('admin/members/index', [
             'pageTitle' => __('members'),
-            'members' => $decorated,
+            'members' => $pager['items'],
+            'pager' => $pager,
             'q' => $q,
             'paymentStatus' => $paymentStatus,
             'accountStatus' => $accountStatus,

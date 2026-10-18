@@ -348,33 +348,71 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
             </table>
         </div>
 
+        <div id="memberSubsPager"></div>
         <script>
-        function filterMemberLots(lotId, btn) {
-            document.querySelectorAll('.btn-lot-tab').forEach(b => b.classList.remove('active', 'btn-primary'));
-            btn.classList.add('active', 'btn-primary');
+        // Lot tabs and page links work together: the tab picks the rows, the pager splits them into pages.
+        (function () {
+            var PAGE_SIZE = 12;
+            var RTL = <?= is_rtl() ? 'true' : 'false' ?>;
+            var state = { lot: 'all', page: 1 };
 
-            let rows = document.querySelectorAll('#memberSubsTable tbody tr.sub-row');
-            let visibleCount = 0;
-            let totalDue = 0;
-            let totalPaid = 0;
-            let totalRem = 0;
+            function render() {
+                var rows = Array.prototype.slice.call(document.querySelectorAll('#memberSubsTable tbody tr.sub-row'));
+                var matching = rows.filter(function (r) {
+                    return state.lot === 'all' || r.getAttribute('data-lot-id') === String(state.lot);
+                });
+                var pages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
+                state.page = Math.min(Math.max(1, state.page), pages);
+                var from = (state.page - 1) * PAGE_SIZE;
+                rows.forEach(function (r) { r.style.display = 'none'; });
+                matching.slice(from, from + PAGE_SIZE).forEach(function (r) { r.style.display = ''; });
 
-            rows.forEach(r => {
-                let rLot = r.getAttribute('data-lot-id');
-                if (lotId === 'all' || rLot === String(lotId)) {
-                    r.style.display = '';
-                    visibleCount++;
-                    totalDue += parseFloat(r.getAttribute('data-due') || 0);
-                    totalPaid += parseFloat(r.getAttribute('data-paid') || 0);
-                    totalRem += parseFloat(r.getAttribute('data-rem') || 0);
-                } else {
-                    r.style.display = 'none';
+                var b = document.getElementById('visibleRowsBadge');
+                if (b) b.textContent = matching.length;
+
+                var box = document.getElementById('memberSubsPager');
+                if (!box) return;
+                if (pages <= 1) { box.innerHTML = ''; return; }
+                var nums = [];
+                for (var p = 1; p <= pages; p++) {
+                    if (p === 1 || p === pages || Math.abs(p - state.page) <= 2) nums.push(p);
                 }
+                var html = '<nav class="pager-nav d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"><div class="text-xs text-slate-500 font-semibold">'
+                    + (RTL ? 'عرض ' : 'Showing ') + (from + 1) + ' - ' + Math.min(from + PAGE_SIZE, matching.length) + (RTL ? ' من ' : ' of ') + matching.length
+                    + '</div><ul class="pagination pagination-sm mb-0">';
+                function item(label, page, active, disabled) {
+                    return '<li class="page-item' + (active ? ' active' : '') + (disabled ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + page + '">' + label + '</a></li>';
+                }
+                html += item('<i class="bi ' + (RTL ? 'bi-chevron-right' : 'bi-chevron-left') + '"></i>', state.page - 1, false, state.page <= 1);
+                var prev = 0;
+                nums.forEach(function (p) {
+                    if (p - prev > 1) html += item('…', p - 1, false, true);
+                    html += item(String(p), p, p === state.page, false);
+                    prev = p;
+                });
+                html += item('<i class="bi ' + (RTL ? 'bi-chevron-left' : 'bi-chevron-right') + '"></i>', state.page + 1, false, state.page >= pages);
+                box.innerHTML = html + '</ul></nav>';
+            }
+
+            document.addEventListener('click', function (e) {
+                var a = e.target.closest('#memberSubsPager a[data-page]');
+                if (!a) return;
+                e.preventDefault();
+                if (a.parentNode.classList.contains('disabled')) return;
+                state.page = parseInt(a.getAttribute('data-page'), 10);
+                render();
             });
 
-            let b = document.getElementById('visibleRowsBadge');
-            if (b) b.textContent = visibleCount;
-        }
+            window.filterMemberLots = function (lotId, btn) {
+                document.querySelectorAll('.btn-lot-tab').forEach(function (b) { b.classList.remove('active', 'btn-primary'); });
+                btn.classList.add('active', 'btn-primary');
+                state.lot = lotId;
+                state.page = 1;
+                render();
+            };
+
+            render();
+        })();
         </script>
         <style>
         .btn-lot-tab {

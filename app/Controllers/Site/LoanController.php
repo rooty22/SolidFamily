@@ -58,11 +58,18 @@ class LoanController extends Controller
             [$member['id']]
         );
 
+        $loansPager = paginate($loans, 6, 'loans_page');
+        $requestsPager = paginate($requests, 8, 'requests_page');
+
         $this->view('site/loans/index', [
             'pageTitle' => __('loans_and_requests'),
             'isAdminAccount' => false,
             'requests' => $requests,
             'loans' => $loans,
+            'loansPage' => $loansPager['items'],
+            'loansPager' => $loansPager,
+            'requestsPage' => $requestsPager['items'],
+            'requestsPager' => $requestsPager,
             'reasonLabels' => $this->reasonLabels,
             'runningCount' => count($running),
             'runningRemaining' => array_sum(array_column($running, 'amount_remaining')),

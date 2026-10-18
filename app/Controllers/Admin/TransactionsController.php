@@ -66,9 +66,12 @@ class TransactionsController extends Controller
         $summary['shares'] = array_sum($sharesByMember);
         $summary['members'] = count($sharesByMember);
 
+        $pager = paginate($transactions);
+
         $this->view('admin/transactions/index', [
             'pageTitle' => __('transactions'),
-            'transactions' => $transactions,
+            'transactions' => $pager['items'],
+            'pager' => $pager,
             'summary' => $summary,
             'categoryLabels' => $this->getCategoryLabels(),
             'filters' => $this->all(),
