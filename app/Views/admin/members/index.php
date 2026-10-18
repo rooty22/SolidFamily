@@ -35,6 +35,13 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
     </div>
 </div>
 
+<?php if (!empty($pendingCount) && $accountStatus !== 'pending'): ?>
+<a href="<?= $buildFilterUrl(null, 'pending') ?>" class="flex items-center gap-2 p-3 mb-4 rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 text-sm font-bold text-decoration-none">
+    <i class="bi bi-person-exclamation"></i>
+    <span><?= is_rtl() ? 'يوجد ' . (int) $pendingCount . ' طلب تسجيل جديد بانتظار موافقتك' : (int) $pendingCount . ' new registration(s) waiting for your approval' ?></span>
+</a>
+<?php endif; ?>
+
 <!-- Modern, aesthetic Filter Toolbar -->
 <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
     <!-- Quick Filter Pills for Payment Status -->
@@ -77,6 +84,9 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             </a>
             <a href="<?= $buildFilterUrl(null, 'inactive') ?>" class="px-2.5 py-1 rounded-lg text-decoration-none transition-colors <?= $accountStatus === 'inactive' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900' ?>">
                 <?= is_rtl() ? 'موقوف' : 'Inactive' ?>
+            </a>
+            <a href="<?= $buildFilterUrl(null, 'pending') ?>" class="px-2.5 py-1 rounded-lg text-decoration-none transition-colors <?= $accountStatus === 'pending' ? 'bg-amber-500 text-white shadow-xs' : 'text-amber-700 hover:text-amber-900' ?>">
+                <?= is_rtl() ? 'طلبات التسجيل' : 'Registrations' ?><?php if (!empty($pendingCount)): ?> <span class="font-numeric">(<?= (int) $pendingCount ?>)</span><?php endif; ?>
             </a>
         </div>
         <?php if ($hasFilters): ?>
@@ -145,12 +155,25 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                 <td class="text-end">
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="btn btn-sm btn-soft" title="<?= __('view') ?>"><i class="bi bi-eye"></i></a>
                     <a href="<?= url('admin/members/' . $m['id'] . '/edit') ?>" class="btn btn-sm btn-soft" title="<?= __('edit') ?>"><i class="bi bi-pencil"></i></a>
+                    <?php if (in_array($m['status'], ['pending', 'rejected'], true)): ?>
+                        <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/approve') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'الموافقة على تسجيل "' . $m['name'] . '" والسماح له بالدخول؟' : 'Approve this registration and let the member log in?') ?>">
+                            <?= csrf_field() ?>
+                            <button class="btn btn-sm btn-soft text-emerald-600 font-bold" title="<?= is_rtl() ? 'موافقة' : 'Approve' ?>"><i class="bi bi-check-circle"></i> <?= is_rtl() ? 'موافقة' : 'Approve' ?></button>
+                        </form>
+                        <?php if ($m['status'] === 'pending'): ?>
+                        <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/reject') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'رفض طلب تسجيل "' . $m['name'] . '"؟' : 'Reject this registration?') ?>">
+                            <?= csrf_field() ?>
+                            <button class="btn btn-sm btn-soft text-rose-600 font-bold" title="<?= is_rtl() ? 'رفض' : 'Reject' ?>"><i class="bi bi-x-circle"></i> <?= is_rtl() ? 'رفض' : 'Reject' ?></button>
+                        </form>
+                        <?php endif; ?>
+                    <?php else: ?>
                     <form method="post" action="<?= url('admin/members/' . $m['id'] . '/toggle-status') ?>" class="d-inline" data-confirm="<?= __('are_you_sure') ?>">
                         <?= csrf_field() ?>
                         <button class="btn btn-sm btn-soft" title="<?= $m['status'] === 'active' ? __('deactivate') : __('activate') ?>">
                             <i class="bi bi-<?= $m['status'] === 'active' ? 'pause-circle' : 'play-circle' ?>"></i>
                         </button>
                     </form>
+                    <?php endif; ?>
                     <?php if (empty($m['is_admin'])): ?>
                     <form method="post" action="<?= url('admin/members/' . $m['id'] . '/delete') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'سيتم حذف المشترك "' . $m['name'] . '" نهائياً مع جميع اشتراكاته ومعاملاته وأسهمه، ولا يمكن التراجع. هل أنت متأكد؟' : 'Member "' . $m['name'] . '" will be permanently deleted with all subscriptions, transactions and shares. This cannot be undone. Are you sure?') ?>">
                         <?= csrf_field() ?>

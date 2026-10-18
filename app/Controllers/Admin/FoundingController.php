@@ -15,7 +15,7 @@ class FoundingController extends Controller
 {
     public function index(): void
     {
-        $members = Member::all('name ASC');
+        $members = Member::withoutRegistrations(Member::all('name ASC'));
         $rows = [];
         foreach ($members as $m) {
             $f = FoundingAmount::ensureForMember($m['id']);

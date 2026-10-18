@@ -31,7 +31,7 @@ CREATE TABLE members (
     password VARCHAR(255) NOT NULL,
     shares_count INT UNSIGNED NOT NULL DEFAULT 0,
     subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28), NULL falls back to the site setting',
-    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    status ENUM('active','inactive','pending','rejected') NOT NULL DEFAULT 'active' COMMENT 'pending/rejected: a self-registration waiting for / refused by an admin; neither can log in',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -80,6 +80,7 @@ CREATE TABLE share_lots (
     subscription_due_day TINYINT UNSIGNED NULL COMMENT 'NULL falls back to the site default',
     status ENUM('active','merged') NOT NULL DEFAULT 'active',
     source_request_id INT UNSIGNED NULL COMMENT 'the share_request that created/merged this lot, for traceability',
+    merged_into_id INT UNSIGNED NULL COMMENT 'for a lot folded away by a merge: the merged lot it became, so the merge can be split back',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_lots_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE

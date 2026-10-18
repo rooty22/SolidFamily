@@ -59,7 +59,7 @@ class Auth
         }
         if ($member['status'] !== 'active') {
             self::logoutMember();
-            Session::flash('error', 'تم إيقاف هذا الحساب، الرجاء التواصل مع الإدارة.');
+            Session::flash('error', Member::inactiveMessage($member['status']));
             return false;
         }
         if (Member::isAdmin($member)) {

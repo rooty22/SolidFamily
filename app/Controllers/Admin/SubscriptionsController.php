@@ -17,7 +17,7 @@ class SubscriptionsController extends Controller
     public function index(): void
     {
         $q = trim((string) $this->input('q', ''));
-        $members = $q !== '' ? Member::search($q) : Member::all('name ASC');
+        $members = Member::withoutRegistrations($q !== '' ? Member::search($q) : Member::all('name ASC'));
         $currentMonth = date('Y-m');
         $today = date('Y-m-d');
         $shareValue = (float) Setting::get('share_value', 0);

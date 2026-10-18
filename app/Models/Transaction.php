@@ -10,7 +10,7 @@ class Transaction extends Model
 
     public static function withMember(array $filters = []): array
     {
-        $sql = 'SELECT transactions.*, members.name as member_name, admins.name as admin_name,
+        $sql = 'SELECT transactions.*, members.name as member_name, members.shares_count as member_shares_count, admins.name as admin_name,
                        ms.month as sub_month, ms.lot_id as sub_lot_id, sl.shares_count as lot_shares_count
                 FROM transactions
                 JOIN members ON members.id = transactions.member_id

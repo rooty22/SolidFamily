@@ -169,6 +169,17 @@
                                                                 <i class="bi bi-calendar-event"></i>
                                                                 <span><?= is_rtl() ? 'تعديل التاريخ' : 'Date' ?></span>
                                                             </button>
+                                                            <!-- Split Lot Form (only a merged lot whose original lots are on record) -->
+                                                            <?php $lotChildren = \App\Models\ShareLot::mergedChildren((int) $lot['id']); ?>
+                                                            <?php if (count($lotChildren) >= 2): ?>
+                                                                <form method="post" action="<?= url('admin/shares/' . $m['id'] . '/split-lot/' . $lot['id']) ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من فصل السهم رقم ' . ($lIdx + 1) . ' إلى ' . count($lotChildren) . ' أسهم كما كانت قبل الدمج؟' : 'Split this merged share back into its ' . count($lotChildren) . ' original shares?' ?>');" class="m-0 d-inline">
+                                                                    <?= csrf_field() ?>
+                                                                    <button type="submit" class="btn btn-xs btn-outline-purple inline-flex items-center gap-1" title="<?= is_rtl() ? 'فصل السهم المدمج' : 'Split merged share' ?>">
+                                                                        <i class="bi bi-arrows-expand"></i>
+                                                                        <span><?= is_rtl() ? 'فصل' : 'Split' ?></span>
+                                                                    </button>
+                                                                </form>
+                                                            <?php endif; ?>
                                                             <!-- Cancel Lot Form -->
                                                             <form method="post" action="<?= url('admin/shares/' . $m['id'] . '/cancel-lot/' . $lot['id']) ?>" onsubmit="return confirm('<?= is_rtl() ? 'هل أنت متأكد من إلغاء السهم رقم ' . ($lIdx + 1) . ' (' . $lot['shares_count'] . ' سهم)؟ سيتم تخفيض الأسهم وإلغاء استحقاقاتها المستقبلية.' : 'Are you sure you want to cancel this lot?' ?>');" class="m-0 d-inline">
                                                                 <?= csrf_field() ?>

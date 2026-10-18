@@ -12,7 +12,7 @@ class SharesController extends Controller
 {
     public function index(): void
     {
-        $members = Member::all('shares_count DESC');
+        $members = Member::withoutRegistrations(Member::all('shares_count DESC'));
         $shareValue = (float) Setting::get('share_value', 0);
         $lotsByMember = [];
         foreach ($members as $m) {
@@ -94,9 +94,38 @@ class SharesController extends Controller
         $dueDay = $member['subscription_due_day'] !== null ? (int) $member['subscription_due_day'] : null;
         $merged = \App\Models\ShareLot::mergeWithBilling((int) $id, array_map(fn($l) => (int) $l['id'], $selected), $dueDay);
 
+        if ($merged) {
+            // The merge reduced the member's total shares, so the founding amount follows it.
+            \App\Models\FoundingAmount::ensureForMember((int) $id);
+        }
+
         Session::flash('success', $merged
             ? 'تم دمج ' . count($selected) . ' حصص في سهم واحد بنجاح (' . (int) $merged['shares_count'] . ' سهم).'
             : 'تعذّر دمج الحصص المختارة.');
+        $this->redirect('admin/shares');
+    }
+
+    /** Split a merged lot back into the original lots it was made from, each worth what it was before the merge */
+    public function splitLot(string $id, string $lotId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $id);
+        $lot = \App\Models\ShareLot::find((int) $lotId);
+        if (!$member || !$lot || (int) $lot['member_id'] !== (int) $id) {
+            Session::flash('error', 'بيانات الحصة غير صحيحة.');
+            $this->redirect('admin/shares');
+            return;
+        }
+
+        $restored = \App\Models\ShareLot::splitLot((int) $id, (int) $lotId);
+        if ($restored) {
+            // The split changed the member's total shares, so the founding amount follows it.
+            \App\Models\FoundingAmount::ensureForMember((int) $id);
+        }
+
+        Session::flash($restored ? 'success' : 'error', $restored
+            ? 'تم فصل السهم المدمج إلى ' . count($restored) . ' أسهم وعادت قيمة كل سهم كما كانت.'
+            : 'لا يمكن فصل هذه الحصة: ليست حصة مدمجة أو لا تتوفر بيانات الحصص الأصلية.');
         $this->redirect('admin/shares');
     }
 

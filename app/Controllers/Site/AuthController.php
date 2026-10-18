@@ -72,10 +72,8 @@ class AuthController extends Controller
         ];
 
         if (otp_is_disabled()) {
-            $memberId = $this->createMember($pending);
-            Auth::loginMember(Member::find($memberId));
-            Session::flash('success', 'تم إنشاء حسابك بنجاح.');
-            $this->redirect('home');
+            $this->createMember($pending);
+            $this->redirectAwaitingApproval();
         }
 
         $code = OtpCode::generate($pending['mobile'], 'member_register');
@@ -129,20 +127,24 @@ class AuthController extends Controller
             $this->redirect('register');
         }
 
-        $memberId = $this->createMember($pending);
+        $this->createMember($pending);
 
         Session::remove('pending_registration');
-        Auth::loginMember(Member::find($memberId));
-
-        Session::flash('success', 'تم إنشاء حسابك بنجاح.');
-        $this->redirect('home');
+        $this->redirectAwaitingApproval();
     }
 
+    /** A new registration is only a request: the member cannot log in until an admin approves it. */
     private function createMember(array $pending): int
     {
-        $memberId = Member::create(array_merge($pending, ['shares_count' => 0, 'status' => 'active']));
+        $memberId = Member::create(array_merge($pending, ['shares_count' => 0, 'status' => 'pending']));
         FoundingAmount::ensureForMember($memberId);
         return $memberId;
+    }
+
+    private function redirectAwaitingApproval(): void
+    {
+        Session::flash('success', 'تم استلام طلب تسجيلك وهو قيد مراجعة الإدارة. يمكنك تسجيل الدخول بعد الموافقة على طلبك.');
+        $this->redirect('login');
     }
 
     public function resendRegisterOtp(): void
@@ -243,7 +245,7 @@ class AuthController extends Controller
         RateLimiter::loginSucceeded('member', $nationalId);
 
         if ($member['status'] !== 'active') {
-            Session::flash('error', 'تم إيقاف هذا الحساب، الرجاء التواصل مع الإدارة.');
+            Session::flash('error', Member::inactiveMessage($member['status']));
             $this->redirect('login');
             return;
         }

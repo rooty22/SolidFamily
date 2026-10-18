@@ -62,7 +62,7 @@ class LoansController extends Controller
     {
         $requestId = $this->input('request_id');
         $loanRequest = $requestId ? LoanRequest::find((int) $requestId) : null;
-        $members = Member::all('name ASC');
+        $members = Member::withoutRegistrations(Member::all('name ASC'));
         $feePercent = (float) Setting::get('loan_admin_fee_percent', 0);
 
         $this->view('admin/loans/create', [

@@ -116,6 +116,8 @@ class ShareRequestsController extends Controller
         } elseif ($request['type'] === 'merge') {
             // Carries this month's payments of the merged lots onto the new lot's row and voids the old rows.
             $mergedLot = ShareLot::mergeWithBilling((int) $member['id'], $mergeLotIds, $lotDueDay, (int) $id);
+            // The merged lot counts as one share, so the member's total was already reduced by the merge itself.
+            $newCount = (int) Member::find((int) $member['id'])['shares_count'];
         }
 
         $memberUpdate = ['shares_count' => $newCount];

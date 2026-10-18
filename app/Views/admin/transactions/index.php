@@ -42,7 +42,14 @@
                 <i class="bi bi-calculator-fill"></i>
                 <span><?php if (!empty($summary['filtered'])): ?><?= is_rtl() ? 'إجمالي نتيجة التصفية' : 'Filtered Results Total' ?><?php else: ?><?= is_rtl() ? 'الإجمالي الكلي لكل معاملات الموقع' : 'Site-wide Total (all transactions)' ?><?php endif; ?></span>
             </div>
-            <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;"><?= money($summary['total']) ?></div>
+            <div class="flex flex-wrap items-end gap-x-5 gap-y-2">
+                <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;"><?= money($summary['total']) ?></div>
+                <div class="rounded-xl px-3 py-2" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.15);">
+                    <div class="text-sky-200 text-[11px] font-bold"><i class="bi bi-pie-chart-fill"></i> <?= !empty($summary['filtered']) ? (is_rtl() ? 'إجمالي الأسهم بعد التصفية' : 'Shares after filter') : (is_rtl() ? 'إجمالي الأسهم' : 'Total shares') ?></div>
+                    <div class="font-numeric font-extrabold text-lg"><?= number_format($summary['shares']) ?> <span class="text-xs font-bold text-sky-100/80"><?= is_rtl() ? 'سهم' : 'shares' ?></span></div>
+                    <div class="text-sky-100/70 text-[10px] font-bold"><?= is_rtl() ? 'لـ ' . (int) $summary['members'] . ' مشترك' : 'across ' . (int) $summary['members'] . ' members' ?></div>
+                </div>
+            </div>
             <div class="text-sky-100/80 text-xs font-bold mt-1">
                 <?= is_rtl() ? 'من ' . (int) $summary['count'] . ' معاملة' : 'from ' . (int) $summary['count'] . ' transactions' ?>
                 <?php if (!empty($filters['from']) || !empty($filters['to'])): ?>

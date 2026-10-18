@@ -60,6 +60,22 @@ class Member extends Model
         return false;
     }
 
+    /** Why a non-active account cannot log in: still awaiting approval, refused, or suspended. */
+    public static function inactiveMessage(string $status): string
+    {
+        return match ($status) {
+            'pending' => 'طلب تسجيلك قيد مراجعة الإدارة، يمكنك تسجيل الدخول بعد الموافقة عليه.',
+            'rejected' => 'تم رفض طلب تسجيلك، الرجاء التواصل مع الإدارة.',
+            default => 'تم إيقاف هذا الحساب، الرجاء التواصل مع الإدارة.',
+        };
+    }
+
+    /** Registrations still awaiting a decision or refused are not members yet: left out of the billing / shares / loans screens. */
+    public static function withoutRegistrations(array $members): array
+    {
+        return array_values(array_filter($members, fn($m) => !in_array($m['status'], ['pending', 'rejected'], true)));
+    }
+
     public static function search(string $term): array
     {
         $sql = 'SELECT * FROM members WHERE mobile LIKE ? OR national_id LIKE ? OR name LIKE ? ORDER BY created_at DESC';

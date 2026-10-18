@@ -24,7 +24,7 @@ class MembersController extends Controller
                 if ($paymentStatus === '') {
                     $paymentStatus = $statusParam;
                 }
-            } elseif (in_array($statusParam, ['active', 'inactive'])) {
+            } elseif (in_array($statusParam, ['active', 'inactive', 'pending', 'rejected'])) {
                 if ($accountStatus === '') {
                     $accountStatus = $statusParam;
                 }
@@ -106,6 +106,7 @@ class MembersController extends Controller
             'accountStatus' => $accountStatus,
             'counts' => $counts,
             'lateInfo' => $lateInfo,
+            'pendingCount' => Member::count(['status' => 'pending']),
         ], 'admin/layout');
     }
 
@@ -258,11 +259,28 @@ class MembersController extends Controller
         $this->redirect('admin/members/' . $id);
     }
 
+    /** Decide a self-registration: approve (the member can log in) or reject. A rejected one can still be approved later. */
+    public function decideRegistration(string $id, string $decision): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $id);
+        if (!$member || !in_array($member['status'], ['pending', 'rejected'], true)) {
+            Session::flash('error', 'هذا الطلب غير موجود أو تمت معالجته بالفعل.');
+            $this->redirect('admin/members');
+        }
+
+        $approve = $decision === 'approve';
+        Member::update((int) $id, ['status' => $approve ? 'active' : 'rejected']);
+        Session::flash('success', $approve ? 'تمت الموافقة على التسجيل ويمكن للمشترك الدخول الآن.' : 'تم رفض طلب التسجيل.');
+        $this->redirect('admin/members');
+    }
+
     public function toggleStatus(string $id): void
     {
         $this->verifyCsrf();
         $member = Member::find((int) $id);
-        if ($member) {
+        // A registration is decided with approve / reject, never flipped to active by the suspend toggle.
+        if ($member && !in_array($member['status'], ['pending', 'rejected'], true)) {
             $newStatus = $member['status'] === 'active' ? 'inactive' : 'active';
             Member::update((int) $id, ['status' => $newStatus]);
             Session::flash('success', $newStatus === 'active' ? 'تم تفعيل حساب المشترك.' : 'تم إيقاف حساب المشترك.');

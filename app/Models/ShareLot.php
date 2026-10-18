@@ -182,7 +182,9 @@ class ShareLot extends Model
 
     /**
      * Combine the given active lots (null = every active lot) into a single new one; those lots are marked 'merged' and
-     * any other lot of the member is left untouched. Returns the new lot, or null when fewer than two lots were selected.
+     * any other lot of the member is left untouched. The merged lot is worth a single share (merging two 100 SAR shares
+     * leaves one 100 SAR share, not 200), so members.shares_count drops by whatever the merge folded away.
+     * Returns the new lot, or null when fewer than two lots were selected.
      */
     public static function mergeLots(int $memberId, ?array $lotIds, ?int $dueDay, ?int $sourceRequestId = null): ?array
     {
@@ -191,20 +193,94 @@ class ShareLot extends Model
             return null;
         }
 
-        $totalShares = array_sum(array_column($selected, 'shares_count'));
+        $removedShares = (int) array_sum(array_column($selected, 'shares_count')) - 1;
         foreach ($selected as $lot) {
             self::update($lot['id'], ['status' => 'merged']);
         }
 
+        $member = Member::find($memberId);
+        if ($member && $removedShares > 0) {
+            Member::update($memberId, ['shares_count' => max(0, (int) $member['shares_count'] - $removedShares)]);
+        }
+
         $id = self::create([
             'member_id' => $memberId,
-            'shares_count' => $totalShares,
+            'shares_count' => 1,
             'subscription_due_day' => $dueDay,
             'status' => 'active',
             'source_request_id' => $sourceRequestId,
         ]);
 
+        // Remember what each folded lot became, so splitLot() can bring the originals back untouched.
+        foreach ($selected as $lot) {
+            self::update($lot['id'], ['merged_into_id' => $id]);
+        }
+
         return self::find($id);
+    }
+
+    /** The original lots that were folded into the given merged lot, oldest first. */
+    public static function mergedChildren(int $lotId): array
+    {
+        return self::where(['merged_into_id' => $lotId, 'status' => 'merged'], 'created_at ASC, id ASC');
+    }
+
+    /**
+     * Undo a merge: the merged lot is retired and the lots it was made from become active again with their own share
+     * counts (so each is worth what it was before), start dates and due days. members.shares_count is restored to
+     * match. What was already paid this month on the merged lot's row is carried onto the restored rows (oldest
+     * first, never more than each one owes) and the merged row is voided. Returns the restored lots, or null when
+     * the lot is not an active merged lot with its originals on record.
+     */
+    public static function splitLot(int $memberId, int $lotId): ?array
+    {
+        $lot = self::find($lotId);
+        if (!$lot || (int) $lot['member_id'] !== $memberId || $lot['status'] !== 'active') {
+            return null;
+        }
+        $children = self::mergedChildren($lotId);
+        if (count($children) < 2) {
+            return null;
+        }
+
+        $month = date('Y-m');
+        $mergedRow = MonthlySubscription::first(['member_id' => $memberId, 'month' => $month, 'lot_id' => $lotId]);
+        $carriedPaid = (float) ($mergedRow['amount_paid'] ?? 0);
+
+        self::update($lotId, ['status' => 'merged']);
+        foreach ($children as $child) {
+            self::update($child['id'], ['status' => 'active', 'merged_into_id' => null]);
+        }
+
+        $member = Member::find($memberId);
+        if ($member) {
+            $restored = (int) array_sum(array_column($children, 'shares_count'));
+            Member::update($memberId, ['shares_count' => max(0, (int) $member['shares_count'] - (int) $lot['shares_count'] + $restored)]);
+        }
+
+        MonthlySubscription::voidRowsOfLots($memberId, [$lotId], true, $month);
+        $rowsByLot = [];
+        foreach (MonthlySubscription::ensureMonthExistsForMember($memberId, $month) as $row) {
+            $rowsByLot[(int) $row['lot_id']] = $row;
+        }
+
+        foreach ($children as $child) {
+            $row = $rowsByLot[(int) $child['id']] ?? null;
+            if ($carriedPaid <= 0 || !$row) {
+                continue;
+            }
+            $paid = min((float) $row['amount_due'], $carriedPaid);
+            if ($paid <= 0) {
+                continue;
+            }
+            $carriedPaid -= $paid;
+            MonthlySubscription::update($row['id'], [
+                'amount_paid' => $paid,
+                'status' => $paid >= (float) $row['amount_due'] ? 'paid' : 'partial',
+            ]);
+        }
+
+        return $children;
     }
 
     /**

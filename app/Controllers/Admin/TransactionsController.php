@@ -47,8 +47,11 @@ class TransactionsController extends Controller
 
         // Always shown: the total of the filtered result, or of the whole site's ledger when no filter is applied,
         // so it can be matched against the bank statement either way.
-        $summary = ['filtered' => $filtered, 'count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => []];
+        $summary = ['filtered' => $filtered, 'count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => [], 'shares' => 0, 'members' => 0];
+        $sharesByMember = [];
         foreach ($transactions as $t) {
+            // Shares of the filtered result: each member appearing in it is counted once, with the shares they hold.
+            $sharesByMember[(int) $t['member_id']] = (int) $t['member_shares_count'];
             $amount = (float) $t['amount'];
             $summary['total'] += $amount;
             if ($t['category'] === 'loan_disbursement') {
@@ -59,6 +62,8 @@ class TransactionsController extends Controller
             $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + $amount;
         }
         arsort($summary['byCategory']);
+        $summary['shares'] = array_sum($sharesByMember);
+        $summary['members'] = count($sharesByMember);
 
         $this->view('admin/transactions/index', [
             'pageTitle' => __('transactions'),
