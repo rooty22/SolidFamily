@@ -215,6 +215,7 @@ class ShareLot extends Model
         foreach ($selected as $lot) {
             self::update($lot['id'], ['merged_into_id' => $id]);
         }
+        ShareMergeLog::record($memberId, $id, 'merge', $removedShares);
 
         return self::find($id);
     }
@@ -256,6 +257,7 @@ class ShareLot extends Model
         if ($member) {
             $restored = (int) array_sum(array_column($children, 'shares_count'));
             Member::update($memberId, ['shares_count' => max(0, (int) $member['shares_count'] - (int) $lot['shares_count'] + $restored)]);
+            ShareMergeLog::record($memberId, $lotId, 'split', $restored - (int) $lot['shares_count']);
         }
 
         MonthlySubscription::voidRowsOfLots($memberId, [$lotId], true, $month);

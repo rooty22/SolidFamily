@@ -125,6 +125,70 @@
     </div>
 </div>
 
+<!-- Shares deducted by merges / given back by splits -->
+<?php $ms = $stats['mergeSummary']; ?>
+<div class="card-panel mb-4">
+    <div class="panel-head">
+        <h3><i class="bi bi-arrows-collapse text-purple-600"></i> <?= is_rtl() ? 'الأسهم المخصومة بالدمج والمفصولة' : 'Shares deducted by merge / restored by split' ?></h3>
+        <span class="text-xs text-slate-400 font-medium"><?= is_rtl() ? 'المبلغ = عدد الأسهم × قيمة السهم الشهرية وقت العملية' : 'Amount = shares × monthly share value at the time' ?></span>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="rounded-xl p-3 border border-rose-200 bg-rose-50">
+                <div class="text-[11px] font-bold text-rose-700"><i class="bi bi-arrows-collapse"></i> <?= is_rtl() ? 'مخصومة بسبب الدمج' : 'Deducted by merges' ?> <span class="font-numeric">(<?= (int) $ms['merged']['count'] ?>)</span></div>
+                <div class="font-num font-extrabold text-xl text-rose-700 mt-1"><?= money($ms['merged']['amount']) ?></div>
+                <div class="text-xs text-rose-600 font-bold font-numeric"><?= number_format($ms['merged']['shares']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="rounded-xl p-3 border border-emerald-200 bg-emerald-50">
+                <div class="text-[11px] font-bold text-emerald-700"><i class="bi bi-arrows-expand"></i> <?= is_rtl() ? 'مفصولة (أُعيدت بعد الدمج)' : 'Split (restored)' ?> <span class="font-numeric">(<?= (int) $ms['split']['count'] ?>)</span></div>
+                <div class="font-num font-extrabold text-xl text-emerald-700 mt-1"><?= money($ms['split']['amount']) ?></div>
+                <div class="text-xs text-emerald-600 font-bold font-numeric"><?= number_format($ms['split']['shares']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="rounded-xl p-3 border border-slate-200 bg-slate-50">
+                <div class="text-[11px] font-bold text-slate-600"><i class="bi bi-calculator"></i> <?= is_rtl() ? 'المخصوم حاليًا (الدمج − الفصل)' : 'Currently deducted (merge − split)' ?></div>
+                <div class="font-num font-extrabold text-xl text-slate-800 mt-1"><?= money($ms['net_amount']) ?></div>
+                <div class="text-xs text-slate-500 font-bold font-numeric"><?= number_format($ms['net_shares']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?></div>
+            </div>
+        </div>
+    </div>
+    <?php if (!empty($ms['recent'])): ?>
+    <div class="table-responsive mt-3">
+        <table class="table-modern text-xs">
+            <thead>
+                <tr>
+                    <th><?= __('date') ?></th>
+                    <th><?= __('member') ?></th>
+                    <th><?= is_rtl() ? 'العملية' : 'Action' ?></th>
+                    <th><?= is_rtl() ? 'الأسهم' : 'Shares' ?></th>
+                    <th><?= __('amount') ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($ms['recent'] as $r): ?>
+                <tr>
+                    <td class="font-numeric"><bdi dir="ltr"><?= date_ar(substr($r['created_at'], 0, 10)) ?></bdi></td>
+                    <td class="fw-bold"><?= e($r['member_name']) ?></td>
+                    <td>
+                        <?php if ($r['action'] === 'merge'): ?>
+                            <span class="badge-status badge-danger"><?= is_rtl() ? 'دمج (خصم)' : 'Merge (deduct)' ?></span>
+                        <?php else: ?>
+                            <span class="badge-status badge-success"><?= is_rtl() ? 'فصل (إعادة)' : 'Split (restore)' ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="font-numeric"><?= number_format($r['shares']) ?></td>
+                    <td class="font-numeric fw-bold"><?= money($r['amount']) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+</div>
+
 <!-- Charts Section -->
 <div class="row g-3 mb-4">
     <div class="col-xl-8">

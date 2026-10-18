@@ -137,6 +137,9 @@ class DashboardController extends Controller
             $monthlyTrend[] = ($sums[$month] ?? ['month' => $month, 'paid' => 0, 'due' => 0]) + ['month_label' => month_label($month)];
         }
 
+        // Shares deducted by merges / given back by splits, with the monthly amount they were worth.
+        $mergeSummary = \App\Models\ShareMergeLog::summary();
+
         $export = [
             'إجمالي عدد المشتركين' => $totalMembers,
             'إجمالي عدد الأسهم المسجلة' => $totalShares,
@@ -160,6 +163,11 @@ class DashboardController extends Controller
             'إجمالي عمولات القروض الإدارية المكتسبة' => $loanAdminFees,
             'متوسط نسبة العمولة الإدارية للقروض' => round($avgFeePercent, 2) . '%',
             'إجمالي طلبات الأسهم' => $shareRequestsCount,
+            'الأسهم المخصومة بسبب الدمج (عدد)' => $mergeSummary['merged']['shares'],
+            'الأسهم المخصومة بسبب الدمج (المبلغ الشهري)' => $mergeSummary['merged']['amount'],
+            'الأسهم المفصولة (عدد)' => $mergeSummary['split']['shares'],
+            'الأسهم المفصولة (المبلغ الشهري)' => $mergeSummary['split']['amount'],
+            'الأسهم المخصومة حاليًا بعد الفصل (المبلغ الشهري)' => $mergeSummary['net_amount'],
             'عدد المشتركين المتأخرين عن السداد' => $lateMembers,
             'المتأخرون في الاشتراكات الشهرية' => $lateSubsCount,
             'المتأخرون في أقساط القروض' => $lateLoansCount,
@@ -170,7 +178,7 @@ class DashboardController extends Controller
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
-            'lateLoansCount', 'monthlyTrend', 'export'
+            'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'export'
         );
     }
 

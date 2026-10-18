@@ -87,6 +87,22 @@ CREATE TABLE share_lots (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
+-- Share merge / split log: shares taken off a member by a merge (the folded-away shares) and
+-- given back by a split, with the monthly amount they were worth at the time (feeds the dashboard).
+-- =========================================================
+CREATE TABLE share_merge_log (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    member_id INT UNSIGNED NOT NULL,
+    lot_id INT UNSIGNED NULL COMMENT 'the merged lot that was created (merge) or retired (split)',
+    action ENUM('merge','split') NOT NULL,
+    shares INT UNSIGNED NOT NULL COMMENT 'shares deducted by the merge / restored by the split',
+    share_value DECIMAL(12,2) NOT NULL DEFAULT 0,
+    amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'shares x share_value',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_merge_log_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================================================
 -- Monthly subscriptions: one row per active share lot per month (or one lot-less
 -- row for a member with no shares yet), so unmerged lots bill on their own due dates.
 -- =========================================================
