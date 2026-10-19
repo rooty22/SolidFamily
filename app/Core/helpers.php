@@ -389,6 +389,7 @@ function share_request_types(): array
         'add' => function_exists('__') ? __('share_type_add') : 'إضافة سهم',
         'merge' => function_exists('__') ? __('share_type_merge') : 'دمج الأسهم',
         'cancel' => function_exists('__') ? __('share_type_cancel') : 'إلغاء سهم',
+        'split' => function_exists('__') ? __('share_type_split') : 'فصل الأسهم',
     ];
 }
 

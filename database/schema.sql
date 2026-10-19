@@ -57,9 +57,9 @@ CREATE TABLE otp_codes (
 CREATE TABLE share_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     member_id INT UNSIGNED NOT NULL,
-    type ENUM('add','merge','cancel') NOT NULL,
+    type ENUM('add','merge','cancel','split') NOT NULL,
     shares_count INT UNSIGNED NULL,
-    lot_ids VARCHAR(255) NULL COMMENT 'merge requests: comma-separated share_lots ids to merge, NULL = every active lot',
+    lot_ids VARCHAR(255) NULL COMMENT 'merge requests: comma-separated share_lots ids to merge, NULL = every active lot; split requests: the merged lot id to split',
     status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
     admin_note VARCHAR(500) NULL,
     reviewed_by INT UNSIGNED NULL,

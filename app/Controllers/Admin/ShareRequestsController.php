@@ -88,6 +88,18 @@ class ShareRequestsController extends Controller
             $this->redirect('admin/share-requests');
         }
 
+        // A split request names the merged share to split back; it must still be an active merged share.
+        $splitLotId = $request['type'] === 'split' ? (int) (ShareLot::parseLotIds($request['lot_ids'] ?? null)[0] ?? 0) : 0;
+        if ($request['type'] === 'split') {
+            $splitLot = $splitLotId ? ShareLot::find($splitLotId) : null;
+            if (!$splitLot || (int) $splitLot['member_id'] !== (int) $member['id'] || $splitLot['status'] !== 'active' || count(ShareLot::mergedChildren($splitLotId)) < 2) {
+                Session::flash('error', 'لا يمكن الموافقة على الفصل: السهم المطلوب فصله لم يعد سهمًا مدموجًا نشطًا. يمكنك رفض الطلب.');
+                $this->redirect('admin/share-requests');
+            }
+            // The restored lots keep their own due days, so a due day typed here must not touch the member's.
+            $dueDay = null;
+        }
+
         if ($request['type'] === 'cancel' && (int) $request['shares_count'] > $newCount) {
             Session::flash('error', 'لا يمكن الموافقة: عدد الأسهم المطلوب إلغاؤها أكبر من أسهم المشترك الحالية (' . $newCount . ').');
             $this->redirect('admin/share-requests');
@@ -116,6 +128,11 @@ class ShareRequestsController extends Controller
             // otherwise be left behind still showing as owed for shares the member no longer holds. A row
             // with a real payment already on it is left alone -- cancelling doesn't erase money paid.
             $this->voidStaleLotRows((int) $member['id'], array_diff($before, $after), false);
+        } elseif ($request['type'] === 'split') {
+            // Brings back the original lots (each worth what it was), carries this month's payment onto them and
+            // restores the member's total shares.
+            ShareLot::splitLot((int) $member['id'], $splitLotId);
+            $newCount = (int) Member::find((int) $member['id'])['shares_count'];
         } elseif ($request['type'] === 'merge') {
             // Carries this month's payments of the merged lots onto the new lot's row and voids the old rows.
             $mergedLot = ShareLot::mergeWithBilling((int) $member['id'], $mergeLotIds, $lotDueDay, (int) $id);

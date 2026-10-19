@@ -6,6 +6,18 @@ if ($request['type'] === 'merge' && $requestedShares === 0) {
     $requestedShares = $currentShares;
 }
 $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
+// A split request names one merged share; show what it returns as and the member's total after the split.
+$splitLot = null;
+$splitChildren = [];
+$balanceAfterSplit = $currentShares;
+if ($request['type'] === 'split') {
+    $splitLotId = (int) (\App\Models\ShareLot::parseLotIds($request['lot_ids'] ?? null)[0] ?? 0);
+    $splitLot = $splitLotId ? \App\Models\ShareLot::find($splitLotId) : null;
+    $splitChildren = $splitLotId ? \App\Models\ShareLot::mergedChildren($splitLotId) : [];
+    if ($splitLot) {
+        $balanceAfterSplit = max(0, $currentShares - (int) $splitLot['shares_count'] + (int) array_sum(array_column($splitChildren, 'shares_count')));
+    }
+}
 ?>
 
 <div class="space-y-6">
@@ -62,11 +74,13 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
 
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
                         <span class="text-[11px] font-semibold text-slate-500 block mb-1">
-                            <?= $request['type'] === 'merge' ? (is_rtl() ? 'إجمالي الأسهم المدمجة' : 'Total Merged Shares') : (is_rtl() ? 'الأسهم المطلوبة' : 'Requested Shares') ?>
+                            <?= $request['type'] === 'merge' ? (is_rtl() ? 'إجمالي الأسهم المدمجة' : 'Total Merged Shares') : ($request['type'] === 'split' ? (is_rtl() ? 'الأسهم المستعادة بالفصل' : 'Shares restored by the split') : (is_rtl() ? 'الأسهم المطلوبة' : 'Requested Shares')) ?>
                         </span>
                         <span class="text-lg font-bold text-brand-600 font-numeric">
                             <?php if ($request['type'] === 'merge'): ?>
                                 <?= number_format($requestedShares ?: $currentShares) ?> <?= is_rtl() ? 'سهم (دمج الحصص)' : 'Shares (Merged)' ?>
+                            <?php elseif ($request['type'] === 'split' && $requestedShares): ?>
+                                <?= number_format($requestedShares) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?>
                             <?php elseif ($requestedShares): ?>
                                 <?= ($request['type'] === 'cancel' ? '-' : '+') . number_format($requestedShares) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?>
                             <?php else: ?>
@@ -78,7 +92,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                     <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 col-span-2 sm:col-span-1">
                         <?php if ($isPending): ?>
                             <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= $request['type'] === 'merge' ? (is_rtl() ? 'الرصيد بعد الدمج' : 'Balance After Merge') : (is_rtl() ? 'الرصيد بعد التنفيذ' : 'Balance After Execution') ?></span>
-                            <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format($request['type'] === 'merge' ? $currentShares : max(0, $currentShares + $delta)) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?></span>
+                            <span class="text-lg font-bold text-indigo-700 font-numeric"><?= number_format($request['type'] === 'merge' ? $currentShares : ($request['type'] === 'split' ? $balanceAfterSplit : max(0, $currentShares + $delta))) ?> <?= is_rtl() ? 'سهم' : 'Shares' ?></span>
                         <?php elseif ($request['status'] === 'approved'): ?>
                             <span class="text-[11px] font-semibold text-slate-500 block mb-1"><?= is_rtl() ? 'حالة التنفيذ' : 'Execution Status' ?></span>
                             <span class="text-sm font-bold text-emerald-700"><?= $request['type'] === 'merge' ? (is_rtl() ? 'تم دمج الحصص في حصة واحدة بنجاح' : 'Lots successfully merged into one') : (is_rtl() ? 'تم التنفيذ، والرصيد الحالي يشمل الطلب' : 'Executed, current balance includes request') ?></span>
@@ -96,6 +110,25 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                                 <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600 w-1/3">تاريخ التقديم</td>
                                 <td class="py-3 px-4 text-xs font-medium text-slate-700 font-numeric"><bdi dir="ltr"><?= date_ar($request['created_at'], 'd/m/Y H:i') ?></bdi></td>
                             </tr>
+                            <?php if ($request['type'] === 'split'): ?>
+                            <tr>
+                                <td class="py-3 px-4 bg-slate-50/50 text-xs font-bold text-slate-600 w-1/3"><?= is_rtl() ? 'السهم المطلوب فصله' : 'Share to split' ?></td>
+                                <td class="py-3 px-4 text-xs font-medium text-slate-700">
+                                    <?php if (!$splitLot): ?>
+                                        <span class="text-rose-600 font-bold"><?= is_rtl() ? 'السهم غير موجود' : 'Share not found' ?></span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-bold me-1"><?= e(\App\Models\ShareLot::label((int) $member['id'], (int) $splitLot['id'])) ?></span>
+                                        <span class="font-bold"><?= is_rtl() ? 'يعود إلى:' : 'Returns as:' ?></span>
+                                        <?php foreach ($splitChildren as $ci => $child): ?>
+                                            <?= $ci > 0 ? ' + ' : '' ?><span class="font-numeric font-bold"><?= number_format($child['shares_count']) ?></span> <?= is_rtl() ? 'سهم' : 'share(s)' ?>
+                                        <?php endforeach; ?>
+                                        <?php if ($isPending && ($splitLot['status'] !== 'active' || count($splitChildren) < 2)): ?>
+                                            <span class="text-rose-600 font-bold d-block"><?= is_rtl() ? 'لم يعد سهمًا مدموجًا نشطًا' : 'No longer an active merged share' ?></span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
                             <?php if ($request['type'] === 'merge'): ?>
                             <?php
                                 $reqLotIds = \App\Models\ShareLot::parseLotIds($request['lot_ids'] ?? null);
@@ -149,6 +182,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                                 $graceEnabled = \App\Models\Setting::get('subscription_grace_enabled', '1') === '1';
                                 $graceDays = (int) \App\Models\Setting::get('subscription_grace_days', 7);
                                 ?>
+                                <?php if ($request['type'] !== 'split'): ?>
                                 <input type="number" id="approve-due-day-input" name="subscription_due_day" min="1" max="28" value="<?= e($member['subscription_due_day'] ?? '') ?>" class="w-full text-xs py-2 px-3 rounded-lg border border-emerald-200 bg-white font-numeric" placeholder="يوم استحقاق مخصص لهذا العضو (اختياري، 1-28)..."
                                     oninput="approveDueDayHint(this)">
                                 <div id="approve-due-day-hint" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-1.5 mb-2" style="display:none;"></div>
@@ -167,6 +201,7 @@ $typeTitle = $typeLabels[$request['type']] ?? $request['type'];
                                 }
                                 approveDueDayHint(document.getElementById('approve-due-day-input'));
                                 </script>
+                                <?php endif; ?>
                                 <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2">
                                     <i class="bi bi-check-lg text-base"></i>
                                     <span>الموافقة والاعتماد</span>

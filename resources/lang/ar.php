@@ -457,6 +457,7 @@ return [
     'share_type_add' => 'إضافة سهم',
     'share_type_merge' => 'دمج الأسهم',
     'share_type_cancel' => 'إلغاء سهم',
+    'share_type_split' => 'فصل الأسهم',
     'subscriptions_index_title' => 'الاشتراكات الشهرية للأعضاء',
     'subscriptions_index_desc' => 'متابعة وتوثيق سداد الاشتراكات لشهر :month',
     'share_value_col' => 'قيمة السهم',
@@ -659,5 +660,6 @@ return [
     'share_only_add_hint' => 'ليس لديك أسهم بعد، لذلك يمكنك تقديم طلب إضافة أسهم فقط. الدمج والإلغاء يتاحان بعد امتلاك أسهم.',
     'share_merge_needs_lots_hint' => 'الدمج يتاح عندما يكون لديك دفعتا أسهم منفصلتان أو أكثر.',
     'share_merge_pending_hint' => 'لديك طلب دمج قيد المراجعة بالفعل.',
+    'share_split_needs_merged_hint' => 'الفصل يتاح عندما يكون لديك سهم ناتج عن دمج أسهم سابقة.',
     'subscription_grace_until' => 'مهلة حتى :date',
 ];

@@ -55,6 +55,7 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
                         <option value="add"><?= __('share_type_add') ?></option>
                         <option value="merge" <?= $canMerge ? '' : 'disabled' ?>><?= __('share_type_merge') ?></option>
                         <option value="cancel" <?= $cancelableShares > 0 ? '' : 'disabled' ?>><?= __('share_type_cancel') ?></option>
+                        <option value="split" <?= !empty($splittableLots) ? '' : 'disabled' ?>><?= __('share_type_split') ?></option>
                     </select>
                     <?php if ((int) $member['shares_count'] < 1): ?>
                         <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= __('share_only_add_hint') ?></div>
@@ -75,7 +76,30 @@ $rejected = count(array_filter($requests, fn($r) => $r['status'] === 'rejected')
                     </div>
                     <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= is_rtl() ? 'الحصص التي لم تختارها تبقى كما هي دون دمج.' : 'Lots you leave unticked stay as they are.' ?></div>
                 </div>
-                <div class="mb-3" x-show="type !== 'merge'">
+                <div class="mb-3" x-show="type === 'split'" x-cloak style="display:none;">
+                    <label class="form-label"><?= is_rtl() ? 'اختر السهم المدموج المراد فصله' : 'Choose the merged share to split' ?></label>
+                    <?php if (empty($splittableLots)): ?>
+                        <div class="small text-muted"><i class="bi bi-info-circle"></i> <?= __('share_split_needs_merged_hint') ?></div>
+                    <?php else: ?>
+                    <div class="d-flex flex-column gap-2">
+                        <?php foreach ($splittableLots as $i => $lot): ?>
+                            <label class="d-flex align-items-start gap-2 border rounded-3 px-3 py-2" style="cursor:pointer;">
+                                <input type="radio" class="form-check-input mt-1" name="split_lot_id" value="<?= (int) $lot['id'] ?>" <?= $i === 0 ? 'checked' : '' ?>>
+                                <span>
+                                    <span class="fw-bold d-block"><?= is_rtl() ? 'السهم رقم ' . (int) ($lotNumbers[(int) $lot['id']] ?? 0) : 'Share #' . (int) ($lotNumbers[(int) $lot['id']] ?? 0) ?></span>
+                                    <span class="text-muted small"><?= is_rtl() ? 'يعود إلى:' : 'Returns as:' ?>
+                                        <?php foreach ($lot['children'] as $ci => $child): ?>
+                                            <?= $ci > 0 ? ' + ' : '' ?><span class="font-num"><?= number_format($child['shares_count']) ?></span> <?= is_rtl() ? 'سهم' : 'share(s)' ?>
+                                        <?php endforeach; ?>
+                                    </span>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> <?= is_rtl() ? 'بعد موافقة الإدارة يعود كل سهم كما كان قبل الدمج.' : 'After the management approves, each share returns as it was before the merge.' ?></div>
+                    <?php endif; ?>
+                </div>
+                <div class="mb-3" x-show="type !== 'merge' && type !== 'split'">
                     <label class="form-label"><?= __('shares_count') ?></label>
                     <input type="number" name="shares_count" class="form-control font-num" min="1" max="<?= max(1, (int) $member['shares_count']) ?>" value="1" :max="type === 'cancel' ? <?= max(1, (int) $cancelableShares) ?> : 1000">
                     <div class="small text-muted mt-1" x-show="type === 'cancel'" x-cloak style="display:none;"><?= __('cannot_cancel_more_shares', ['count' => number_format($member['shares_count'])]) ?></div>

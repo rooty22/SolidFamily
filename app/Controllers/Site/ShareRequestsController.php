@@ -41,11 +41,16 @@ class ShareRequestsController extends Controller
         $pendingCancel = (int) ShareRequest::sum('shares_count', ['member_id' => $member['id'], 'type' => 'cancel', 'status' => 'pending']);
         $lotCount = count(ShareLot::activeFor((int) $member['id']));
         $pendingMerge = ShareRequest::count(['member_id' => $member['id'], 'type' => 'merge', 'status' => 'pending']) > 0;
+        // A merged share can be split back, unless a split for that same share is already waiting for review.
+        $pendingSplitLots = array_map('intval', array_column(ShareRequest::where(['member_id' => $member['id'], 'type' => 'split', 'status' => 'pending']), 'lot_ids'));
+        $splittableLots = array_values(array_filter(ShareLot::splittable((int) $member['id']), fn($l) => !in_array((int) $l['id'], $pendingSplitLots, true)));
 
         return [
             'cancelableShares' => max(0, $owned - $pendingCancel),
             'canMerge' => $lotCount >= 2 && !$pendingMerge,
             'activeLots' => ShareLot::activeFor((int) $member['id']),
+            'splittableLots' => $splittableLots,
+            'lotNumbers' => ShareLot::numbersFor((int) $member['id']),
             'mergeBlockReason' => $owned < 1 ? 'none_owned' : ($lotCount < 2 ? 'single_lot' : ($pendingMerge ? 'pending' : null)),
         ];
     }
@@ -57,7 +62,7 @@ class ShareRequestsController extends Controller
         $type = (string) $this->input('type');
         $rawCount = (string) $this->input('shares_count', '');
 
-        if (!in_array($type, ['add', 'merge', 'cancel'], true)) {
+        if (!in_array($type, ['add', 'merge', 'cancel', 'split'], true)) {
             Session::flash('error', 'نوع الطلب غير صحيح.');
             $this->redirect('share-requests');
         }
@@ -83,7 +88,23 @@ class ShareRequestsController extends Controller
 
         $sharesCount = 0;
         $lotIds = null;
-        if ($type !== 'merge') {
+        if ($type === 'split') {
+            // The member names the merged share to split back; the admin approves it before anything changes.
+            $lotId = (int) $this->input('split_lot_id', 0);
+            $chosen = null;
+            foreach ($allow['splittableLots'] as $candidate) {
+                if ((int) $candidate['id'] === $lotId) {
+                    $chosen = $candidate;
+                    break;
+                }
+            }
+            if (!$chosen) {
+                Session::flash('error', 'اختر سهمًا ناتجًا عن دمج لتقديم طلب فصله (أو لديك طلب فصل قيد المراجعة لهذا السهم بالفعل).');
+                $this->redirect('share-requests');
+            }
+            $lotIds = (string) (int) $chosen['id'];
+            $sharesCount = (int) array_sum(array_column($chosen['children'], 'shares_count'));
+        } elseif ($type !== 'merge') {
             $validator = Validator::make(['shares_count' => $rawCount])
                 ->required('shares_count', 'عدد الأسهم')
                 ->integer('shares_count', 'عدد الأسهم', 1, 1000);

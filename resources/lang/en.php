@@ -459,6 +459,7 @@ return [
     'share_type_add' => 'Add Shares',
     'share_type_merge' => 'Merge Shares',
     'share_type_cancel' => 'Cancel Shares',
+    'share_type_split' => 'Split Shares',
     'subscriptions_index_title' => 'Monthly Member Subscriptions',
     'subscriptions_index_desc' => 'Follow up and record subscription payments for :month',
     'share_value_col' => 'Share Value',
@@ -661,5 +662,6 @@ return [
     'share_only_add_hint' => 'You have no shares yet, so you can only request to add shares. Merging and cancelling become available once you own shares.',
     'share_merge_needs_lots_hint' => 'Merging is available when you hold two or more separate share lots.',
     'share_merge_pending_hint' => 'You already have a merge request under review.',
+    'share_split_needs_merged_hint' => 'Splitting is available when you hold a share that was created by merging earlier shares.',
     'subscription_grace_until' => 'Grace until :date',
 ];

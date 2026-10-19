@@ -226,6 +226,19 @@ class ShareLot extends Model
         return self::where(['merged_into_id' => $lotId, 'status' => 'merged'], 'created_at ASC, id ASC');
     }
 
+    /** The member's active lots that came from a merge and can still be split back: [lot + 'children' => original lots]. */
+    public static function splittable(int $memberId): array
+    {
+        $out = [];
+        foreach (self::activeFor($memberId) as $lot) {
+            $children = self::mergedChildren((int) $lot['id']);
+            if (count($children) >= 2) {
+                $out[] = $lot + ['children' => $children];
+            }
+        }
+        return $out;
+    }
+
     /**
      * Undo a merge: the merged lot is retired and the lots it was made from become active again with their own share
      * counts (so each is worth what it was before), start dates and due days. members.shares_count is restored to
