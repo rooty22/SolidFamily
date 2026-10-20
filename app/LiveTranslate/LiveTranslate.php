@@ -29,7 +29,8 @@ final class LiveTranslate
 
     public static function canUse(): bool
     {
-        return self::enabled() && Auth::adminCheck();
+        // Editing translations changes site-wide texts: a sub-admin needs full control of the live-translate section.
+        return self::enabled() && Auth::adminCan('live_translate', \App\Models\Admin::LEVEL_MANAGE);
     }
 
     private static function json(mixed $data): string

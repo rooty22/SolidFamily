@@ -32,7 +32,7 @@ class Middleware
             if (\App\Models\Admin::isSuperOnlyPath($path)) {
                 $allowed = !empty($admin['is_super']);
             } elseif (($section = \App\Models\Admin::sectionForPath($path)) !== null) {
-                $level = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' ? \App\Models\Admin::LEVEL_VIEW : \App\Models\Admin::LEVEL_MANAGE;
+                $level = \App\Models\Admin::requiredLevel($path, $_SERVER['REQUEST_METHOD'] ?? 'GET');
                 $allowed = \App\Models\Admin::can($admin, $section, $level);
             }
             if ($allowed) {

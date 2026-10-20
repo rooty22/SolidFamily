@@ -32,7 +32,7 @@ class LiveTranslateController extends Controller
 
     private function guard(): void
     {
-        if (!LiveTranslate::enabled() || !Auth::adminCheck()) {
+        if (!LiveTranslate::canUse()) {
             $this->fail('forbidden', 403);
         }
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_csrf'] ?? '');

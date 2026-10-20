@@ -17,25 +17,25 @@ class Admin extends Model
     public const LEVEL_VIEW = 'view';
     public const LEVEL_MANAGE = 'manage';
 
-    /** Permission sections: key => [label ar, label en, the path segments under /admin that belong to it]. */
+    /** Permission sections: key => [label ar, label en, the path segments under /admin that belong to it, icon]. */
     public static function sections(): array
     {
         return [
-            'dashboard' => ['نظرة عامة', 'Overview', ['dashboard']],
-            'members' => ['إدارة المشتركين', 'Members', ['members']],
-            'shares' => ['إدارة الأسهم', 'Shares', ['shares']],
-            'share_requests' => ['طلبات الأسهم', 'Share requests', ['share-requests']],
-            'subscriptions' => ['الاشتراكات الشهرية', 'Monthly subscriptions', ['subscriptions']],
-            'founding' => ['مبالغ التأسيس', 'Founding amounts', ['founding']],
-            'loan_requests' => ['طلبات القروض', 'Loan requests', ['loan-requests']],
-            'loans' => ['القروض والأقساط', 'Loans & installments', ['loans']],
-            'payments' => ['المدفوعات', 'Payments', ['payments']],
-            'transactions' => ['المعاملات المالية', 'Transactions', ['transactions']],
-            'notifications' => ['إرسال الإشعارات', 'Notifications', ['notifications']],
-            'messages' => ['رسائل التواصل', 'Messages', ['messages']],
-            'content' => ['محتوى صفحات النظام', 'Content pages', ['content']],
-            'live_translate' => ['الترجمة الفورية', 'Live translate', ['live-translate']],
-            'settings' => ['إعدادات النظام', 'System settings', ['settings']],
+            'dashboard' => ['نظرة عامة', 'Overview', ['dashboard'], 'grid-1x2-fill'],
+            'members' => ['إدارة المشتركين', 'Members', ['members'], 'people-fill'],
+            'shares' => ['إدارة الأسهم', 'Shares', ['shares'], 'pie-chart-fill'],
+            'share_requests' => ['طلبات الأسهم', 'Share requests', ['share-requests'], 'arrow-left-right'],
+            'subscriptions' => ['الاشتراكات الشهرية', 'Monthly subscriptions', ['subscriptions'], 'calendar2-check-fill'],
+            'founding' => ['مبالغ التأسيس', 'Founding amounts', ['founding'], 'bank2'],
+            'loan_requests' => ['طلبات القروض', 'Loan requests', ['loan-requests'], 'file-earmark-text-fill'],
+            'loans' => ['القروض والأقساط', 'Loans & installments', ['loans'], 'cash-coin'],
+            'payments' => ['المدفوعات', 'Payments', ['payments'], 'credit-card-2-front-fill'],
+            'transactions' => ['المعاملات المالية', 'Transactions', ['transactions'], 'journal-text'],
+            'notifications' => ['إرسال الإشعارات', 'Notifications', ['notifications'], 'bell-fill'],
+            'messages' => ['رسائل التواصل', 'Messages', ['messages'], 'chat-dots-fill'],
+            'content' => ['محتوى صفحات النظام', 'Content pages', ['content'], 'file-earmark-richtext-fill'],
+            'live_translate' => ['الترجمة الفورية', 'Live translate', ['live-translate'], 'translate'],
+            'settings' => ['إعدادات النظام', 'System settings', ['settings'], 'gear-fill'],
         ];
     }
 
@@ -51,6 +51,21 @@ class Admin extends Model
             }
         }
         return null;
+    }
+
+    /**
+     * The level a request needs: reading a page is 'view', anything that changes data (POST) is 'manage'. The pages
+     * that exist only to edit something (add / edit forms, the home-page builder) need 'manage' even to open.
+     */
+    public static function requiredLevel(string $path, string $method): string
+    {
+        if (strtoupper($method) !== 'GET') {
+            return self::LEVEL_MANAGE;
+        }
+        if (preg_match('#/(create|edit)$#', $path) || $path === '/admin/content/home') {
+            return self::LEVEL_MANAGE;
+        }
+        return self::LEVEL_VIEW;
     }
 
     /** True for the pages only a main admin may open (managing the sub-admins). */
