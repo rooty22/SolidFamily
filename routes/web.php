@@ -4,6 +4,7 @@ use App\Core\Middleware;
 use App\Controllers\Admin\AuthController as AdminAuthController;
 use App\Controllers\Admin\DashboardController;
 use App\Controllers\Admin\MembersController;
+use App\Controllers\Admin\AdminsController;
 use App\Controllers\Admin\SharesController;
 use App\Controllers\Admin\ShareRequestsController as AdminShareRequestsController;
 use App\Controllers\Admin\SubscriptionsController;
@@ -220,4 +221,13 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/settings/account', [SettingsController::class, 'updateAccount']);
     $router->post('/settings/test-sms', [SettingsController::class, 'testSms']);
     $router->post('/settings/clear-rate-limits', [SettingsController::class, 'clearRateLimits']);
+
+    // Sub-admins (main admins only: Middleware::adminAuth refuses every /admin/admins page to anyone else)
+    $router->get('/admins', [AdminsController::class, 'index']);
+    $router->get('/admins/create', [AdminsController::class, 'create']);
+    $router->post('/admins', [AdminsController::class, 'store']);
+    $router->get('/admins/{id}/edit', [AdminsController::class, 'edit']);
+    $router->post('/admins/{id}', [AdminsController::class, 'update']);
+    $router->post('/admins/{id}/toggle-status', [AdminsController::class, 'toggleStatus']);
+    $router->post('/admins/{id}/delete', [AdminsController::class, 'destroy']);
 });

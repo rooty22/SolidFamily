@@ -69,6 +69,14 @@ class AuthController extends Controller
         }
 
         RateLimiter::loginSucceeded('admin', $email);
+
+        // A suspended sub-admin keeps their account but cannot get in until the main admin re-activates it.
+        if (($admin['status'] ?? 'active') !== 'active') {
+            Session::flash('error', 'تم تعطيل حساب المشرف هذا، الرجاء التواصل مع مدير النظام.');
+            $this->redirect('admin/login');
+            return;
+        }
+
         Auth::loginAdmin($admin);
         $this->redirect('admin/dashboard');
     }

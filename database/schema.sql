@@ -10,6 +10,10 @@ CREATE TABLE admins (
     name VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    avatar VARCHAR(255) NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    permissions TEXT NULL COMMENT 'JSON {section: view|manage}; ignored for main admins',
+    is_super TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = main admin: full access and manages the sub-admins',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

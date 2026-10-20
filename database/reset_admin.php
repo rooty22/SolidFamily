@@ -21,7 +21,7 @@ if ($admin) {
     echo " كلمة المرور الجديدة: {$password}\n";
     echo "=============================================\n";
 } else {
-    $insert = $pdo->prepare('INSERT INTO admins (name, email, password) VALUES (?, ?, ?)');
+    $insert = $pdo->prepare('INSERT INTO admins (name, email, password, is_super) VALUES (?, ?, ?, 1)');
     $insert->execute(['مدير النظام', $email, $hash]);
     echo "\n=============================================\n";
     echo " تم إنشاء حساب الأدمن الجديد بنجاح!\n";

@@ -25,7 +25,11 @@
 
         <!-- Admin Profile Chip -->
         <div class="hidden sm:admin-chip">
-            <div class="avatar"><?= e(mb_substr($admin['name'] ?? 'A', 0, 1)) ?></div>
+            <?php if ($adminAvatar = $admin ? \App\Models\Admin::avatarUrl($admin) : null): ?>
+                <img src="<?= e($adminAvatar) ?>" alt="" class="avatar" style="object-fit:cover;">
+            <?php else: ?>
+                <div class="avatar"><?= e(mb_substr($admin['name'] ?? 'A', 0, 1)) ?></div>
+            <?php endif; ?>
             <span class="truncate max-w-[120px] sm:max-w-none"><?= e($admin['name'] ?? '') ?></span>
         </div>
     </div>

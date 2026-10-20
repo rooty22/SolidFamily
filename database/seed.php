@@ -16,7 +16,7 @@ $adminPassword = 'Admin@12345';
 $stmt = $pdo->prepare('SELECT id FROM admins WHERE email = ?');
 $stmt->execute([$adminEmail]);
 if (!$stmt->fetch()) {
-    $pdo->prepare('INSERT INTO admins (name, email, password) VALUES (?, ?, ?)')
+    $pdo->prepare('INSERT INTO admins (name, email, password, is_super) VALUES (?, ?, ?, 1)')
         ->execute(['مدير النظام', $adminEmail, password_hash($adminPassword, PASSWORD_DEFAULT)]);
     echo "تم إنشاء حساب الأدمن الافتراضي:\n  البريد: {$adminEmail}\n  كلمة المرور: {$adminPassword}\n\n";
 } else {
