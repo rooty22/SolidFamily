@@ -28,14 +28,7 @@ class Middleware
 
             $path = current_path();
             $admin = Auth::admin();
-            $allowed = true;
-            if (\App\Models\Admin::isSuperOnlyPath($path)) {
-                $allowed = !empty($admin['is_super']);
-            } elseif (($section = \App\Models\Admin::sectionForPath($path)) !== null) {
-                $level = \App\Models\Admin::requiredLevel($path, $_SERVER['REQUEST_METHOD'] ?? 'GET');
-                $allowed = \App\Models\Admin::can($admin, $section, $level);
-            }
-            if ($allowed) {
+            if (\App\Models\Admin::mayUse($admin, $path, $_SERVER['REQUEST_METHOD'] ?? 'GET')) {
                 return;
             }
 

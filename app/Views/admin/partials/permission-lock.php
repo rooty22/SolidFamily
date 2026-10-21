@@ -17,16 +17,33 @@ foreach (Admin::sections() as $key => $def) {
         $lockLevels[$segment] = $granted;
     }
 }
+// Endpoints lent to other sections (same list the server uses), with the level this admin has in those sections.
+$lockShared = [];
+foreach (Admin::sharedEndpoints() as $pattern => $sections) {
+    $lockShared[] = [
+        're' => $pattern,
+        'manage' => (bool) array_filter($sections, fn($s) => Admin::can($lockAdmin, $s, Admin::LEVEL_MANAGE)),
+    ];
+}
 $lockTitle = is_rtl() ? 'ليست لديك صلاحية لهذا الإجراء' : 'You do not have permission for this action';
 ?>
 <style>
     .perm-locked, .perm-locked:hover { opacity: .45 !important; cursor: not-allowed !important; filter: grayscale(.35); box-shadow: none !important; transform: none !important; }
     a.perm-locked { pointer-events: auto; text-decoration: none; }
+    /* Plain text links (member names ...) keep their look, they just do not navigate */
+    a.perm-soft-locked { cursor: not-allowed !important; text-decoration: none !important; }
 </style>
 <script>
 (function () {
     var LEVELS = <?= json_encode($lockLevels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var TITLE = <?= json_encode($lockTitle, JSON_UNESCAPED_UNICODE) ?>;
+
+    var SHARED = <?= json_encode($lockShared, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+    // True when a data-changing endpoint belongs to another section but is lent to one this admin fully controls.
+    function lentToMe(path) {
+        return SHARED.some(function (s) { return s.manage && new RegExp(s.re.replace(/^\^/, '')).test(path); });
+    }
 
     // 'none' < 'view' < 'manage'. Returns true when the admin may NOT use a target of the given kind.
     function blocked(path, needsManage) {
@@ -34,6 +51,7 @@ $lockTitle = is_rtl() ? 'ليست لديك صلاحية لهذا الإجراء'
         if (!m || !(m[1] in LEVELS)) { return false; }   // logout, language switch, ... are not permissioned sections
         var level = LEVELS[m[1]];
         if (level === 'manage') { return false; }
+        if (needsManage && lentToMe(path)) { return false; }
         if (level === 'view') { return needsManage; }
         return true;                                      // 'none': not even viewing
     }
@@ -69,7 +87,14 @@ $lockTitle = is_rtl() ? 'ليست لديك صلاحية لهذا الإجراء'
             if (!href || href.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(href)) { return; }
             var path = pathOf(href);
             var needsManage = /\/(create|edit)$/.test(path) || /\/admin\/content\/home$/.test(path);
-            if (blocked(path, needsManage)) { lockElement(a); }
+            if (blocked(path, needsManage)) {
+                if (/btn/.test(a.className)) { lockElement(a); } else {
+                    a.classList.add('perm-soft-locked');
+                    a.setAttribute('aria-disabled', 'true');
+                    a.setAttribute('title', TITLE);
+                    a.setAttribute('tabindex', '-1');
+                }
+            }
         });
 
         // 3. Buttons that only open an edit-only popup / panel (it holds locked forms and nothing to read).
@@ -88,7 +113,7 @@ $lockTitle = is_rtl() ? 'ليست لديك صلاحية لهذا الإجراء'
 
     // Stop clicks / submits on locked controls before any other handler (confirm dialogs, modals, ...) sees them.
     document.addEventListener('click', function (e) {
-        var el = e.target.closest('.perm-locked');
+        var el = e.target.closest('.perm-locked, .perm-soft-locked');
         if (el) { e.preventDefault(); e.stopImmediatePropagation(); }
     }, true);
     document.addEventListener('submit', function (e) {

@@ -74,6 +74,52 @@ class Admin extends Model
         return (bool) preg_match('#^/admin/admins(/|$)#', $path);
     }
 
+    /**
+     * Endpoints that live under one section but are used by buttons on the pages of others: path regex => the other
+     * sections whose full control also opens them. (Editing a lot's start date sits on the Shares and Members pages
+     * but its route is under Subscriptions.)
+     */
+    public static function sharedEndpoints(): array
+    {
+        return [
+            '^/admin/subscriptions/[0-9]+/lot/[0-9]+/date$' => ['shares', 'members'],
+        ];
+    }
+
+    /**
+     * Single decision used by the middleware: may this admin open this path with this HTTP method?
+     * Main admins always; sub-admins need the path's section at the required level, or full control of a section
+     * a shared endpoint is lent to. The sub-admin pages are for main admins only.
+     */
+    public static function mayUse(array $admin, string $path, string $method): bool
+    {
+        if (!empty($admin['is_super'])) {
+            return true;
+        }
+        if (self::isSuperOnlyPath($path)) {
+            return false;
+        }
+        $section = self::sectionForPath($path);
+        if ($section === null) {
+            return true;
+        }
+        if (self::can($admin, $section, self::requiredLevel($path, $method))) {
+            return true;
+        }
+        if (strtoupper($method) !== 'GET') {
+            foreach (self::sharedEndpoints() as $pattern => $sections) {
+                if (preg_match('#' . $pattern . '#', $path)) {
+                    foreach ($sections as $other) {
+                        if (self::can($admin, $other, self::LEVEL_MANAGE)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     /** The granted permissions as [section => 'view'|'manage'], unknown sections / levels dropped. */
     public static function permissionsOf(array $admin): array
     {
