@@ -82,6 +82,7 @@
 <?php if (is_rtl()): ?><script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ar.js"></script><?php endif; ?>
 <script src="<?= asset('admin/js/date-inputs.js') ?>"></script>
 <script src="<?= asset('admin/js/admin.js') ?>"></script>
+<?php \App\Core\View::partial('admin/partials/permission-lock'); ?>
 <?= \App\LiveTranslate\LiveTranslate::scripts() ?>
 </body>
 </html>
