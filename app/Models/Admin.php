@@ -101,7 +101,9 @@ class Admin extends Model
         }
         $section = self::sectionForPath($path);
         if ($section === null) {
-            return true;
+            // Default deny: only the few pages that belong to no section are open to every sub-admin, so a page
+            // added later under /admin without a section stays closed until it is given one.
+            return $path === '/admin' || (bool) preg_match('#^/admin/(logout|lang)(/|$)#', $path);
         }
         if (self::can($admin, $section, self::requiredLevel($path, $method))) {
             return true;
