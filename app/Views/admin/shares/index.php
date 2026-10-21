@@ -39,6 +39,7 @@
             </tr>
         </thead>
         <tbody>
+            <?php $modalsHtml = ''; // the popups hold tables: they must live outside this <table>, or the parser breaks the page ?>
             <?php foreach ($members as $m): 
                 $mLots = $lotsByMember[$m['id']] ?? [];
             ?>
@@ -69,6 +70,7 @@
                     </div>
                 </td>
             </tr>
+            <?php ob_start(); ?>
 
             <!-- Detailed Lots Management Modal for Member -->
             <div class="modal fade" id="manageLots<?= $m['id'] ?>" tabindex="-1">
@@ -256,9 +258,12 @@
                     </div>
                 </div>
             </div>
+            <?php $modalsHtml .= ob_get_clean(); ?>
             <?php endforeach; ?>
         </tbody>
     </table>
 </div>
+
+<?= $modalsHtml ?>
 
 <?= pagination_links($pager ?? []) ?>
