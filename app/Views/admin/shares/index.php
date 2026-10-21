@@ -1,3 +1,15 @@
+<style>
+    /* Lots popup: one line per lot, action buttons never wrap or get cut off */
+    .lots-table th, .lots-table td { white-space: nowrap; vertical-align: middle; }
+    .lots-table td.text-end > div { flex-wrap: nowrap; }
+    .lots-table .btn { white-space: nowrap; }
+    .lots-table th, .lots-table td { padding-inline: 10px; }
+    /* On narrower screens the row buttons become icon-only (the tooltip keeps the name) so the row fits the popup */
+    @media (max-width: 1199.98px) {
+        .lots-table .btn-xs span { display: none; }
+        .lots-table .btn-xs { padding: 5px 8px; }
+    }
+</style>
 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 mb-5">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -74,7 +86,7 @@
 
             <!-- Detailed Lots Management Modal for Member -->
             <div class="modal fade" id="manageLots<?= $m['id'] ?>" tabindex="-1">
-                <div class="modal-dialog modal-lg">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header">
                             <div>
@@ -130,7 +142,7 @@
 
                             <!-- Lots List Table -->
                             <div class="table-responsive">
-                                <table class="table-modern text-xs">
+                                <table class="table-modern text-xs lots-table">
                                     <thead>
                                         <tr>
                                             <?php if (count($mLots) >= 2): ?><th style="width:36px" title="<?= is_rtl() ? 'اختيار للدمج' : 'Select to merge' ?>"><i class="bi bi-arrows-collapse"></i></th><?php endif; ?>
