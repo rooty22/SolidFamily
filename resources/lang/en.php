@@ -176,6 +176,7 @@ return [
     'status_late_subscription' => 'Overdue (Subscription)',
     'status_late_loan' => 'Overdue (Loan)',
     'status_up_to_date' => 'Up to date',
+    'status_no_shares' => 'No shares yet',
     'payment_status' => 'Payment Status',
     'delay_type' => 'Delay Type',
 

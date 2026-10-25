@@ -66,16 +66,23 @@
         </div>
     </div>
 
-    <!-- 4. Total Members -->
+    <!-- 4. Members: approved accounts, with the registrations still waiting for approval set apart -->
     <div class="col-xl-4 col-md-6">
-        <div class="stat-card">
+        <div class="stat-card" style="align-items:stretch;">
             <div class="stat-icon bg-grad-blue">
                 <i class="bi bi-people-fill"></i>
             </div>
-            <div>
-                <div class="stat-label"><?= __('total_members') ?></div>
+            <div class="flex-1">
+                <div class="stat-label"><?= is_rtl() ? 'المشتركون المعتمدون' : 'Approved members' ?></div>
                 <div class="stat-value font-num"><?= number_format($stats['totalMembers']) ?></div>
-                <div class="stat-sub text-slate-400"><?= is_rtl() ? 'عضوية عائلية مسجلة' : 'Registered family accounts' ?></div>
+                <div class="stat-sub text-slate-500 font-medium">
+                    <?= is_rtl() ? number_format($stats['activeMembers']) . ' نشط' : number_format($stats['activeMembers']) . ' active' ?>
+                    <?php if ($stats['suspendedMembers'] > 0): ?> · <?= is_rtl() ? number_format($stats['suspendedMembers']) . ' موقوف' : number_format($stats['suspendedMembers']) . ' suspended' ?><?php endif; ?>
+                </div>
+                <a href="<?= url('admin/members?account_status=pending') ?>" class="mt-2 d-flex align-items-center justify-content-between gap-2 px-3 py-2 rounded-xl text-decoration-none <?= $stats['pendingRegistrations'] > 0 ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-slate-50 border border-slate-200 text-slate-500' ?>">
+                    <span class="text-xs font-bold"><i class="bi bi-hourglass-split"></i> <?= is_rtl() ? 'طلبات تسجيل بانتظار الموافقة' : 'Registrations awaiting approval' ?></span>
+                    <span class="font-num font-extrabold <?= $stats['pendingRegistrations'] > 0 ? 'text-amber-700' : '' ?>"><?= number_format($stats['pendingRegistrations']) ?></span>
+                </a>
             </div>
         </div>
     </div>
@@ -222,7 +229,7 @@
                 </div>
                 <div class="d-flex justify-content-between">
                     <span class="text-slate-500"><?= is_rtl() ? 'مسدد / جزئي / غير مسدد' : 'Paid / Partial / Unpaid' ?></span>
-                    <b class="font-num"><?= (int) $stats['subRow']['paid_count'] ?> / <?= (int) $stats['subRow']['partial_count'] ?> / <?= (int) $stats['subRow']['unpaid_count'] ?></b>
+                    <b class="font-num"><?= (int) $stats['subRow']['paid_count'] ?> / <?= (int) $stats['subRow']['partial_count'] ?> / <?= (int) $stats['subRow']['unpaid_count'] ?><?php if (!empty($stats['subRow']['late_count'])): ?> <small class="text-rose-600">(<?= is_rtl() ? 'منها ' . (int) $stats['subRow']['late_count'] . ' متأخر' : (int) $stats['subRow']['late_count'] . ' late' ?>)</small><?php endif; ?></b>
                 </div>
             </div>
         </div>

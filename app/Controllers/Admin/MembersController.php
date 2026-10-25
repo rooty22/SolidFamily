@@ -57,13 +57,16 @@ class MembersController extends Controller
                 $pStatus = 'late_subscription';
             } elseif ($isLateLoan) {
                 $pStatus = 'late_loan';
+            } elseif ((int) $m['shares_count'] <= 0) {
+                // A member who owns nothing yet (e.g. just registered) is not "up to date": there is nothing to pay.
+                $pStatus = 'no_shares';
             } else {
                 $pStatus = 'up_to_date';
             }
 
             if ($isLate) {
                 $counts['late']++;
-            } else {
+            } elseif ($pStatus === 'up_to_date') {
                 $counts['up_to_date']++;
             }
             if ($isLateSub) {
@@ -88,7 +91,7 @@ class MembersController extends Controller
             if ($paymentStatus === 'late_loan' && !$isLateLoan) {
                 continue;
             }
-            if ($paymentStatus === 'up_to_date' && $isLate) {
+            if ($paymentStatus === 'up_to_date' && $pStatus !== 'up_to_date') {
                 continue;
             }
             if ($accountStatus !== '' && $m['status'] !== $accountStatus) {

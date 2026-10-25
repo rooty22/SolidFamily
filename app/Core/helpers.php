@@ -327,6 +327,7 @@ function status_badge(string $status): array
         'late_subscription' => 'danger',
         'late_loan' => 'warning',
         'up_to_date' => 'success',
+        'no_shares' => 'secondary',
     ];
 
     $key = 'status_' . $status;
@@ -354,6 +355,7 @@ function status_badge(string $status): array
             'late_subscription' => 'متأخر (اشتراك شهري)',
             'late_loan' => 'متأخر (أقساط قروض)',
             'up_to_date' => 'منتظم',
+            'no_shares' => 'لا توجد أسهم بعد',
         ];
         $isAr = function_exists('current_locale') ? (current_locale() === 'ar') : true;
         $label = $isAr ? ($arFallbacks[$status] ?? $status) : ucfirst(str_replace('_', ' ', $status));

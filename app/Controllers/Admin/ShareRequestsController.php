@@ -121,13 +121,8 @@ class ShareRequestsController extends Controller
             ]);
         } elseif ($request['type'] === 'cancel') {
             $newCount = max(0, $newCount - (int) $request['shares_count']);
-            $before = array_column(ShareLot::activeFor($member['id']), 'id');
+            // A lot cancelled down to zero is marked cancelled and its unpaid dues are cleared (money already paid stays).
             ShareLot::cancelShares($member['id'], (int) $request['shares_count']);
-            $after = array_column(ShareLot::activeFor($member['id']), 'id');
-            // A lot cancelled down to zero disappears from the active list: its own current-month row would
-            // otherwise be left behind still showing as owed for shares the member no longer holds. A row
-            // with a real payment already on it is left alone -- cancelling doesn't erase money paid.
-            $this->voidStaleLotRows((int) $member['id'], array_diff($before, $after), false);
         } elseif ($request['type'] === 'split') {
             // Brings back the original lots (each worth what it was), carries this month's payment onto them and
             // restores the member's total shares.
@@ -170,17 +165,6 @@ class ShareRequestsController extends Controller
 
         Session::flash('success', 'تمت الموافقة على الطلب وتحديث أسهم المشترك.');
         $this->redirect('admin/share-requests');
-    }
-
-    /**
-     * Marks lots that just became inactive (merged away or cancelled to zero) as no longer separately owed
-     * this month. With $force false (cancel), a row that already has a real payment on it is left alone --
-     * cancelling doesn't erase money paid and there's no new lot to carry it onto. With $force true (merge),
-     * every row is voided regardless, since the caller has already carried its amount onto the new merged row.
-     */
-    private function voidStaleLotRows(int $memberId, array $staleLotIds, bool $force): void
-    {
-        MonthlySubscription::voidRowsOfLots($memberId, $staleLotIds, $force);
     }
 
     public function reject(string $id): void

@@ -40,7 +40,12 @@ class DashboardController extends Controller
         $db = Database::connection();
         $currentMonth = date('Y-m');
 
-        $totalMembers = (int) Member::count();
+        // Members = approved accounts; self-registrations still waiting for (or refused) approval are counted apart.
+        $approvedMembers = Member::withoutRegistrations(Member::all());
+        $totalMembers = count($approvedMembers);
+        $activeMembers = count(array_filter($approvedMembers, fn($m) => $m['status'] === 'active'));
+        $suspendedMembers = $totalMembers - $activeMembers;
+        $pendingRegistrations = (int) Member::count(['status' => 'pending']);
         $totalShares = (int) Member::sum('shares_count');
 
         // Subscription rows are created lazily, so members nobody has opened yet have no row for this month.
@@ -53,30 +58,42 @@ class DashboardController extends Controller
         // collected, partial when part of it is, unpaid when nothing is.
         $subStmt = $db->prepare("SELECT
             COALESCE(SUM(due), 0) AS total_due,
-            COALESCE(SUM(LEAST(paid, due)), 0) AS total_paid,
-            COALESCE(SUM(paid >= due), 0) AS paid_count,
-            COALESCE(SUM(paid > 0 AND paid < due), 0) AS partial_count,
-            COALESCE(SUM(paid <= 0), 0) AS unpaid_count
+            COALESCE(SUM(LEAST(paid, due)), 0) AS total_paid
             FROM (
                 SELECT m.id,
                        GREATEST(COALESCE(SUM(s.amount_due), 0), m.shares_count * :sv) AS due,
                        COALESCE(SUM(s.amount_paid), 0) AS paid
                 FROM members m
                 LEFT JOIN monthly_subscriptions s ON s.member_id = m.id AND s.month = :cm
-                WHERE m.status = 'active'
+                WHERE m.status NOT IN ('pending', 'rejected')
                 GROUP BY m.id, m.shares_count
                 HAVING due > 0
             ) per_member");
         $subStmt->execute(['sv' => $shareValue, 'cm' => $currentMonth]);
         $subRow = $subStmt->fetch();
+        // Paid / partial / unpaid members this month: the very same helper (and members) as the subscriptions page.
+        $monthCounts = \App\Models\MonthlySubscription::monthStatusCounts($approvedMembers, $currentMonth);
+        $subRow['paid_count'] = $monthCounts['paid'];
+        $subRow['partial_count'] = $monthCounts['partial'];
+        $subRow['unpaid_count'] = $monthCounts['unpaid'];
+        $subRow['late_count'] = $monthCounts['late'];
 
+        // A founding row is only re-computed when someone opens it, so one can still reflect shares that changed
+        // since; bring every member's row up to date first so these numbers match the founding page exactly.
+        foreach ($approvedMembers as $m) {
+            \App\Models\FoundingAmount::ensureForMember((int) $m['id']);
+        }
+        // Founding amounts of approved members who actually owe one (a member with no shares owes nothing and
+        // is neither "paid" nor "unpaid"); the same members the founding page lists.
         $foundRow = $db->query("SELECT
-            COALESCE(SUM(total_required),0) as total_required,
-            COALESCE(SUM(amount_paid),0) as total_paid,
-            SUM(status='paid') as paid_count,
-            SUM(status='partial') as partial_count,
-            SUM(status='unpaid') as unpaid_count
-            FROM founding_amounts")->fetch();
+            COALESCE(SUM(f.total_required),0) as total_required,
+            COALESCE(SUM(f.amount_paid),0) as total_paid,
+            COALESCE(SUM(f.status='paid'),0) as paid_count,
+            COALESCE(SUM(f.status='partial'),0) as partial_count,
+            COALESCE(SUM(f.status='unpaid'),0) as unpaid_count
+            FROM founding_amounts f
+            JOIN members m ON m.id = f.member_id
+            WHERE m.status NOT IN ('pending', 'rejected') AND f.total_required > 0")->fetch();
 
         $loanRow = $db->query("SELECT
             COUNT(*) as total_loans,
@@ -141,7 +158,8 @@ class DashboardController extends Controller
         $mergeSummary = \App\Models\ShareMergeLog::summary();
 
         $export = [
-            'إجمالي عدد المشتركين' => $totalMembers,
+            'إجمالي عدد المشتركين المعتمدين' => $totalMembers,
+            'طلبات التسجيل بانتظار الموافقة' => $pendingRegistrations,
             'إجمالي عدد الأسهم المسجلة' => $totalShares,
             'الرصيد الفعلي في البنك (السيولة المتاحة)' => $bankBalance,
             'الرصيد الإجمالي للصندوق (شامل محفظة القروض)' => $totalFundBalance,
@@ -174,7 +192,7 @@ class DashboardController extends Controller
         ];
 
         return compact(
-            'totalMembers', 'totalShares', 'subRow', 'foundRow', 'loanRow',
+            'totalMembers', 'activeMembers', 'suspendedMembers', 'pendingRegistrations', 'totalShares', 'subRow', 'foundRow', 'loanRow',
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',

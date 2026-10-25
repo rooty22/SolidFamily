@@ -32,6 +32,7 @@ php database/migrate_share_merge_log.php
 php database/migrate_member_approval.php
 php database/migrate_split_request.php
 php database/migrate_sub_admins.php
+php database/migrate_cancelled_lots.php
 ```
 
 > **الترجمة الفورية (Live Translate):** زر «ترجمة فورية» في أعلى لوحة التحكم وزر «ترجمة» عائم في الموقع للمشرف، لتعديل أي نص بكل اللغات وحفظه مكانه. الشرح الكامل في `app/LiveTranslate/README.md`، والسكربت الأخير يهيّئ عمود `settings.value` (آمن ويمكن تكراره).

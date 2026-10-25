@@ -45,28 +45,29 @@ class SubscriptionsController extends Controller
             'paid' => 0,
             'partial' => 0,
             'unpaid' => 0,
+            'no_shares' => 0,
         ];
 
         foreach ($members as $m) {
-            // A member can have several unmerged share lots at once, each with its own row this month: the month's
-            // status is derived from the SUM of what is due and paid (paid / partial / unpaid).
-            $currentRows = MonthlySubscription::where(['member_id' => $m['id'], 'month' => $currentMonth]);
-            $currentStatus = $currentRows ? MonthlySubscription::summarize($currentRows)['status'] : null;
+            // The month's standing comes from the shared helper, so this page and the dashboard always agree.
+            $currentStatus = MonthlySubscription::memberMonthStatus($m, $currentMonth);
             $late = (int) ($counts[(int) $m['id']]['late_months'] ?? 0);
-            // A lot with no row yet this month (nobody has opened it) still counts as overdue once its
-            // own due date (its own override, the member's, or the site default) has passed.
-            if (empty($currentRows) && (int) $m['shares_count'] > 0 && month_due_date($currentMonth, MonthlySubscription::dueDayFor($m)) < $today) {
+            // A current month owed but never opened has no row yet, so the query above could not count it.
+            if ($currentStatus === 'late' && (int) MonthlySubscription::rawOne(
+                'SELECT COUNT(*) AS c FROM monthly_subscriptions WHERE member_id = ? AND month = ? AND (amount_due > 0 OR amount_paid > 0)',
+                [$m['id'], $currentMonth]
+            )['c'] === 0) {
                 $late++;
-                $currentStatus = 'late';
             }
 
-            $currentStatus = $currentStatus ?? 'unpaid';
-
-            if ($late > 0 || $currentStatus === 'late') {
-                $statusCounts['late']++;
-            }
-            if ($currentStatus !== 'late' && isset($statusCounts[$currentStatus])) {
-                $statusCounts[$currentStatus]++;
+            if ($currentStatus === 'no_shares') {
+                $statusCounts['no_shares']++;
+            } else {
+                if ($late > 0 || $currentStatus === 'late') {
+                    $statusCounts['late']++;
+                }
+                // "Unpaid" is everything not paid this month, whether its due date has passed yet or not.
+                $statusCounts[$currentStatus === 'late' ? 'unpaid' : $currentStatus]++;
             }
 
             $rows[] = [
@@ -85,9 +86,12 @@ class SubscriptionsController extends Controller
         }
 
         if ($status !== '' && $status !== 'all') {
-            $rows = array_values(array_filter($rows, function($r) use ($status) {
+            $rows = array_values(array_filter($rows, function ($r) use ($status) {
                 if ($status === 'late') {
-                    return $r['late_months'] > 0 || $r['current_status'] === 'late';
+                    return $r['current_status'] !== 'no_shares' && ($r['late_months'] > 0 || $r['current_status'] === 'late');
+                }
+                if ($status === 'unpaid') {
+                    return in_array($r['current_status'], ['unpaid', 'late'], true);
                 }
                 return $r['current_status'] === $status;
             }));
@@ -475,6 +479,13 @@ class SubscriptionsController extends Controller
             $this->redirect('admin/subscriptions/' . $memberId);
         }
 
+        // A cancelled share is closed: changing the money on its months would make them owed again.
+        $subLot = $sub['lot_id'] ? \App\Models\ShareLot::find((int) $sub['lot_id']) : null;
+        if ($subLot && $subLot['status'] === 'cancelled') {
+            Session::flash('error', 'هذا الشهر تابع لسهم ملغى، ولا يمكن تعديل سداده أو إلغاؤه.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
         if ((float) $sub['amount_paid'] <= 0) {
             Session::flash('error', 'لا توجد دفعات مسجلة على هذا الشهر لإلغائها.');
             $this->redirect('admin/subscriptions/' . $memberId);
@@ -514,6 +525,13 @@ class SubscriptionsController extends Controller
         $sub = MonthlySubscription::find((int) $subId);
         if (!$member || !$sub || (int) $sub['member_id'] !== (int) $memberId) {
             Session::flash('error', 'سجل الاشتراك غير موجود.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
+
+        // A cancelled share is closed: changing the money on its months would make them owed again.
+        $subLot = $sub['lot_id'] ? \App\Models\ShareLot::find((int) $sub['lot_id']) : null;
+        if ($subLot && $subLot['status'] === 'cancelled') {
+            Session::flash('error', 'هذا الشهر تابع لسهم ملغى، ولا يمكن تعديل سداده أو إلغاؤه.');
             $this->redirect('admin/subscriptions/' . $memberId);
         }
 

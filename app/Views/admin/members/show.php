@@ -21,6 +21,8 @@ $catLabels = transaction_categories();
                     <span class="badge-status badge-danger"><?= is_rtl() ? 'متأخر (اشتراك شهري)' : 'Overdue (Subscription)' ?></span>
                 <?php elseif (!empty($overdueDetails['late_loan'])): ?>
                     <span class="badge-status badge-warning"><?= is_rtl() ? 'متأخر (أقساط قروض)' : 'Overdue (Loan)' ?></span>
+                <?php elseif ((int) $member['shares_count'] <= 0): ?>
+                    <span class="badge-status badge-secondary"><?= is_rtl() ? 'لا توجد أسهم بعد' : 'No shares yet' ?></span>
                 <?php else: ?>
                     <span class="badge-status badge-success"><?= is_rtl() ? 'سداد منتظم' : 'Up to date' ?></span>
                 <?php endif; ?>

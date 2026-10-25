@@ -141,7 +141,10 @@ class ShareLot extends Model
         ];
     }
 
-    /** Reduce active lots oldest-first by $sharesToCancel; a lot emptied to 0 is dropped (merged out). Returns the actual total removed. */
+    /**
+     * Reduce active lots oldest-first by $sharesToCancel; a lot emptied to 0 is cancelled (see markCancelled()).
+     * Returns the actual total removed. The caller keeps members.shares_count in step.
+     */
     public static function cancelShares(int $memberId, int $sharesToCancel): int
     {
         $removed = 0;
@@ -154,12 +157,40 @@ class ShareLot extends Model
             if ($remaining > 0) {
                 self::update($lot['id'], ['shares_count' => $remaining]);
             } else {
-                self::update($lot['id'], ['status' => 'merged']);
+                self::markCancelled($memberId, (int) $lot['id']);
             }
             $sharesToCancel -= $take;
             $removed += $take;
         }
         return $removed;
+    }
+
+    /**
+     * A cancelled lot owes nothing any more: it gets status 'cancelled' and its unpaid dues are cleared from every month
+     * (a month with part of it paid is closed at what was paid). Money really paid on it stays in the history.
+     */
+    public static function markCancelled(int $memberId, int $lotId): void
+    {
+        self::update($lotId, ['status' => 'cancelled']);
+        MonthlySubscription::clearCancelledLotRows($memberId, $lotId);
+    }
+
+    /**
+     * Cancel one of the member's active lots (admin "cancel" button): the lot is cancelled, its shares leave the
+     * member's total and the founding amount follows. Returns the shares removed, or null when it is not an active
+     * lot of this member.
+     */
+    public static function cancelLot(int $memberId, int $lotId): ?int
+    {
+        $lot = self::find($lotId);
+        if (!$lot || (int) $lot['member_id'] !== $memberId || $lot['status'] !== 'active') {
+            return null;
+        }
+        self::markCancelled($memberId, $lotId);
+        $member = Member::find($memberId);
+        Member::update($memberId, ['shares_count' => max(0, (int) $member['shares_count'] - (int) $lot['shares_count'])]);
+        FoundingAmount::ensureForMember($memberId);
+        return (int) $lot['shares_count'];
     }
 
     /** The member's active lots whose ids are in $lotIds (null = every active lot), oldest first. */

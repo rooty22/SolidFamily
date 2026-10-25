@@ -1,6 +1,8 @@
 <?php
-[$subLabel, $subVariant] = status_badge($currentSub['status'] ?? 'paid');
-[$foundLabel, $foundVariant] = status_badge($founding['status']);
+// A member who owns no shares yet (just registered) owes nothing: show that, not "paid".
+$hasShares = (int) $member['shares_count'] > 0;
+[$subLabel, $subVariant] = status_badge($hasShares ? ($currentSub['status'] ?? 'unpaid') : 'no_shares');
+[$foundLabel, $foundVariant] = status_badge((float) ($founding['total_required'] ?? 0) > 0 ? $founding['status'] : 'no_shares');
 
 $foundingPaid = (float)($founding['amount_paid'] ?? 0);
 $foundingTotal = (float)($founding['total_required'] ?? 0);

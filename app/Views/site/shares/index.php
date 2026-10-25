@@ -331,6 +331,11 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                             <?php else: ?>
                                 <span class="text-slate-400">-</span>
                             <?php endif; ?>
+                            <?php if (($h['lot_status'] ?? 'active') === 'cancelled'): ?>
+                                <span class="d-inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] fw-bold"><?= is_rtl() ? 'سهم ملغى' : 'Cancelled share' ?></span>
+                            <?php elseif (($h['lot_status'] ?? 'active') === 'merged'): ?>
+                                <span class="d-inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 text-[10px] fw-bold"><?= is_rtl() ? 'قبل الدمج' : 'Before merge' ?></span>
+                            <?php endif; ?>
                         </td>
                         <td class="font-num"><?= subscription_date_cell($h, $graceVisible) ?></td>
                         <td class="font-num fw-bold text-slate-900"><?= money($dueVal) ?></td>

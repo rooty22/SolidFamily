@@ -143,19 +143,15 @@ class SharesController extends Controller
             return;
         }
 
-        $lotShares = (int) $lot['shares_count'];
-        \App\Models\ShareLot::update((int) $lotId, ['status' => 'merged']);
-        
-        // Update member total shares
-        $newTotal = max(0, (int) $member['shares_count'] - $lotShares);
-        Member::update((int) $id, ['shares_count' => $newTotal]);
-        
-        // Void unpaid future rows of this lot and sync founding amount
-        \App\Models\MonthlySubscription::voidRowsOfLots((int) $id, [(int) $lotId], false);
-        \App\Models\MonthlySubscription::purgeStalePreStartRows((int) $id);
-        \App\Models\FoundingAmount::ensureForMember((int) $id);
+        // The lot is cancelled, its unpaid dues (every month) are cleared, the member's total and founding amount follow.
+        $lotShares = \App\Models\ShareLot::cancelLot((int) $id, (int) $lotId);
+        if ($lotShares === null) {
+            Session::flash('error', 'هذه الحصة ليست حصة نشطة لهذا المشترك.');
+            $this->redirect('admin/shares');
+            return;
+        }
 
-        Session::flash('success', "تم إلغاء الحصة وتخفيض {$lotShares} سهم من رصيد المشترك بنجاح.");
+        Session::flash('success', "تم إلغاء الحصة وتخفيض {$lotShares} سهم من رصيد المشترك، وأُزيلت مستحقاتها غير المسددة.");
         $this->redirect('admin/shares');
     }
 

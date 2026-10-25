@@ -20,7 +20,7 @@
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($rows as $r): [$l, $v] = status_badge($r['status']); $remaining = $r['total_required'] - $r['amount_paid']; ?>
+        <?php foreach ($rows as $r): [$l, $v] = status_badge((float) $r['total_required'] > 0 ? $r['status'] : 'no_shares'); $remaining = $r['total_required'] - $r['amount_paid']; ?>
             <tr>
                 <td class="fw-bold"><?= e($r['member']['name']) ?></td>
                 <td class="font-numeric"><?= number_format($r['shares_count_linked']) ?></td>

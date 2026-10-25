@@ -82,7 +82,7 @@ CREATE TABLE share_lots (
     member_id INT UNSIGNED NOT NULL,
     shares_count INT UNSIGNED NOT NULL,
     subscription_due_day TINYINT UNSIGNED NULL COMMENT 'NULL falls back to the site default',
-    status ENUM('active','merged') NOT NULL DEFAULT 'active',
+    status ENUM('active','merged','cancelled') NOT NULL DEFAULT 'active' COMMENT 'merged = folded into another lot (or retired by a split); cancelled = given up, its unpaid dues cleared',
     source_request_id INT UNSIGNED NULL COMMENT 'the share_request that created/merged this lot, for traceability',
     merged_into_id INT UNSIGNED NULL COMMENT 'for a lot folded away by a merge: the merged lot it became, so the merge can be split back',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

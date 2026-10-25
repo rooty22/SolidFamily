@@ -54,7 +54,7 @@ $graceVisible = \App\Models\Setting::get('subscription_grace_enabled', '1') === 
             <?= $lateCount > 0 ? "{$lateCount} " . (is_rtl() ? 'دفعات متأخرة' : 'late') : (is_rtl() ? 'لا توجد متأخرات' : 'None') ?>
         </div>
         <div class="text-[11px] font-bold <?= $lateCount > 0 ? 'text-rose-600' : 'text-emerald-600/80' ?> mt-0.5">
-            <?= $lateCount > 0 ? (is_rtl() ? 'المتبقي المتأخر: ' . money($lateAmount) : 'Overdue: ' . money($lateAmount)) : (is_rtl() ? 'سجل السداد منتظم' : 'Up to date') ?>
+            <?= $lateCount > 0 ? (is_rtl() ? 'المتبقي المتأخر: ' . money($lateAmount) : 'Overdue: ' . money($lateAmount)) : ((int) $member['shares_count'] > 0 ? (is_rtl() ? 'سجل السداد منتظم' : 'Up to date') : (is_rtl() ? 'لا توجد أسهم بعد' : 'No shares yet')) ?>
         </div>
     </div>
 </div>
@@ -454,8 +454,10 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                         <?php else: ?>
                             <span class="text-slate-400">-</span>
                         <?php endif; ?>
-                        <?php if (!empty($h['lot_status']) && $h['lot_status'] !== 'active'): ?>
-                            <small class="d-block text-danger font-bold"><?= is_rtl() ? 'دفعة ملغاة' : 'Cancelled Lot' ?></small>
+                        <?php if (($h['lot_status'] ?? 'active') === 'cancelled'): ?>
+                            <span class="d-inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold"><i class="bi bi-x-circle"></i> <?= is_rtl() ? 'سهم ملغى' : 'Cancelled share' ?></span>
+                        <?php elseif (($h['lot_status'] ?? 'active') === 'merged'): ?>
+                            <span class="d-inline-block mt-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 text-[10px] font-bold"><i class="bi bi-arrows-collapse"></i> <?= is_rtl() ? 'قبل الدمج' : 'Before merge' ?></span>
                         <?php endif; ?>
                     </td>
                     <td class="font-numeric text-slate-700"><?= subscription_date_cell($h, $graceVisible) ?></td>
@@ -473,6 +475,10 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                         <?php endif; ?>
                     </td>
                     <td class="text-center">
+                        <?php if (($h['lot_status'] ?? 'active') === 'cancelled'): ?>
+                            <!-- A cancelled share is closed: its paid months are history only (undoing one would make it owed again) -->
+                            <span class="text-slate-300">—</span>
+                        <?php else: ?>
                         <div class="d-inline-flex align-items-center gap-1.5">
                             <?php if ($remVal > 0): ?>
                                 <!-- Quick Pay / Partial Pay Modal Trigger -->
@@ -498,6 +504,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                                 </form>
                             <?php endif; ?>
                         </div>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

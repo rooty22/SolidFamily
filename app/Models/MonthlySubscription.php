@@ -163,6 +163,45 @@ class MonthlySubscription extends Model
     }
 
     /**
+     * A member's standing for one month, computed the same way on every screen (subscriptions page, dashboard, member
+     * pages) so their numbers always agree:
+     *   'no_shares' (owns no shares: nothing is billed), 'paid', 'partial', 'unpaid' (not due yet) or 'late'
+     *   (due date passed with nothing paid). Paid-late / partial-late count as paid / partial.
+     */
+    public static function memberMonthStatus(array $member, string $month): string
+    {
+        if ((int) ($member['shares_count'] ?? 0) <= 0) {
+            return 'no_shares';
+        }
+        $rows = array_values(array_filter(
+            self::where(['member_id' => $member['id'], 'month' => $month]),
+            fn($r) => (float) $r['amount_due'] > 0 || (float) $r['amount_paid'] > 0
+        ));
+        if (empty($rows)) {
+            // Rows are created lazily: a month nobody opened yet is still owed once its due date has passed.
+            return month_due_date($month, self::dueDayFor($member)) < date('Y-m-d') ? 'late' : 'unpaid';
+        }
+        $status = self::summarize($rows)['status'];
+        return ['paid_late' => 'paid', 'partial_late' => 'partial'][$status] ?? $status;
+    }
+
+    /** Counts of memberMonthStatus() over the given members: [paid, partial, unpaid (incl. late), late, no_shares]. */
+    public static function monthStatusCounts(array $members, string $month): array
+    {
+        $counts = ['paid' => 0, 'partial' => 0, 'unpaid' => 0, 'late' => 0, 'no_shares' => 0];
+        foreach ($members as $m) {
+            $status = self::memberMonthStatus($m, $month);
+            if ($status === 'late') {
+                $counts['late']++;
+                $counts['unpaid']++;
+            } else {
+                $counts[$status]++;
+            }
+        }
+        return $counts;
+    }
+
+    /**
      * Purges any unpaid subscription rows that precede the active lots' actual start dates.
      * Prevents phantom historical rows when a lot's start date is moved forward or added later.
      */
@@ -347,6 +386,23 @@ class MonthlySubscription extends Model
      * $force also drops what was collected on it (that money was carried to the merged row); otherwise a row that
      * already has a real payment is left alone - cancelling shares never erases money that was paid.
      */
+    /**
+     * Every month of a cancelled lot: rows nobody paid are removed (they are not owed any more and must not show or
+     * count anywhere), a row paid in part is closed at what was paid; fully paid rows stay as they are.
+     */
+    public static function clearCancelledLotRows(int $memberId, int $lotId): void
+    {
+        self::raw(
+            'DELETE FROM monthly_subscriptions WHERE member_id = ? AND lot_id = ? AND (amount_paid = 0 OR amount_paid IS NULL)',
+            [$memberId, $lotId]
+        );
+        self::raw(
+            "UPDATE monthly_subscriptions SET amount_due = amount_paid, status = 'paid'
+             WHERE member_id = ? AND lot_id = ? AND amount_paid > 0 AND amount_paid < amount_due",
+            [$memberId, $lotId]
+        );
+    }
+
     public static function voidRowsOfLots(int $memberId, array $lotIds, bool $force, ?string $month = null): void
     {
         $month = $month ?? date('Y-m');

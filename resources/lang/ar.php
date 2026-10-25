@@ -176,6 +176,7 @@ return [
     'status_late_subscription' => 'متأخر (اشتراك شهري)',
     'status_late_loan' => 'متأخر (أقساط قروض)',
     'status_up_to_date' => 'منتظم',
+    'status_no_shares' => 'لا توجد أسهم بعد',
     'payment_status' => 'حالة السداد',
     'delay_type' => 'نوع التأخير',
 

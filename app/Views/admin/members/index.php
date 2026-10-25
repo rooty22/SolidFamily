@@ -145,6 +145,10 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                         <span class="badge-status badge-warning" title="<?= is_rtl() ? 'متأخر في سداد أقساط القروض' : 'Overdue in loan installments' ?>">
                             <?= is_rtl() ? 'متأخر (أقساط قروض)' : 'Overdue (Loans)' ?>
                         </span>
+                    <?php elseif (($m['payment_status'] ?? '') === 'no_shares'): ?>
+                        <span class="badge-status badge-secondary">
+                            <?= is_rtl() ? 'لا توجد أسهم بعد' : 'No shares yet' ?>
+                        </span>
                     <?php else: ?>
                         <span class="badge-status badge-success">
                             <?= is_rtl() ? 'منتظم' : 'Up to date' ?>

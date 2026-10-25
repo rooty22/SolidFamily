@@ -53,6 +53,10 @@ $hasSubFilters = ($status !== '' || $q !== '');
             <span><?= is_rtl() ? 'غير مسدد' : 'Unpaid' ?></span>
             <span class="opacity-75 font-numeric ms-1">(<?= $counts['unpaid'] ?>)</span>
         </a>
+        <a href="<?= $buildSubFilterUrl('no_shares') ?>" class="px-2.5 py-1.5 rounded-xl border transition-all text-decoration-none whitespace-nowrap flex items-center gap-1.5 <?= $status === 'no_shares' ? 'bg-slate-500 text-white border-slate-500 shadow-xs' : 'bg-slate-50 text-slate-500 border-slate-200/70 hover:bg-slate-100' ?>">
+            <span><?= is_rtl() ? 'بدون أسهم' : 'No shares' ?></span>
+            <span class="opacity-75 font-numeric ms-1">(<?= (int) ($counts['no_shares'] ?? 0) ?>)</span>
+        </a>
     </div>
 
     <?php if ($hasSubFilters): ?>
