@@ -46,6 +46,12 @@ class DashboardController extends Controller
         $activeMembers = count(array_filter($approvedMembers, fn($m) => $m['status'] === 'active'));
         $suspendedMembers = $totalMembers - $activeMembers;
         $pendingRegistrations = (int) Member::count(['status' => 'pending']);
+        $pendingMembersList = $db->query("SELECT id, name, mobile, email, national_id, shares_count, created_at 
+            FROM members 
+            WHERE status = 'pending' 
+            ORDER BY created_at DESC 
+            LIMIT 10")->fetchAll() ?: [];
+        $pendingSharesTotal = (int) ($db->query("SELECT COALESCE(SUM(shares_count), 0) FROM members WHERE status = 'pending'")->fetchColumn() ?: 0);
         $totalShares = (int) Member::sum('shares_count');
 
         // Subscription rows are created lazily, so members nobody has opened yet have no row for this month.
@@ -192,7 +198,7 @@ class DashboardController extends Controller
         ];
 
         return compact(
-            'totalMembers', 'activeMembers', 'suspendedMembers', 'pendingRegistrations', 'totalShares', 'subRow', 'foundRow', 'loanRow',
+            'totalMembers', 'activeMembers', 'suspendedMembers', 'pendingRegistrations', 'pendingMembersList', 'pendingSharesTotal', 'totalShares', 'subRow', 'foundRow', 'loanRow',
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',

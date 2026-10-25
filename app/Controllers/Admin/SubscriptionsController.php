@@ -494,12 +494,9 @@ class SubscriptionsController extends Controller
         $pdo = \App\Core\Database::connection();
         $pdo->beginTransaction();
         try {
-            $isLate = MonthlySubscription::effectiveDue($sub) < date('Y-m-d');
-            $newStatus = ((float) $sub['amount_due'] > 0 && $isLate) ? 'late' : 'unpaid';
-
             MonthlySubscription::update((int) $subId, [
                 'amount_paid' => 0.00,
-                'status' => $newStatus,
+                'status' => 'unpaid',
             ]);
 
             Transaction::deleteWhere([
@@ -554,11 +551,9 @@ class SubscriptionsController extends Controller
         $pdo->beginTransaction();
         try {
             if ($newPaid <= 0) {
-                $isLate = MonthlySubscription::effectiveDue($sub) < date('Y-m-d');
-                $status = ($due > 0 && $isLate) ? 'late' : 'unpaid';
                 MonthlySubscription::update((int) $subId, [
                     'amount_paid' => 0.00,
-                    'status' => $status,
+                    'status' => 'unpaid',
                 ]);
                 Transaction::deleteWhere([
                     'member_id' => (int) $memberId,

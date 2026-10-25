@@ -66,23 +66,19 @@
         </div>
     </div>
 
-    <!-- 4. Members: approved accounts, with the registrations still waiting for approval set apart -->
+    <!-- 4. Approved Members -->
     <div class="col-xl-4 col-md-6">
-        <div class="stat-card" style="align-items:stretch;">
+        <div class="stat-card">
             <div class="stat-icon bg-grad-blue">
                 <i class="bi bi-people-fill"></i>
             </div>
-            <div class="flex-1">
+            <div>
                 <div class="stat-label"><?= is_rtl() ? 'المشتركون المعتمدون' : 'Approved members' ?></div>
                 <div class="stat-value font-num"><?= number_format($stats['totalMembers']) ?></div>
                 <div class="stat-sub text-slate-500 font-medium">
                     <?= is_rtl() ? number_format($stats['activeMembers']) . ' نشط' : number_format($stats['activeMembers']) . ' active' ?>
                     <?php if ($stats['suspendedMembers'] > 0): ?> · <?= is_rtl() ? number_format($stats['suspendedMembers']) . ' موقوف' : number_format($stats['suspendedMembers']) . ' suspended' ?><?php endif; ?>
                 </div>
-                <a href="<?= url('admin/members?account_status=pending') ?>" class="mt-2 d-flex align-items-center justify-content-between gap-2 px-3 py-2 rounded-xl text-decoration-none <?= $stats['pendingRegistrations'] > 0 ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-slate-50 border border-slate-200 text-slate-500' ?>">
-                    <span class="text-xs font-bold"><i class="bi bi-hourglass-split"></i> <?= is_rtl() ? 'طلبات تسجيل بانتظار الموافقة' : 'Registrations awaiting approval' ?></span>
-                    <span class="font-num font-extrabold <?= $stats['pendingRegistrations'] > 0 ? 'text-amber-700' : '' ?>"><?= number_format($stats['pendingRegistrations']) ?></span>
-                </a>
             </div>
         </div>
     </div>
@@ -320,6 +316,138 @@
     <?php endif; ?>
 </div>
 
+<!-- Dedicated Section: طلبات التسجيل بانتظار الموافقة (Registration Requests Awaiting Approval) -->
+<div class="card-panel mb-4 <?= $stats['pendingRegistrations'] > 0 ? 'border-amber-300 shadow-sm' : '' ?>">
+    <div class="panel-head flex items-center justify-between">
+        <h3 class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl <?= $stats['pendingRegistrations'] > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600' ?> flex items-center justify-center text-sm shadow-xs">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <span><?= is_rtl() ? 'طلبات التسجيل بانتظار الموافقة' : 'Registration Requests Awaiting Approval' ?></span>
+            <?php if ($stats['pendingRegistrations'] > 0): ?>
+                <span class="badge-status badge-warning font-numeric">
+                    <?= number_format($stats['pendingRegistrations']) ?> <?= is_rtl() ? 'طلب بانتظار القرار' : 'pending' ?>
+                </span>
+            <?php else: ?>
+                <span class="badge-status badge-success text-[11px] font-bold">
+                    <i class="bi bi-check2-circle"></i> <?= is_rtl() ? 'جميع الطلبات مدققة ومكتملة' : 'All clear' ?>
+                </span>
+            <?php endif; ?>
+        </h3>
+        <a href="<?= url('admin/members?account_status=pending') ?>" class="text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline inline-flex items-center gap-1">
+            <span><?= is_rtl() ? 'عرض كل الطلبات في إدارة المشتركين' : 'View All in Members' ?></span>
+            <i class="bi bi-arrow-<?= is_rtl() ? 'left' : 'right' ?>-short"></i>
+        </a>
+    </div>
+
+    <!-- Quick Metric Badges for Registrations -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="p-3.5 rounded-xl <?= $stats['pendingRegistrations'] > 0 ? 'bg-amber-50/80 border border-amber-200' : 'bg-slate-50 border border-slate-200/80' ?>">
+            <div class="text-xs <?= $stats['pendingRegistrations'] > 0 ? 'text-amber-800' : 'text-slate-500' ?> font-bold"><?= is_rtl() ? 'طلبات بانتظار الموافقة' : 'Pending Approvals' ?></div>
+            <div class="text-xl font-black font-numeric <?= $stats['pendingRegistrations'] > 0 ? 'text-amber-800' : 'text-slate-800' ?> mt-1"><?= number_format($stats['pendingRegistrations']) ?></div>
+            <div class="text-[11px] <?= $stats['pendingRegistrations'] > 0 ? 'text-amber-700 font-medium' : 'text-slate-400' ?> mt-0.5"><?= is_rtl() ? 'طلبات تسجيل ذاتي جديدة' : 'New self-registrations' ?></div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100">
+            <div class="text-xs text-sky-800 font-bold"><?= is_rtl() ? 'إجمالي المشتركين المعتمدين' : 'Total Approved Members' ?></div>
+            <div class="text-xl font-black font-numeric text-sky-900 mt-1"><?= number_format($stats['totalMembers']) ?></div>
+            <div class="text-[11px] text-sky-600 mt-0.5"><?= is_rtl() ? number_format($stats['activeMembers']) . ' نشط حالياً' : number_format($stats['activeMembers']) . ' currently active' ?></div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100">
+            <div class="text-xs text-purple-800 font-bold"><?= is_rtl() ? 'الأسهم المطلوبة بالطلبات' : 'Shares in Pending Requests' ?></div>
+            <div class="text-xl font-black font-numeric text-purple-800 mt-1"><?= number_format($stats['pendingSharesTotal'] ?? 0) ?></div>
+            <div class="text-[11px] text-purple-600 mt-0.5"><?= is_rtl() ? 'سهم مطلوب تخصيصه' : 'Requested shares' ?></div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+            <div class="text-xs text-emerald-800 font-bold"><?= is_rtl() ? 'حالة التدقيق والمراجعة' : 'Review Status' ?></div>
+            <div class="text-base font-bold text-emerald-700 mt-1 flex items-center gap-1.5">
+                <i class="bi bi-shield-check text-emerald-600"></i>
+                <span><?= $stats['pendingRegistrations'] > 0 ? (is_rtl() ? 'تتطلب قرار فوري' : 'Action Required') : (is_rtl() ? 'محدثة بالكامل' : 'Up to Date') ?></span>
+            </div>
+            <div class="text-[11px] text-emerald-600 mt-0.5"><?= is_rtl() ? 'تحديث لحظي لطلبات الانضمام' : 'Real-time account review' ?></div>
+        </div>
+    </div>
+
+    <!-- Content: Itemized Table or Empty State -->
+    <?php if (empty($stats['pendingMembersList'])): ?>
+        <div class="text-center py-6 px-4 rounded-xl bg-slate-50/70 border border-dashed border-slate-200">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mx-auto mb-2 shadow-xs border border-emerald-100">
+                <i class="bi bi-check2-all"></i>
+            </div>
+            <div class="font-bold text-slate-800 text-sm"><?= is_rtl() ? 'لا توجد طلبات تسجيل معلقة بانتظار الموافقة حالياً' : 'No pending registration requests awaiting approval' ?></div>
+            <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto"><?= is_rtl() ? 'جميع طلبات العضوية والتسجيل الذاتي تم اعتمادها وتدقيقها بالكامل. عند قيام أي مشترك جديد بالتسجيل الذاتي سيظهر طلبه وبياناته هنا فوراً للتدقيق والاعتماد.' : 'All registrations have been reviewed. New self-registrations will appear here immediately for approval.' ?></p>
+            <div class="flex items-center justify-center gap-2 mt-3">
+                <a href="<?= url('admin/members') ?>" class="btn btn-sm btn-soft text-xs font-bold">
+                    <i class="bi bi-people"></i>
+                    <span><?= is_rtl() ? 'سجل المشتركين المعتمدين' : 'View Approved Members' ?></span>
+                </a>
+                <a href="<?= url('admin/members/create') ?>" class="btn btn-sm btn-primary text-xs font-bold">
+                    <i class="bi bi-person-plus-fill"></i>
+                    <span><?= is_rtl() ? 'إضافة مشترك جديد' : 'Add New Member' ?></span>
+                </a>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="table-panel border-0 shadow-none">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th><?= is_rtl() ? 'المشترك' : 'Member' ?></th>
+                        <th><?= is_rtl() ? 'رقم الهوية' : 'National ID' ?></th>
+                        <th><?= is_rtl() ? 'رقم الجوال' : 'Mobile' ?></th>
+                        <th><?= is_rtl() ? 'البريد الإلكتروني' : 'Email' ?></th>
+                        <th><?= is_rtl() ? 'الأسهم المطلوبة' : 'Shares' ?></th>
+                        <th><?= is_rtl() ? 'تاريخ التقديم' : 'Submission Date' ?></th>
+                        <th class="text-end"><?= __('actions') ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($stats['pendingMembersList'] as $pm): ?>
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900"><?= e($pm['name']) ?></div>
+                                    <div class="text-[11px] text-amber-700 font-bold font-numeric"><?= is_rtl() ? 'طلب تسجيل جديد' : 'New request' ?></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="font-numeric font-bold text-slate-700"><?= e($pm['national_id']) ?></td>
+                        <td class="font-numeric text-xs text-slate-600"><bdi dir="ltr"><?= e($pm['mobile']) ?></bdi></td>
+                        <td class="text-xs text-slate-500 font-mono"><?= e($pm['email']) ?></td>
+                        <td class="font-numeric font-bold text-slate-900">
+                            <?= (int)$pm['shares_count'] > 0 ? number_format($pm['shares_count']) . ' ' . (is_rtl() ? 'سهم' : 'shares') : (is_rtl() ? 'بدون أسهم' : '0') ?>
+                        </td>
+                        <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($pm['created_at']) ?></bdi></td>
+                        <td class="text-end whitespace-nowrap">
+                            <form method="post" action="<?= url('admin/members/' . $pm['id'] . '/registration/approve') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'الموافقة على تسجيل "' . $pm['name'] . '" وتفعيل حسابه؟' : 'Approve registration for "' . $pm['name'] . '"?') ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-sm btn-soft text-emerald-600 hover:bg-emerald-50 font-bold py-1 px-2.5" title="<?= is_rtl() ? 'موافقة واعتماد' : 'Approve' ?>">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span><?= is_rtl() ? 'اعتماد' : 'Approve' ?></span>
+                                </button>
+                            </form>
+                            <form method="post" action="<?= url('admin/members/' . $pm['id'] . '/registration/reject') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'رفض طلب تسجيل "' . $pm['name'] . '"؟' : 'Reject registration for "' . $pm['name'] . '"?') ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn-sm btn-soft text-rose-600 hover:bg-rose-50 font-bold py-1 px-2.5" title="<?= is_rtl() ? 'رفض الطلب' : 'Reject' ?>">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                    <span><?= is_rtl() ? 'رفض' : 'Reject' ?></span>
+                                </button>
+                            </form>
+                            <a href="<?= url('admin/members/' . $pm['id']) ?>" class="btn btn-sm btn-soft py-1 px-2 text-slate-600" title="<?= __('view') ?>">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+</div>
+
 <!-- Detailed Stats & Quick Action Feeds -->
 <div class="row g-3">
     <!-- Founding Capital Stats -->
@@ -405,6 +533,15 @@
                     </span>
                     <?php if ($stats['pendingShareRequestsCount'] > 0): ?>
                         <span class="badge-status badge-info font-num"><?= $stats['pendingShareRequestsCount'] ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?= url('admin/members?account_status=pending') ?>" class="btn btn-soft text-start !justify-between">
+                    <span class="flex items-center gap-2">
+                        <i class="bi bi-person-check-fill text-amber-600"></i>
+                        <span><?= is_rtl() ? 'طلبات التسجيل بانتظار الموافقة' : 'Registration Requests' ?></span>
+                    </span>
+                    <?php if ($stats['pendingRegistrations'] > 0): ?>
+                        <span class="badge-status badge-warning font-num"><?= $stats['pendingRegistrations'] ?></span>
                     <?php endif; ?>
                 </a>
                 <a href="<?= url('admin/members/create') ?>" class="btn btn-soft text-start !justify-between">
