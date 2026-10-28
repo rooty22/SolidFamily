@@ -12,7 +12,13 @@ class SharesController extends Controller
 {
     public function index(): void
     {
-        $pager = paginate(Member::withoutRegistrations(Member::all('shares_count DESC')));
+        // Search by name, mobile or national ID (the same search the members / subscriptions pages use).
+        $q = trim((string) $this->input('q', ''));
+        $all = $q !== '' ? Member::search($q) : Member::all('shares_count DESC');
+        if ($q !== '') {
+            usort($all, fn($a, $b) => (int) $b['shares_count'] <=> (int) $a['shares_count']);
+        }
+        $pager = paginate(Member::withoutRegistrations($all));
         $members = $pager['items'];
         $shareValue = (float) Setting::get('share_value', 0);
         $lotsByMember = [];
@@ -23,6 +29,7 @@ class SharesController extends Controller
         $this->view('admin/shares/index', [
             'pageTitle' => __('shares_management'),
             'members' => $members,
+            'q' => $q,
             'pager' => $pager,
             'shareValue' => $shareValue,
             'lotsByMember' => $lotsByMember,

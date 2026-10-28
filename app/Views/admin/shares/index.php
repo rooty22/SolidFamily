@@ -39,6 +39,19 @@
     </div>
 </div>
 
+<!-- Search a member by name / mobile / national ID -->
+<form method="get" action="<?= url('admin/shares') ?>" class="flex flex-wrap items-center gap-2 mb-4">
+    <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" class="form-control" placeholder="<?= is_rtl() ? 'ابحث باسم المشترك أو الجوال أو الهوية...' : 'Search by name, mobile or national ID...' ?>" value="<?= e($q ?? '') ?>">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= is_rtl() ? 'بحث' : 'Search' ?></button>
+    <?php if (($q ?? '') !== ''): ?>
+        <a href="<?= url('admin/shares') ?>" class="btn btn-soft btn-sm inline-flex items-center gap-1.5"><i class="bi bi-x-circle"></i> <?= is_rtl() ? 'إلغاء البحث' : 'Clear' ?></a>
+        <span class="text-xs text-slate-500 font-bold"><?= is_rtl() ? number_format($pager['total']) . ' نتيجة' : number_format($pager['total']) . ' result(s)' ?></span>
+    <?php endif; ?>
+</form>
+
 <div class="table-panel">
     <table class="table-modern">
         <thead>
@@ -272,6 +285,16 @@
             </div>
             <?php $modalsHtml .= ob_get_clean(); ?>
             <?php endforeach; ?>
+            <?php if (empty($members)): ?>
+            <tr>
+                <td colspan="5" class="p-0">
+                    <div class="empty-state">
+                        <i class="bi bi-search text-3xl text-slate-400 mb-2"></i>
+                        <span><?= is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.' ?></span>
+                    </div>
+                </td>
+            </tr>
+            <?php endif; ?>
         </tbody>
     </table>
 </div>

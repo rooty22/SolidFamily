@@ -261,8 +261,8 @@ class MonthlySubscription extends Model
      * bill on their own due date), plus a single lot-less trivial row for a member with no active lots.
      * Returns all of that member's rows for $month.
      *
-     * @param bool $applyGracePeriod Whether a lot added this month, after its due day already passed, gets a short
-     *     grace before it counts as overdue (see ensureLotMonth()). Its amount is still owed, never waived.
+     * @param bool $applyGracePeriod Kept for existing callers and ignored: the grace of a lot's first month is derived
+     *     from the lot's own start date (see ensureLotMonth()), so it no longer depends on when the row is created.
      */
     public static function ensureMonthExistsForMember(int $memberId, string $month, bool $applyGracePeriod = true): array
     {
@@ -270,7 +270,7 @@ class MonthlySubscription extends Model
         $lots = ShareLot::activeFor($memberId);
 
         if (empty($lots)) {
-            return [self::ensureLotMonth($member, null, 0, null, $month, $applyGracePeriod)];
+            return [self::ensureLotMonth($member, null, 0, null, $month, null)];
         }
 
         // A lot owes nothing for months before it existed, so it gets no row for them (otherwise an admin
@@ -291,7 +291,9 @@ class MonthlySubscription extends Model
 
         $rows = [];
         foreach ($lots as $lot) {
-            $rows[] = self::ensureLotMonth($member, (int) $lot['id'], (int) $lot['shares_count'], $lot['subscription_due_day'], $month, $applyGracePeriod && ShareLot::startMonth($lot) === $month);
+            // Only a lot's first month can get a grace: the date it started counts from, not today.
+            $graceFrom = ShareLot::startMonth($lot) === $month ? ShareLot::startDate($lot) : null;
+            $rows[] = self::ensureLotMonth($member, (int) $lot['id'], (int) $lot['shares_count'], $lot['subscription_due_day'], $month, $graceFrom);
         }
         return $rows;
     }
@@ -305,27 +307,34 @@ class MonthlySubscription extends Model
         return self::ensureMonthExistsForMember($memberId, $month, $applyGracePeriod)[0] ?? [];
     }
 
-    private static function ensureLotMonth(array $member, ?int $lotId, int $sharesCount, $lotDueDay, string $month, bool $applyGracePeriod): array
+    /** $graceFrom: the lot's start date (Y-m-d) when $month is its first month, else null. */
+    private static function ensureLotMonth(array $member, ?int $lotId, int $sharesCount, $lotDueDay, string $month, ?string $graceFrom): array
     {
         $shareValue = (float) Setting::get('share_value', 0);
         $dueDay = $lotDueDay !== null ? (int) $lotDueDay : (int) ($member['subscription_due_day'] ?? Setting::get('subscription_due_day', 10));
         $amountDue = round($sharesCount * $shareValue, 2);
         $dueDate = month_due_date($month, $dueDay);
 
-        // A lot approved mid-cycle, after this month's due day already passed, is NOT overdue the instant it is billed:
-        // it falls due a few days later. Its amount is a real debt for this month - the row stays UNPAID until
-        // money is actually recorded (marking it "paid" would hide what the member still owes).
-        // due_date keeps showing the due day the admin configured; the grace is a separate date that only
-        // postpones the moment the row starts counting as late.
+        // A lot that starts after its first month's due day already passed (the due date is BEFORE the lot existed)
+        // is NOT overdue the instant it is billed: it gets the grace period counted from the day it started, whenever
+        // the row is created or the lot back-dated. Its amount is a real debt for this month - the row stays UNPAID
+        // until money is actually recorded. due_date keeps showing the configured due day; the grace is a separate
+        // date that only postpones the moment the row starts counting as late.
         $graceUntil = null;
-        if ($applyGracePeriod && self::graceEnabled() && $month === date('Y-m') && $dueDate < date('Y-m-d')) {
-            $graceUntil = date('Y-m-d', strtotime('+' . self::gracePeriodDays() . ' days'));
+        if ($graceFrom !== null && self::graceEnabled() && $dueDate < $graceFrom) {
+            $graceUntil = date('Y-m-d', strtotime($graceFrom . ' +' . self::gracePeriodDays() . ' days'));
         }
         // A lot with no shares owes nothing this month: that is trivially "paid".
         $status = $amountDue > 0 ? 'unpaid' : 'paid';
 
         $existing = self::first(['member_id' => $member['id'], 'month' => $month, 'lot_id' => $lotId]);
         if ($existing) {
+            // The first month's grace follows the lot's start date (also for rows created before this rule, or paid
+            // ones: it only moves the "late" line, never the due date or the amounts).
+            if ($graceFrom !== null && ($existing['grace_until'] ?? null) !== $graceUntil) {
+                self::update($existing['id'], ['grace_until' => $graceUntil]);
+                $existing['grace_until'] = $graceUntil;
+            }
             // A current/future month nobody has paid anything on follows the lot's latest share count / share value;
             // otherwise a lot resized after the row was created would get that month for free (or stay flagged as
             // owing a debt it no longer has).
@@ -381,12 +390,6 @@ class MonthlySubscription extends Model
     }
 
     /**
-     * Void the current-month rows of lots that no longer exist (cancelled to zero / merged into a new lot).
-     * A voided row owes nothing any more (amount_due = 0), so every total and status computed from amounts stays true.
-     * $force also drops what was collected on it (that money was carried to the merged row); otherwise a row that
-     * already has a real payment is left alone - cancelling shares never erases money that was paid.
-     */
-    /**
      * Every month of a cancelled lot: rows nobody paid are removed (they are not owed any more and must not show or
      * count anywhere), a row paid in part is closed at what was paid; fully paid rows stay as they are.
      */
@@ -403,6 +406,12 @@ class MonthlySubscription extends Model
         );
     }
 
+    /**
+     * Void the current-month rows of lots that no longer exist (cancelled to zero / merged into a new lot).
+     * A voided row owes nothing any more (amount_due = 0), so every total and status computed from amounts stays true.
+     * $force also drops what was collected on it (that money was carried to the merged row); otherwise a row that
+     * already has a real payment is left alone - cancelling shares never erases money that was paid.
+     */
     public static function voidRowsOfLots(int $memberId, array $lotIds, bool $force, ?string $month = null): void
     {
         $month = $month ?? date('Y-m');

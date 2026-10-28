@@ -136,6 +136,8 @@ html {
 .scroll-fab button:active { transform: scale(.93); }
 .scroll-fab button[hidden] { display: none; }
 @media print { .scroll-fab { display: none !important; } }
+/* Date picker inside a popup: positioned by date-inputs.js (above the popup's own content). */
+.modal .flatpickr-calendar { z-index: 1065; }
 /* Keep the last rows (and their action buttons) clear of the floating buttons when scrolled to the bottom. */
 .main-area .page-content { padding-bottom: 96px; }
 
