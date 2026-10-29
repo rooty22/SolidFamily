@@ -8,22 +8,57 @@ class MonthlySubscription extends Model
 {
     protected static string $table = 'monthly_subscriptions';
 
-    /** Days a lot added after this month's due day gets before its first payment counts as late (admin-configurable; 7 if never set). */
+    /** Bump when the grace rules change, so every stored grace_until is recomputed once (see ensureGraceSynced()). */
+    private const GRACE_RULES_VERSION = 'v1';
+
+    /** The grace settings (Settings > financial controls), read once per request: statuses are computed per row. */
+    private static ?array $graceCfg = null;
+
+    private static function graceConfig(): array
+    {
+        if (self::$graceCfg === null) {
+            $s = [];
+            foreach (self::raw("SELECT `key`, value FROM settings WHERE `key` IN ('subscription_grace_enabled', 'subscription_grace_all_months', 'subscription_grace_days')") as $r) {
+                $s[$r['key']] = (string) $r['value'];
+            }
+            $enabled = ($s['subscription_grace_enabled'] ?? '1') === '1';
+            self::$graceCfg = [
+                'enabled' => $enabled,
+                'all' => $enabled && ($s['subscription_grace_all_months'] ?? '1') === '1',
+                'days' => max(0, (int) ($s['subscription_grace_days'] ?? 7)),
+            ];
+        }
+        return self::$graceCfg;
+    }
+
+    /** Days after the due day a payment is still not late (admin-configurable; 7 if never set). */
     private static function gracePeriodDays(): int
     {
-        return (int) Setting::get('subscription_grace_days', 7);
+        return self::graceConfig()['days'];
     }
 
     /** Whether a lot added after the due day gets any grace at all before counting as late (admin-configurable; on by default). */
     private static function graceEnabled(): bool
     {
-        return (string) Setting::get('subscription_grace_enabled', '1') === '1';
+        return self::graceConfig()['enabled'];
     }
 
-    /** Whether the grace period covers EVERY month (not only a lot's first one). Off by default. */
+    /**
+     * Whether the grace period covers EVERY month (not only a lot's first one). On by default: a payment made within
+     * the grace days the admin configured (Settings > financial controls) after the due day is not late.
+     */
     public static function graceAllMonths(): bool
     {
-        return self::graceEnabled() && (string) Setting::get('subscription_grace_all_months', '0') === '1';
+        return self::graceConfig()['all'];
+    }
+
+    /**
+     * The first date a month counts as LATE when its subscription row does not exist yet (rows are created when somebody
+     * opens the member): the due date plus the grace days when the grace covers every month.
+     */
+    public static function lateLineFor(string $dueDate): string
+    {
+        return self::graceAllMonths() ? date('Y-m-d', strtotime($dueDate . ' +' . self::gracePeriodDays() . ' days')) : $dueDate;
     }
 
     /**
@@ -55,10 +90,11 @@ class MonthlySubscription extends Model
      */
     public static function resyncGrace(): void
     {
+        self::$graceCfg = null; // the settings may have just been saved in this request
         $enabled = self::graceEnabled();
         $all = self::graceAllMonths();
         $days = self::gracePeriodDays();
-        self::raw(
+        self::execute(
             "UPDATE monthly_subscriptions s
              LEFT JOIN share_lots l ON l.id = s.lot_id
              SET s.grace_until = CASE
@@ -71,11 +107,75 @@ class MonthlySubscription extends Model
         );
     }
 
-    /** The date from which an unpaid row counts as LATE: the due date, or the end of its grace when that is later. */
+    /**
+     * Makes sure every stored grace_until was computed from the CURRENT grace settings. The SQL screens (late lists,
+     * dashboard counts, reminders) read grace_until directly, so rows billed before the settings were changed - or
+     * before the grace rules existed - must not keep an old (or missing) grace. A fingerprint of the settings the rows
+     * were last synced with is kept in the settings table; when it differs, every row is recomputed once.
+     * Called on every request from the bootstrap (two small queries) and after the settings are saved ($fresh).
+     */
+    public static function ensureGraceSynced(bool $fresh = false): void
+    {
+        static $checked = false;
+        if ($checked && !$fresh) {
+            return;
+        }
+        $checked = true;
+        try {
+            $meta = [];
+            foreach (self::raw("SELECT `key`, value FROM settings WHERE `key` IN ('subscription_grace_synced', 'subscription_grace_all_months_upgraded')") as $r) {
+                $meta[$r['key']] = (string) $r['value'];
+            }
+            // One-time upgrade: "grace for every month" used to default to OFF, and saving the settings form stored that
+            // default as an explicit '0' - so the grace days the admin set never covered normal months and payments made
+            // inside them showed as "paid late". It is ON by default now: switch it on once for existing installs (the
+            // admin can still turn it off afterwards from Settings > financial controls).
+            if (!isset($meta['subscription_grace_all_months_upgraded'])) {
+                Setting::set('subscription_grace_all_months', '1');
+                Setting::set('subscription_grace_all_months_upgraded', '1');
+                $fresh = true;
+            }
+            if ($fresh) {
+                self::$graceCfg = null;
+            }
+            $cfg = self::graceConfig();
+            $sig = self::GRACE_RULES_VERSION . '|' . ($cfg['enabled'] ? 1 : 0) . '|' . ($cfg['all'] ? 1 : 0) . '|' . $cfg['days'];
+            if (($meta['subscription_grace_synced'] ?? '') === $sig) {
+                return;
+            }
+            self::resyncGrace();
+            Setting::set('subscription_grace_synced', $sig);
+        } catch (\Throwable $e) {
+            error_log('[sandouk] subscription grace resync failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * The date after which a row counts as LATE (still unpaid after it -> "late", paid after it -> "paid late"): the due
+     * date pushed forward by the grace period the admin set in Settings > financial controls. Worked out from the
+     * CURRENT settings, so it is right even for a row whose stored grace_until was not recomputed yet:
+     *  - grace switched off: the due date itself;
+     *  - otherwise the latest of the row's stored grace (a lot's first month counts it from the lot's start date) and,
+     *    when the grace covers every month, the due date + the grace days.
+     */
     public static function effectiveDue(array $row): string
     {
+        $due = (string) ($row['due_date'] ?? '');
+        if ($due === '' || !self::graceEnabled()) {
+            return $due;
+        }
+        $eff = $due;
         $grace = $row['grace_until'] ?? null;
-        return ($grace && $grace > $row['due_date']) ? $grace : $row['due_date'];
+        if ($grace && $grace > $eff) {
+            $eff = (string) $grace;
+        }
+        if (self::graceAllMonths()) {
+            $line = self::lateLineFor($due);
+            if ($line > $eff) {
+                $eff = $line;
+            }
+        }
+        return $eff;
     }
 
     /**
@@ -116,7 +216,8 @@ class MonthlySubscription extends Model
      * How a row's dates relate, computed from today's date and the real payment date so it is always current:
      *  - 'payment': when money was recorded -> 'early' (before the due date), 'on_time', 'in_grace' (after the due date
      *    but inside its grace) or 'late' (after the grace), with 'days' off the due date (the grace end for 'late');
-     *  - 'due': what is still owed -> 'overdue' (days since it fell due), 'today' or 'upcoming' (days left).
+     *  - 'due': what is still owed -> 'overdue' (days since its grace ended), 'in_grace' (past the due date but still
+     *    inside the grace period: days of grace left), 'today' or 'upcoming' (days left to the due date).
      * Either is null when it does not apply (nothing paid yet / nothing left to pay).
      */
     public static function timingOf(array $row): array
@@ -147,10 +248,12 @@ class MonthlySubscription extends Model
             $today = date('Y-m-d');
             if ($effDue < $today) {
                 $timing['due'] = ['type' => 'overdue', 'days' => self::daysBetween($effDue, $today)];
-            } elseif ($effDue === $today) {
+            } elseif ($dueDate < $today) {
+                $timing['due'] = ['type' => 'in_grace', 'days' => self::daysBetween($today, $effDue)];
+            } elseif ($dueDate === $today) {
                 $timing['due'] = ['type' => 'today', 'days' => 0];
             } else {
-                $timing['due'] = ['type' => 'upcoming', 'days' => self::daysBetween($today, $effDue)];
+                $timing['due'] = ['type' => 'upcoming', 'days' => self::daysBetween($today, $dueDate)];
             }
         }
 
@@ -230,7 +333,7 @@ class MonthlySubscription extends Model
         ));
         if (empty($rows)) {
             // Rows are created lazily: a month nobody opened yet is still owed once its due date has passed.
-            return month_due_date($month, self::dueDayFor($member)) < date('Y-m-d') ? 'late' : 'unpaid';
+            return self::lateLineFor(month_due_date($month, self::dueDayFor($member))) < date('Y-m-d') ? 'late' : 'unpaid';
         }
         $status = self::summarize($rows)['status'];
         return ['paid_late' => 'paid', 'partial_late' => 'partial'][$status] ?? $status;

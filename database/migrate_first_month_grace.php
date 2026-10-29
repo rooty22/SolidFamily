@@ -8,8 +8,8 @@
  * Rules (the same ones the system applies from now on, see MonthlySubscription::graceUntilFor()):
  *  - the FIRST month of a share lot that started after its due date gets the grace counted from the day the lot
  *    started (back-dated lots used to get none, so a payment right at the start was flagged "paid late");
- *  - any other month gets a grace from its due date only when the setting "grace for every month"
- *    (subscription_grace_all_months) is on;
+ *  - every other month gets the grace from its due date too (setting "grace for every month",
+ *    subscription_grace_all_months, ON by default; when switched off only the first month is covered);
  *  - none at all when the grace period is switched off.
  * Only subscription rows' grace_until moves: due dates, amounts and payments are untouched. Idempotent.
  */
@@ -33,7 +33,7 @@ $setting = function (string $key, string $default) use ($pdo): string {
 $enabled = $setting('subscription_grace_enabled', '1') === '1';
 $days = max(0, (int) $setting('subscription_grace_days', '7'));
 
-$all = $enabled && $setting('subscription_grace_all_months', '0') === '1';
+$all = $enabled && $setting('subscription_grace_all_months', '1') === '1';
 
 $before = (int) $pdo->query("SELECT COUNT(*) FROM monthly_subscriptions WHERE grace_until IS NOT NULL")->fetchColumn();
 $stmt = $pdo->prepare(

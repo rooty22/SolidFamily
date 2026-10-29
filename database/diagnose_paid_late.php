@@ -31,7 +31,7 @@ $setting = function (string $key, string $default) use ($pdo): string {
 };
 $enabled = $setting('subscription_grace_enabled', '1') === '1';
 $days = max(0, (int) $setting('subscription_grace_days', '7'));
-$all = $setting('subscription_grace_all_months', '0') === '1';
+$all = $setting('subscription_grace_all_months', '1') === '1';
 
 echo "Database: {$db['database']}\n";
 echo 'Grace period: ' . ($enabled ? "ON, {$days} days" . ($all ? ', every month' : ', first month of a lot only') : 'OFF') . "\n";

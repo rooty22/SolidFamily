@@ -247,13 +247,18 @@ function subscription_date_cell(array $h, bool $graceVisible = true): string
     if ($d) {
         $html .= match ($d['type']) {
             'overdue' => $badge($rtl ? 'متأخر منذ ' . days_phrase($d['days']) : 'Overdue by ' . days_phrase($d['days']), 'bg-rose-50 text-rose-700'),
+            'in_grace' => $badge($d['days'] > 0
+                ? ($rtl ? 'ضمن فترة السماح · متبقي ' . days_phrase($d['days']) : 'Within grace · ' . days_phrase($d['days']) . ' left')
+                : ($rtl ? 'آخر يوم في فترة السماح' : 'Last day of grace'), 'bg-amber-50 text-amber-700'),
             'today' => $badge($rtl ? 'يستحق اليوم' : 'Due today', 'bg-amber-50 text-amber-700'),
             default => $badge($rtl ? 'متبقي ' . days_phrase($d['days']) . ' على الاستحقاق' : days_phrase($d['days']) . ' until due', 'bg-slate-100 text-slate-600'),
         };
     }
 
-    if ($graceVisible && !empty($h['grace_until']) && ($h['status'] ?? '') !== 'paid' && $h['grace_until'] >= date('Y-m-d')) {
-        $html .= '<small class="d-block text-slate-400 text-[10px]">' . ($rtl ? 'مهلة حتى ' : 'Grace until ') . date_ar($h['grace_until']) . '</small>';
+    // The grace end comes from the current settings (Settings > financial controls), not only the stored column.
+    $graceEnd = !empty($h['due_date']) ? \App\Models\MonthlySubscription::effectiveDue($h) : '';
+    if ($graceVisible && $graceEnd !== '' && $graceEnd > $h['due_date'] && ($h['status'] ?? '') !== 'paid' && $graceEnd >= date('Y-m-d')) {
+        $html .= '<small class="d-block text-slate-400 text-[10px]">' . ($rtl ? 'مهلة حتى ' : 'Grace until ') . date_ar($graceEnd) . '</small>';
     }
 
     return $html;

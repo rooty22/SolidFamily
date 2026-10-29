@@ -573,7 +573,7 @@ foreach (site_social_links_raw() as $i => $link) {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'مهلة السداد للسهم المضاف بعد يوم الاستحقاق' : 'Grace Period After Due Day' ?></label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'فترة السماح بعد يوم الاستحقاق' : 'Grace Period After Due Day' ?></label>
                         <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs transition-all">
                             <input type="number" min="0" max="60" name="subscription_grace_days" value="<?= e($settings['subscription_grace_days'] ?? '7') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
                             <span class="inline-flex items-center px-3 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">
@@ -582,15 +582,15 @@ foreach (site_social_links_raw() as $i => $link) {
                         </div>
                         <span class="text-[11px] text-slate-400 mt-1 block">
                             <?= is_rtl()
-                                ? 'عدد الأيام التي تُمهَل لسهم أُضيف بعد فوات يوم الاستحقاق هذا الشهر قبل أن يُعتبر متأخراً؛ المبلغ يبقى مستحقاً طوال المهلة، هي فقط تؤجل وصفه بـ"متأخر".'
-                                : 'How many days a share added after this month\'s due day already passed gets before it counts as late; the amount stays owed throughout, this only delays being flagged "late".' ?>
+                                ? 'عدد الأيام بعد يوم الاستحقاق التي لا يُعتبر فيها السداد متأخراً (ولا يظهر العميل «متأخراً» قبل انتهائها). يسري على كل الأشهر، وكذلك على السهم الذي يبدأ بعد يوم استحقاق شهره الأول فتُحسب له من يوم بدايته. المبلغ يبقى مستحقاً طوال المهلة، هي فقط تؤجل وصفه بـ"متأخر".'
+                                : 'How many days after the due day a payment is still not late (a member is not shown as late before they pass). It covers every month, and a share that starts after the due day of its first month gets it counted from its start day. The amount stays owed throughout, this only delays being flagged "late".' ?>
                         </span>
                     </div>
 
                     <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white sm:col-span-2 lg:col-span-1">
                         <div>
-                            <h4 class="text-xs font-bold text-slate-800"><?= is_rtl() ? 'تفعيل مهلة السداد' : 'Enable Grace Period' ?></h4>
-                            <p class="text-[11px] text-slate-500 mt-0.5"><?= is_rtl() ? 'عند الإيقاف: أي سهم يُضاف بعد يوم الاستحقاق يُعتبر متأخراً فوراً، بلا مهلة.' : 'When off: a share added after the due day counts as late immediately, no grace at all.' ?></p>
+                            <h4 class="text-xs font-bold text-slate-800"><?= is_rtl() ? 'تفعيل فترة السماح' : 'Enable Grace Period' ?></h4>
+                            <p class="text-[11px] text-slate-500 mt-0.5"><?= is_rtl() ? 'عند الإيقاف: يُعتبر أي سداد بعد يوم الاستحقاق متأخراً فوراً، بلا فترة سماح.' : 'When off: any payment after the due day counts as late immediately, no grace at all.' ?></p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer shrink-0 ms-3">
                             <input type="checkbox" name="subscription_grace_enabled" value="1" <?= ($settings['subscription_grace_enabled'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
@@ -602,11 +602,11 @@ foreach (site_social_links_raw() as $i => $link) {
                         <div>
                             <h4 class="text-xs font-bold text-slate-800"><?= is_rtl() ? 'تطبيق المهلة على كل الأشهر' : 'Apply the grace period to every month' ?></h4>
                             <p class="text-[11px] text-slate-500 mt-0.5"><?= is_rtl()
-                                ? 'عند التفعيل: أي سداد خلال أيام المهلة بعد يوم الاستحقاق (في أي شهر) لا يُعتبر متأخراً. وعند الإيقاف (الافتراضي) تُطبَّق المهلة على أول شهر للسهم فقط، وهو الشهر الذي بدأ فيه بعد يوم استحقاقه. يسري التغيير فوراً على كل الاشتراكات المسجلة، دون تغيير المبالغ أو تواريخ الاستحقاق.'
-                                : 'When on: a payment made within the grace days after the due day (any month) is not late. When off (default) the grace only covers the first month of a share, the one it started in after its due day. Applies at once to every recorded subscription; amounts and due dates are unchanged.' ?></p>
+                                ? 'مفعّل افتراضياً: أي سداد خلال أيام فترة السماح بعد يوم الاستحقاق (في أي شهر) لا يُعتبر متأخراً. عند الإيقاف تُطبَّق الفترة على أول شهر للسهم فقط (الذي بدأ فيه بعد يوم استحقاقه). يسري التغيير فوراً على كل الاشتراكات المسجلة، دون تغيير المبالغ أو تواريخ الاستحقاق.'
+                                : 'On by default: a payment made within the grace days after the due day (any month) is not late. When off, the grace only covers the first month of a share (the one it started in after its due day). Applies at once to every recorded subscription; amounts and due dates are unchanged.' ?></p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer shrink-0 ms-3">
-                            <input type="checkbox" name="subscription_grace_all_months" value="1" <?= ($settings['subscription_grace_all_months'] ?? '0') === '1' ? 'checked' : '' ?> class="sr-only peer">
+                            <input type="checkbox" name="subscription_grace_all_months" value="1" <?= ($settings['subscription_grace_all_months'] ?? '1') === '1' ? 'checked' : '' ?> class="sr-only peer">
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
                     </div>

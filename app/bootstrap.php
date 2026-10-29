@@ -37,3 +37,7 @@ if ($appConfig['debug']) {
 if (PHP_SAPI !== 'cli') {
     \App\Core\Session::start();
 }
+
+// Subscription grace (Settings > financial controls): keep every stored grace_until on the current settings, so no
+// screen shows a member as late / paid late while still inside the grace period the admin configured.
+\App\Models\MonthlySubscription::ensureGraceSynced();

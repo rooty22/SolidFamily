@@ -94,6 +94,8 @@ class Member extends Model
         $today = date('Y-m-d');
         $currentMonth = date('Y-m');
         $dueDay = (int) Setting::get('subscription_due_day', 10);
+        // A month nobody has opened yet has no row (so no stored grace): its late line is the due date + the grace days.
+        $lateOffset = (int) round((strtotime(MonthlySubscription::lateLineFor($today)) - strtotime($today)) / 86400);
 
         $statusClause = $activeOnly ? "AND m.status = 'active'" : "";
 
@@ -110,7 +112,7 @@ class Member extends Model
                 )
                 OR (
                     m.shares_count > 0 AND cur.id IS NULL
-                    AND CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')) < :today2
+                    AND DATE_ADD(CONCAT(:cm2, '-', LPAD(LEAST(COALESCE(m.subscription_due_day, :dd), DAY(LAST_DAY(CONCAT(:cm3, '-01')))), 2, '0')), INTERVAL :grace DAY) < :today2
                 )
             )");
         $subStmt->execute([
@@ -119,7 +121,8 @@ class Member extends Model
             'cm3' => $currentMonth,
             'today' => $today,
             'today2' => $today,
-            'dd' => $dueDay
+            'dd' => $dueDay,
+            'grace' => $lateOffset,
         ]);
         $lateSubIds = array_map('intval', $subStmt->fetchAll(\PDO::FETCH_COLUMN));
         $lateSubMap = array_fill_keys($lateSubIds, true);
@@ -182,7 +185,7 @@ class Member extends Model
         // Check if current month is missing and overdue
         $curRow = MonthlySubscription::where(['member_id' => $memberId, 'month' => $currentMonth]);
         if (empty($curRow) && (int) $member['shares_count'] > 0) {
-            $curDueDate = month_due_date($currentMonth, $dueDay);
+            $curDueDate = MonthlySubscription::lateLineFor(month_due_date($currentMonth, $dueDay));
             if ($curDueDate < $today) {
                 $lateSubMonths++;
                 $shareVal = (float) Setting::get('share_value', 0);
