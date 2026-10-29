@@ -596,8 +596,10 @@ function pagination_links(array $pager, string $fragment = ''): string
         return '<li class="' . $cls . '">' . $inner . '</li>';
     };
 
+    // The page links come FIRST so they sit on the start side (right in Arabic, left in English): the floating
+    // scroll buttons of the admin panel live on the opposite end and must never cover the links.
     $html = '<nav class="pager-nav d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" aria-label="pagination">';
-    $html .= '<div class="text-xs text-slate-500 font-semibold">'
+    $summary = '<div class="text-xs text-slate-500 font-semibold">'
         . ($rtl
             ? 'عرض ' . number_format($pager['from']) . ' - ' . number_format($pager['to']) . ' من ' . number_format($pager['total'])
             : 'Showing ' . number_format($pager['from']) . ' - ' . number_format($pager['to']) . ' of ' . number_format($pager['total']))
@@ -613,7 +615,7 @@ function pagination_links(array $pager, string $fragment = ''): string
         $prev = $p;
     }
     $html .= $item('<i class="bi ' . $nextIcon . '"></i>', $current + 1, false, $current >= $last);
-    $html .= '</ul></nav>';
+    $html .= '</ul>' . $summary . '</nav>';
 
     return $html;
 }
