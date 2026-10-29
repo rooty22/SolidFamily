@@ -15,7 +15,13 @@ class FoundingController extends Controller
 {
     public function index(): void
     {
-        $pager = paginate(Member::withoutRegistrations(Member::all('name ASC')));
+        // Search by name, mobile or national ID (the same search the members / subscriptions / shares pages use).
+        $q = trim((string) $this->input('q', ''));
+        $all = $q !== '' ? Member::search($q) : Member::all('name ASC');
+        if ($q !== '') {
+            usort($all, fn($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
+        }
+        $pager = paginate(Member::withoutRegistrations($all));
         $members = $pager['items'];
         $rows = [];
         foreach ($members as $m) {
@@ -27,6 +33,7 @@ class FoundingController extends Controller
         $this->view('admin/founding/index', [
             'pageTitle' => __('founding_amounts'),
             'rows' => $rows,
+            'q' => $q,
             'pager' => $pager,
         ], 'admin/layout');
     }
