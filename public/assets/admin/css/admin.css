@@ -1431,3 +1431,29 @@ html[dir="ltr"] .form-control-icon-both {
 .collapsing {
     visibility: visible !important;
 }
+
+/* Pagination (pagination_links() and the client-side pagers): rounded, in the panel's green */
+.pager-nav { padding: 10px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04); }
+.pager-nav .pagination { gap: 6px; flex-wrap: wrap; margin: 0; }
+.pager-nav .page-item .page-link {
+    min-width: 36px; height: 36px; padding: 0 10px; margin: 0 !important;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #e2e8f0 !important; border-radius: 11px !important;
+    background: #ffffff; color: #334155; font-size: 13px; font-weight: 700; line-height: 1;
+    box-shadow: none; transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.pager-nav .page-item .page-link i { font-size: 12px; }
+.pager-nav .page-item:not(.active):not(.disabled) .page-link:hover { background: #ecfdf5; border-color: #a7f3d0 !important; color: #047857; transform: translateY(-1px); }
+.pager-nav .page-item .page-link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.28); }
+.pager-nav .page-item.active .page-link {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%); border-color: #047857 !important; color: #ffffff;
+    box-shadow: 0 3px 10px rgba(5, 150, 105, 0.3);
+}
+.pager-nav .page-item.disabled .page-link { background: #f8fafc; border-color: #eef2f6 !important; color: #cbd5e1; pointer-events: none; }
+.pager-nav > div { color: #64748b; font-size: 12px; font-weight: 700; }
+@media (max-width: 575.98px) { .pager-nav { justify-content: center !important; } }
+
+/* Floating scroll buttons: shown only near their screen edge (see admin.js) */
+.scroll-fab { transition: opacity .22s ease, transform .22s ease; }
+.scroll-fab.is-away { opacity: 0; pointer-events: none; transform: translateX(-16px); }
+html[dir="ltr"] .scroll-fab.is-away { transform: translateX(16px); }

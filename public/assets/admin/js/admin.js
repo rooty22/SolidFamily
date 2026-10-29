@@ -277,6 +277,34 @@ document.addEventListener('DOMContentLoaded', function () {
         sync();
         // Content that grows after load (tables, collapses) changes whether there is anything left to scroll.
         if (window.ResizeObserver) { new ResizeObserver(sync).observe(document.body); }
+
+        // The buttons stay out of the way: with a mouse they show only while the pointer is near the screen edge they
+        // sit on (left in Arabic, right in English) and slide away again when it leaves. On touch screens there is no
+        // pointer to hover with, so they stay visible.
+        var ZONE = 120; // px from that edge
+        var hideTimer = null;
+        var hasMouse = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+        function setAway(away) { fab.classList.toggle('is-away', away); }
+        if (hasMouse) {
+            setAway(true);
+            document.addEventListener('mousemove', function (e) {
+                var rtl = document.documentElement.dir === 'rtl';
+                var near = rtl ? e.clientX <= ZONE : e.clientX >= window.innerWidth - ZONE;
+                if (near) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                    setAway(false);
+                } else if (!hideTimer && !fab.classList.contains('is-away')) {
+                    hideTimer = setTimeout(function () {
+                        hideTimer = null;
+                        if (!fab.contains(document.activeElement)) { setAway(true); }
+                    }, 250);
+                }
+            }, { passive: true });
+            document.documentElement.addEventListener('mouseleave', function () { setAway(true); });
+            fab.addEventListener('focusin', function () { setAway(false); });
+            fab.addEventListener('focusout', function () { setAway(true); });
+        }
     }
     if (document.body) { build(); } else { document.addEventListener('DOMContentLoaded', build); }
 })();
