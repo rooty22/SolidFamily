@@ -597,6 +597,19 @@ foreach (site_social_links_raw() as $i => $link) {
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                         </label>
                     </div>
+
+                    <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white sm:col-span-2 lg:col-span-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800"><?= is_rtl() ? 'تطبيق المهلة على كل الأشهر' : 'Apply the grace period to every month' ?></h4>
+                            <p class="text-[11px] text-slate-500 mt-0.5"><?= is_rtl()
+                                ? 'عند التفعيل: أي سداد خلال أيام المهلة بعد يوم الاستحقاق (في أي شهر) لا يُعتبر متأخراً. وعند الإيقاف (الافتراضي) تُطبَّق المهلة على أول شهر للسهم فقط، وهو الشهر الذي بدأ فيه بعد يوم استحقاقه. يسري التغيير فوراً على كل الاشتراكات المسجلة، دون تغيير المبالغ أو تواريخ الاستحقاق.'
+                                : 'When on: a payment made within the grace days after the due day (any month) is not late. When off (default) the grace only covers the first month of a share, the one it started in after its due day. Applies at once to every recorded subscription; amounts and due dates are unchanged.' ?></p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0 ms-3">
+                            <input type="checkbox" name="subscription_grace_all_months" value="1" <?= ($settings['subscription_grace_all_months'] ?? '0') === '1' ? 'checked' : '' ?> class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
                 </div>
             </div>
 

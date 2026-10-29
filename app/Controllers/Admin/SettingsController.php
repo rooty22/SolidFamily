@@ -176,9 +176,17 @@ class SettingsController extends Controller
             }
         }
 
-        // ---- 3b. Subscription grace period on/off (checkbox: '1'/'on' when checked, absent when unchecked) ----
+        // ---- 3b. Subscription grace period on/off + "every month" (checkboxes: '1'/'on' when checked, absent when unchecked) ----
+        $graceBefore = [Setting::get('subscription_grace_enabled', '1'), Setting::get('subscription_grace_all_months', '0'), Setting::get('subscription_grace_days', '7')];
         $graceVal = $data['subscription_grace_enabled'] ?? null;
         Setting::set('subscription_grace_enabled', ($graceVal === '1' || $graceVal === 'on') ? '1' : '0');
+        $graceAll = $data['subscription_grace_all_months'] ?? null;
+        Setting::set('subscription_grace_all_months', ($graceAll === '1' || $graceAll === 'on') ? '1' : '0');
+        $graceAfter = [Setting::get('subscription_grace_enabled', '1'), Setting::get('subscription_grace_all_months', '0'), Setting::get('subscription_grace_days', '7')];
+        // The grace of every recorded subscription follows these settings (due dates, amounts and payments are untouched).
+        if ($graceBefore !== $graceAfter) {
+            \App\Models\MonthlySubscription::resyncGrace();
+        }
 
         // ---- 4. Navigation menu & footer social links (home page sections live in Admin > Pages > Home page) ----
         if ($menuJson !== null) {

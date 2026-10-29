@@ -20,6 +20,57 @@ class MonthlySubscription extends Model
         return (string) Setting::get('subscription_grace_enabled', '1') === '1';
     }
 
+    /** Whether the grace period covers EVERY month (not only a lot's first one). Off by default. */
+    public static function graceAllMonths(): bool
+    {
+        return self::graceEnabled() && (string) Setting::get('subscription_grace_all_months', '0') === '1';
+    }
+
+    /**
+     * The date a row's grace ends, or null when it has none. Computed only from the row's due date, the lot's start date
+     * (when the row is the lot's first month) and the settings, so it can be recomputed for any row at any time:
+     *  - first month of a lot that started AFTER its due date: the grace runs from the day the lot started;
+     *  - any other month: from its due date, only when "grace for every month" is on;
+     *  - grace switched off: none.
+     */
+    public static function graceUntilFor(string $dueDate, ?string $firstMonthStart): ?string
+    {
+        if (!self::graceEnabled()) {
+            return null;
+        }
+        if ($firstMonthStart !== null && $dueDate < $firstMonthStart) {
+            $from = $firstMonthStart;
+        } elseif (self::graceAllMonths()) {
+            $from = $dueDate;
+        } else {
+            return null;
+        }
+        return date('Y-m-d', strtotime($from . ' +' . self::gracePeriodDays() . ' days'));
+    }
+
+    /**
+     * Recomputes grace_until of EVERY stored row from the current grace settings (same rules as graceUntilFor()).
+     * Called when the grace settings change, so the late / paid-late status follows them everywhere at once. Only
+     * grace_until moves: due dates, amounts and payments are untouched.
+     */
+    public static function resyncGrace(): void
+    {
+        $enabled = self::graceEnabled();
+        $all = self::graceAllMonths();
+        $days = self::gracePeriodDays();
+        self::raw(
+            "UPDATE monthly_subscriptions s
+             LEFT JOIN share_lots l ON l.id = s.lot_id
+             SET s.grace_until = CASE
+                 WHEN ? = 0 THEN NULL
+                 WHEN l.created_at IS NOT NULL AND s.month = DATE_FORMAT(l.created_at, '%Y-%m') AND s.due_date < DATE(l.created_at)
+                     THEN DATE_ADD(DATE(l.created_at), INTERVAL ? DAY)
+                 WHEN ? = 1 THEN DATE_ADD(s.due_date, INTERVAL ? DAY)
+                 ELSE NULL END",
+            [$enabled ? 1 : 0, $days, $all ? 1 : 0, $days]
+        );
+    }
+
     /** The date from which an unpaid row counts as LATE: the due date, or the end of its grace when that is later. */
     public static function effectiveDue(array $row): string
     {
@@ -319,22 +370,13 @@ class MonthlySubscription extends Model
         // is NOT overdue the instant it is billed: it gets the grace period counted from the day it started, whenever
         // the row is created or the lot back-dated. Its amount is a real debt for this month - the row stays UNPAID
         // until money is actually recorded. due_date keeps showing the configured due day; the grace is a separate
-        // date that only postpones the moment the row starts counting as late.
-        $graceUntil = null;
-        if ($graceFrom !== null && self::graceEnabled() && $dueDate < $graceFrom) {
-            $graceUntil = date('Y-m-d', strtotime($graceFrom . ' +' . self::gracePeriodDays() . ' days'));
-        }
+        // date that only postpones the moment the row starts counting as late (see graceUntilFor()).
+        $graceUntil = self::graceUntilFor($dueDate, $graceFrom);
         // A lot with no shares owes nothing this month: that is trivially "paid".
         $status = $amountDue > 0 ? 'unpaid' : 'paid';
 
         $existing = self::first(['member_id' => $member['id'], 'month' => $month, 'lot_id' => $lotId]);
         if ($existing) {
-            // The first month's grace follows the lot's start date (also for rows created before this rule, or paid
-            // ones: it only moves the "late" line, never the due date or the amounts).
-            if ($graceFrom !== null && ($existing['grace_until'] ?? null) !== $graceUntil) {
-                self::update($existing['id'], ['grace_until' => $graceUntil]);
-                $existing['grace_until'] = $graceUntil;
-            }
             // A current/future month nobody has paid anything on follows the lot's latest share count / share value;
             // otherwise a lot resized after the row was created would get that month for free (or stay flagged as
             // owing a debt it no longer has).
@@ -344,6 +386,13 @@ class MonthlySubscription extends Model
             if ($untouched && $existing['due_date'] !== $dueDate) {
                 self::update($existing['id'], ['due_date' => $dueDate]);
                 $existing['due_date'] = $dueDate;
+            }
+            // The grace follows the row's own due date and the grace settings (also for rows created before these rules,
+            // or paid ones: it only moves the "late" line, never the due date or the amounts).
+            $rowGrace = self::graceUntilFor((string) $existing['due_date'], $graceFrom);
+            if (($existing['grace_until'] ?? null) !== $rowGrace) {
+                self::update($existing['id'], ['grace_until' => $rowGrace]);
+                $existing['grace_until'] = $rowGrace;
             }
             if ($untouched && ((int) $existing['shares_count_snapshot'] !== $sharesCount
                     || (float) $existing['share_value_snapshot'] !== $shareValue

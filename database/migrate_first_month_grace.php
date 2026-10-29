@@ -1,15 +1,17 @@
 <?php
 
 /**
- * Re-applies the grace period of a share lot's FIRST month from the lot's own start date.
+ * Recomputes the grace period of every stored subscription row from the current grace settings.
  *
  *   php database/migrate_first_month_grace.php
  *
- * A lot that starts after its first month's due day already passed (the due date is before the lot existed) gets the
- * grace period (settings: subscription_grace_days, subscription_grace_enabled) counted from the day it started. Lots
- * that were back-dated, or added by an admin with an earlier start date, never got it, so a payment made right at the
- * start was flagged "paid late". Only subscription rows' grace_until moves: due dates, amounts and payments are
- * untouched. Idempotent.
+ * Rules (the same ones the system applies from now on, see MonthlySubscription::graceUntilFor()):
+ *  - the FIRST month of a share lot that started after its due date gets the grace counted from the day the lot
+ *    started (back-dated lots used to get none, so a payment right at the start was flagged "paid late");
+ *  - any other month gets a grace from its due date only when the setting "grace for every month"
+ *    (subscription_grace_all_months) is on;
+ *  - none at all when the grace period is switched off.
+ * Only subscription rows' grace_until moves: due dates, amounts and payments are untouched. Idempotent.
  */
 
 $config = require __DIR__ . '/../config/config.php';
@@ -31,27 +33,23 @@ $setting = function (string $key, string $default) use ($pdo): string {
 $enabled = $setting('subscription_grace_enabled', '1') === '1';
 $days = max(0, (int) $setting('subscription_grace_days', '7'));
 
-// Every lot's first month row: month = the lot's start month.
-$rows = $pdo->query(
-    "SELECT s.id, s.due_date, s.grace_until, DATE(l.created_at) AS start_date
-       FROM monthly_subscriptions s
-       JOIN share_lots l ON l.id = s.lot_id
-      WHERE s.month = DATE_FORMAT(l.created_at, '%Y-%m')"
-)->fetchAll(PDO::FETCH_ASSOC);
+$all = $enabled && $setting('subscription_grace_all_months', '0') === '1';
 
-$update = $pdo->prepare('UPDATE monthly_subscriptions SET grace_until = ? WHERE id = ?');
-$set = 0;
-$cleared = 0;
-foreach ($rows as $r) {
-    $grace = ($enabled && $r['due_date'] < $r['start_date'])
-        ? date('Y-m-d', strtotime($r['start_date'] . " +{$days} days"))
-        : null;
-    if ($grace === $r['grace_until']) {
-        continue;
-    }
-    $update->execute([$grace, $r['id']]);
-    $grace === null ? $cleared++ : $set++;
-}
+$before = (int) $pdo->query("SELECT COUNT(*) FROM monthly_subscriptions WHERE grace_until IS NOT NULL")->fetchColumn();
+$stmt = $pdo->prepare(
+    "UPDATE monthly_subscriptions s
+     LEFT JOIN share_lots l ON l.id = s.lot_id
+     SET s.grace_until = CASE
+         WHEN ? = 0 THEN NULL
+         WHEN l.created_at IS NOT NULL AND s.month = DATE_FORMAT(l.created_at, '%Y-%m') AND s.due_date < DATE(l.created_at)
+             THEN DATE_ADD(DATE(l.created_at), INTERVAL ? DAY)
+         WHEN ? = 1 THEN DATE_ADD(s.due_date, INTERVAL ? DAY)
+         ELSE NULL END"
+);
+$stmt->execute([$enabled ? 1 : 0, $days, $all ? 1 : 0, $days]);
+$changed = $stmt->rowCount();
+$after = (int) $pdo->query("SELECT COUNT(*) FROM monthly_subscriptions WHERE grace_until IS NOT NULL")->fetchColumn();
 
-echo "- first-month rows checked: " . count($rows) . ", grace set/updated on {$set}, cleared on {$cleared}.\n";
-echo "First-month grace migration finished successfully.\n";
+echo "- grace: " . ($enabled ? "on, {$days} days" . ($all ? ', every month' : ', first month of a lot') : 'off') . ".\n";
+echo "- rows updated: {$changed}; rows with a grace before: {$before}, after: {$after}.\n";
+echo "Grace migration finished successfully.\n";
