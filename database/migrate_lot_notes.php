@@ -5,8 +5,9 @@
  *
  *   php database/migrate_lot_notes.php
  *
- * Adds share_lots.admin_note. The note belongs to the share itself, not to the member, so a member with three shares
- * has three independent notes. Existing lots start without a note. Idempotent.
+ * Adds share_lots.admin_note (written by the admin) and share_lots.member_note (written by the member on their own shares
+ * page). A note belongs to the share itself, not to the member, so a member with three shares has three independent
+ * notes of each kind. Existing lots start without notes. Idempotent.
  */
 
 $config = require __DIR__ . '/../config/config.php';
@@ -25,6 +26,13 @@ if (!in_array('admin_note', $cols, true)) {
     echo "- share_lots.admin_note added.\n";
 } else {
     echo "- share_lots.admin_note already exists, skipped.\n";
+}
+
+if (!in_array('member_note', $cols, true)) {
+    $pdo->exec("ALTER TABLE share_lots ADD COLUMN member_note VARCHAR(500) NULL COMMENT 'note the MEMBER writes about this share (the admin note is separate)' AFTER admin_note");
+    echo "- share_lots.member_note added.\n";
+} else {
+    echo "- share_lots.member_note already exists, skipped.\n";
 }
 
 echo "Lot-notes migration finished successfully.\n";

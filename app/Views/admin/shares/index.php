@@ -189,7 +189,7 @@
                                                     </td>
                                                     <td style="white-space:normal;min-width:170px;max-width:240px">
                                                         <?php $lotNote = \App\Models\ShareLot::note($lot); ?>
-                                                        <?= $lotNote !== '' ? '<span class="inline-block px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900">' . e($lotNote) . '</span>' : '<span class="text-slate-300">—</span>' ?>
+                                                        <?= lot_notes_html($lot) ?>
                                                     </td>
                                                     <td class="text-end">
                                                         <div class="flex items-center justify-end gap-1">

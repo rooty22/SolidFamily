@@ -24,8 +24,8 @@ $noteLabel = is_rtl() ? 'السهم رقم ' . (int) $shareNumber : 'Share #' . 
                     <div class="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed mb-3">
                         <i class="bi bi-info-circle-fill text-amber-600 me-1"></i>
                         <?= is_rtl()
-                            ? 'الملاحظة خاصة بهذا السهم فقط ولا تظهر على بقية أسهم المشترك، وهي للإدارة فقط.'
-                            : 'The note belongs to this share only, not to the member\'s other shares. It is visible to the administration only.' ?>
+                            ? 'الملاحظة خاصة بهذا السهم فقط ولا تظهر على بقية أسهم المشترك، وتظهر للمشترك نفسه في صفحة أسهمه، فاكتبها بصياغة مناسبة له.'
+                            : 'The note belongs to this share only. The member sees it on their shares page, so word it accordingly.' ?>
                     </div>
                     <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'الملاحظة (حتى 500 حرف)' : 'Note (up to 500 characters)' ?></label>
                     <textarea name="admin_note" rows="3" maxlength="500" class="form-control text-sm" placeholder="<?= is_rtl() ? 'مثال: تم استيفاء جميع الشروط' : 'e.g. all conditions are met' ?>"><?= e($noteText) ?></textarea>

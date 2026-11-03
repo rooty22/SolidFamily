@@ -221,7 +221,6 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
                         <th class="col-found"><?= is_rtl() ? 'مبلغ تأسيس السهم' : 'Share Founding Amount' ?></th>
                         <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
-                        <th class="col-note"><?= is_rtl() ? 'ملاحظة السهم' : 'Share Note' ?></th>
                         <th class="col-actions"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                     </tr>
                 </thead>
@@ -236,6 +235,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                                 <span class="text-xs font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($idx + 1) : 'Share #' . ($idx + 1) ?></span>
                                 <span class="text-[11px] text-slate-500 font-normal">(<?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?>)</span>
                             </span>
+                            <?php if ($notesHtml = lot_notes_html($lot, false)): ?><div class="lot-notes-stack"><?= $notesHtml ?></div><?php endif; ?>
                         </td>
                         <td class="col-date font-numeric font-bold text-purple-700">
                             <span class="inline-flex items-center gap-1.5">
@@ -259,7 +259,6 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         </td>
                         <td class="col-found"><?= lot_founding_badge($elig) ?></td>
                         <td class="col-status"><?= lot_eligibility_badge($elig) ?></td>
-                        <td class="col-note"><?php $lotNote = \App\Models\ShareLot::note($lot); echo $lotNote !== '' ? '<span class="lot-note">' . e($lotNote) . '</span>' : '<span class="text-slate-400">—</span>'; ?></td>
                         <td class="col-actions">
                             <button type="button" class="btn btn-sm btn-outline-purple inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors shadow-2xs" data-bs-toggle="modal" data-bs-target="#editLotDateModal<?= $lot['id'] ?>">
                                 <i class="bi bi-calendar-event"></i>

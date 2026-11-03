@@ -124,11 +124,15 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
     }
     .table-lots-compact .col-id { width: 65px; text-align: center; }
     .table-lots-compact .col-shares { width: 115px; }
-    .table-lots-compact .col-date { width: 160px; }
+    .table-lots-compact .col-date { width: 135px; }
     .table-lots-compact .col-due { width: 125px; }
-    .table-lots-compact .col-sixmo { width: 235px; }
-    .table-lots-compact .col-found { width: 195px; }
+    .table-lots-compact .col-sixmo { width: 190px; }
+    .table-lots-compact .col-found { width: 175px; }
     .table-lots-compact .col-status { width: 140px; text-align: center; }
+    .table-lots-compact .col-shares { min-width: 190px; }
+    .table-lots-compact .lot-note.lot-note-mine { background: #f0f9ff; border-color: #bae6fd; color: #075985; }
+    .table-lots-compact .lot-note-form { white-space: normal; max-width: 270px; }
+    .table-lots-compact .lot-note { display: inline-flex; align-items: flex-start; gap: 5px; margin-top: 6px; padding: 4px 10px; max-width: 260px; white-space: normal; line-height: 1.6; font-size: 12px; font-weight: 700; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
     .table-lots-compact .badge-status {
         padding: 4px 10px;
         font-size: 11.5px;
@@ -162,6 +166,26 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                             <span class="text-xs fw-bold text-brand-700"><?= is_rtl() ? 'السهم رقم ' . ($idx + 1) : 'Share #' . ($idx + 1) ?></span>
                             <span class="text-[11px] text-slate-500 font-normal">(<?= number_format($lot['shares_count']) ?> <?= is_rtl() ? 'سهم' : 'shares' ?>)</span>
                         </span>
+                        <?php $lotNote = \App\Models\ShareLot::note($lot); if ($lotNote !== ''): ?>
+                            <div><span class="lot-note" title="<?= is_rtl() ? 'ملاحظة الإدارة على هذا السهم' : 'Note from the administration on this share' ?>"><i class="bi bi-sticky"></i><span><?= e($lotNote) ?></span></span></div>
+                        <?php endif; ?>
+                        <?php $mine = \App\Models\ShareLot::memberNote($lot); ?>
+                        <div x-data="{ open: false }">
+                            <?php if ($mine !== ''): ?>
+                                <div><span class="lot-note lot-note-mine" title="<?= is_rtl() ? 'ملاحظتك على هذا السهم' : 'Your note on this share' ?>"><i class="bi bi-person-fill"></i><span><?= e($mine) ?></span></span></div>
+                            <?php endif; ?>
+                            <button type="button" @click="open = !open" class="btn btn-link p-0 mt-1 text-[11.5px] fw-bold text-decoration-none">
+                                <i class="bi bi-pencil-square"></i> <?= $mine !== '' ? (is_rtl() ? 'تعديل ملاحظتي' : 'Edit my note') : (is_rtl() ? 'إضافة ملاحظة' : 'Add a note') ?>
+                            </button>
+                            <form method="post" action="<?= url('shares/' . (int) $lot['id'] . '/note') ?>" class="lot-note-form mt-1" x-show="open" style="display:none;">
+                                <?= csrf_field() ?>
+                                <textarea name="member_note" rows="2" maxlength="500" class="form-control form-control-sm mb-1" placeholder="<?= is_rtl() ? 'اكتب ملاحظتك على هذا السهم (حتى 500 حرف)' : 'Write your note on this share (up to 500 characters)' ?>"><?= e($mine) ?></textarea>
+                                <div class="d-flex gap-1 align-items-center">
+                                    <button type="submit" class="btn btn-sm btn-primary py-0 px-2 fw-bold"><?= is_rtl() ? 'حفظ' : 'Save' ?></button>
+                                    <span class="text-[11px] text-slate-400"><?= is_rtl() ? 'امسح النص واحفظ لحذف الملاحظة' : 'Clear the text and save to delete it' ?></span>
+                                </div>
+                            </form>
+                        </div>
                     </td>
                     <td class="col-date font-num">
                         <span class="inline-flex items-center gap-1.5 fw-bold text-brand-700">
