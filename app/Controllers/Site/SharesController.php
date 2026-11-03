@@ -10,26 +10,6 @@ use App\Models\ShareLot;
 
 class SharesController extends Controller
 {
-    /** The member writes, edits or (empty text) deletes THEIR note on one of THEIR OWN active shares. */
-    public function updateNote(string $lotId): void
-    {
-        $this->verifyCsrf();
-        $member = Auth::member();
-        $lot = ShareLot::find((int) $lotId);
-        if (!$lot || (int) $lot['member_id'] !== (int) $member['id'] || $lot['status'] !== 'active') {
-            \App\Core\Session::flash('error', 'هذا السهم غير موجود في حسابك.');
-            $this->redirect('shares');
-        }
-        $note = trim((string) $this->input('member_note', ''));
-        if (mb_strlen($note) > 500) {
-            \App\Core\Session::flash('error', 'الملاحظة يجب ألا تزيد عن 500 حرف.');
-            $this->redirect('shares');
-        }
-        ShareLot::setMemberNote((int) $lotId, $note);
-        \App\Core\Session::flash('success', $note === '' ? 'تم حذف ملاحظتك على ' . ShareLot::label((int) $member['id'], (int) $lotId) . '.' : 'تم حفظ ملاحظتك على ' . ShareLot::label((int) $member['id'], (int) $lotId) . '.');
-        $this->redirect('shares');
-    }
-
     public function index(): void
     {
         $member = Auth::member();

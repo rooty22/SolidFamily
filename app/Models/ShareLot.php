@@ -223,19 +223,6 @@ class ShareLot extends Model
         return trim((string) ($lot['admin_note'] ?? ''));
     }
 
-    /** The note the MEMBER wrote about this share ('' when none). */
-    public static function memberNote(array $lot): string
-    {
-        return trim((string) ($lot['member_note'] ?? ''));
-    }
-
-    /** Saves (or, when empty, deletes) the member's own note of ONE share. */
-    public static function setMemberNote(int $lotId, ?string $note): void
-    {
-        $note = trim((string) $note);
-        self::update($lotId, ['member_note' => $note === '' ? null : $note]);
-    }
-
     /** Saves (or, when empty, deletes) the note of ONE share. Notes never touch the member's other shares. */
     public static function setNote(int $lotId, ?string $note): void
     {
@@ -338,7 +325,6 @@ class ShareLot extends Model
 
         // The notes the admin kept on the folded shares are not lost: they continue on the merged share.
         $notes = array_values(array_filter(array_map(fn($l) => self::note($l), $selected)));
-        $memberNotes = array_values(array_filter(array_map(fn($l) => self::memberNote($l), $selected)));
         $id = self::create([
             'member_id' => $memberId,
             'shares_count' => 1,
@@ -346,7 +332,6 @@ class ShareLot extends Model
             'status' => 'active',
             'source_request_id' => $sourceRequestId,
             'admin_note' => $notes ? mb_substr(implode(' | ', $notes), 0, 500) : null,
-            'member_note' => $memberNotes ? mb_substr(implode(' | ', $memberNotes), 0, 500) : null,
         ]);
 
         // Remember what each folded lot became, so splitLot() can bring the originals back untouched.

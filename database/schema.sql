@@ -89,8 +89,7 @@ CREATE TABLE share_lots (
     status ENUM('active','merged','cancelled') NOT NULL DEFAULT 'active' COMMENT 'merged = folded into another lot (or retired by a split); cancelled = given up, its unpaid dues cleared',
     source_request_id INT UNSIGNED NULL COMMENT 'the share_request that created/merged this lot, for traceability',
     merged_into_id INT UNSIGNED NULL COMMENT 'for a lot folded away by a merge: the merged lot it became, so the merge can be split back',
-    admin_note VARCHAR(500) NULL COMMENT 'note the admin keeps about this share (the member sees it)',
-    member_note VARCHAR(500) NULL COMMENT 'note the MEMBER writes about this share (the admin sees it)',
+    admin_note VARCHAR(500) NULL COMMENT 'note the admin keeps about this share (the member can open it with the View note button)',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_lots_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE

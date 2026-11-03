@@ -394,22 +394,14 @@ function member_serial_chip(?array $member): string
         . e(is_rtl() ? 'الرقم التسلسلي' : 'Serial number') . '">#' . (int) $member['serial_no'] . '</span>';
 }
 
-/** Both notes of a share for the admin lists: the administration's (amber) and the member's own (blue). */
+/** The administration's note of a share, as a chip for the admin lists. */
 function lot_notes_html(array $lot, bool $dashWhenEmpty = true): string
 {
     $admin = \App\Models\ShareLot::note($lot);
-    $mine = \App\Models\ShareLot::memberNote($lot);
-    if ($admin === '' && $mine === '') {
+    if ($admin === '') {
         return $dashWhenEmpty ? '<span class="text-slate-400">—</span>' : '';
     }
-    $out = '';
-    if ($admin !== '') {
-        $out .= '<div><span class="lot-note" title="' . e(is_rtl() ? 'ملاحظة الإدارة' : 'Administration note') . '">' . e($admin) . '</span></div>';
-    }
-    if ($mine !== '') {
-        $out .= '<div class="mt-1"><span class="lot-note lot-note-member" title="' . e(is_rtl() ? 'ملاحظة كتبها المشترك' : 'Written by the member') . '"><i class="bi bi-person-fill"></i> ' . e($mine) . '</span></div>';
-    }
-    return $out;
+    return '<div><span class="lot-note" title="' . e(is_rtl() ? 'ملاحظة الإدارة' : 'Administration note') . '">' . e($admin) . '</span></div>';
 }
 
 /**

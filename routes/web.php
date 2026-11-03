@@ -87,7 +87,6 @@ $router->group('', [Middleware::memberAuth()], function ($router) {
     $router->get('/home', [HomeController::class, 'index']);
 
     $router->get('/shares', [SiteSharesController::class, 'index']);
-    $router->post('/shares/{lotId}/note', [SiteSharesController::class, 'updateNote']);
 
     $router->get('/share-requests', [SiteShareRequestsController::class, 'index']);
     $router->post('/share-requests', [SiteShareRequestsController::class, 'store']);
