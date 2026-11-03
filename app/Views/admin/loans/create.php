@@ -3,11 +3,36 @@ $isEn = is_en();
 $defaultAmount = !empty($loanRequest['amount_requested']) ? (float)$loanRequest['amount_requested'] : 10000;
 $defaultMonths = !empty($loanRequest['installments_months']) ? (int)$loanRequest['installments_months'] : 12;
 $defaultFee = (float)($feePercent ?? 0);
+$requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 0;
 ?>
 <div class="space-y-6" x-data="{
     amount: <?= $defaultAmount ?>,
     months: <?= $defaultMonths ?>,
     feePercent: <?= $defaultFee ?>,
+    memberId: '<?= $loanRequest ? (int) $loanRequest['member_id'] : '' ?>',
+    loanDate: '<?= date('Y-m-d') ?>',
+    requestLotId: <?= $requestLotId ?>,
+    lots: [],
+    lotId: '<?= $requestLotId ?: '' ?>',
+    loadingLots: false,
+    feePaidNow: false,
+    feePaidAt: '<?= date('Y-m-d') ?>',
+    async loadLots() {
+        this.lots = [];
+        if (!this.memberId) { this.lotId = ''; return; }
+        this.loadingLots = true;
+        try {
+            const r = await fetch('<?= url('admin/loans/member-lots') ?>/' + this.memberId + '?as_of=' + encodeURIComponent(this.loanDate), { headers: { 'Accept': 'application/json' } });
+            this.lots = (await r.json()).lots || [];
+        } catch (e) { this.lots = []; }
+        this.loadingLots = false;
+        const keep = this.lots.find(l => String(l.id) === String(this.lotId));
+        if (!keep) {
+            const first = this.lots.find(l => l.eligible) || this.lots[0];
+            this.lotId = first ? String(first.id) : '';
+        }
+    },
+    get currentLot() { return this.lots.find(l => String(l.id) === String(this.lotId)) || null; },
     get monthlyInstallment() {
         let m = parseInt(this.months) || 1;
         let a = parseFloat(this.amount) || 0;
@@ -23,7 +48,7 @@ $defaultFee = (float)($feePercent ?? 0);
         let fee = parseFloat(this.adminFeeAmount) || 0;
         return (a + fee).toFixed(2);
     }
-}">
+}" x-init="if (memberId) { loadLots(); }">
     <!-- Header Banner -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
@@ -80,11 +105,11 @@ $defaultFee = (float)($feePercent ?? 0);
                             <?php endif; ?>
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Family Member' : 'المشترك المستفيد' ?> <span class="text-rose-500">*</span></label>
-                                <select name="member_id" class="form-select text-sm" required <?= $loanRequest ? 'disabled' : '' ?>>
+                                <select name="member_id" class="form-select text-sm" x-model="memberId" @change="loadLots()" required <?= $loanRequest ? 'disabled' : '' ?>>
                                     <option value=""><?= $isEn ? '-- Select Member --' : '-- اختر المشترك المستفيد --' ?></option>
                                     <?php foreach ($members as $m): ?>
                                         <option value="<?= $m['id'] ?>" <?= ($loanRequest && $loanRequest['member_id'] == $m['id']) ? 'selected' : '' ?>>
-                                            <?= e($m['name']) ?> (<?= e($m['mobile']) ?>) - <?= e($m['national_id'] ?? '') ?>
+                                            <?= !empty($m['serial_no']) ? '#' . (int) $m['serial_no'] . ' - ' : '' ?><?= e($m['name']) ?> (<?= e($m['mobile']) ?>) - <?= e($m['national_id'] ?? '') ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -95,8 +120,30 @@ $defaultFee = (float)($feePercent ?? 0);
 
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Loan Issue Date' : 'تاريخ بدء القرض' ?> <span class="text-rose-500">*</span></label>
-                                <input type="date" name="loan_date" class="form-control text-sm" value="<?= date('Y-m-d') ?>" required>
+                                <input type="date" name="loan_date" class="form-control text-sm" x-model="loanDate" @change="loadLots()" required>
                             </div>
+
+                            <!-- The share the loan is issued against: only ITS conditions are checked, never the member's other shares -->
+                            <?php if (!$requestLotId): ?>
+                            <div class="col-12" x-show="memberId" x-cloak>
+                                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Beneficiary Share' : 'السهم المستفيد من القرض' ?> <span class="text-rose-500">*</span></label>
+                                <select name="lot_id" class="form-select text-sm" x-model="lotId" required>
+                                    <option value=""><?= $isEn ? '-- Select the share --' : '-- اختر السهم --' ?></option>
+                                    <template x-for="l in lots" :key="l.id">
+                                        <option :value="String(l.id)" x-text="l.label + (l.eligible ? ' — <?= $isEn ? 'eligible' : 'مستوفٍ للشروط' ?>' : ' — <?= $isEn ? 'not eligible' : 'غير مستوفٍ' ?>')"></option>
+                                    </template>
+                                </select>
+                                <div class="text-xs text-slate-500 mt-1" x-show="loadingLots"><?= $isEn ? 'Loading shares...' : 'جارٍ تحميل أسهم المشترك...' ?></div>
+                                <div class="text-xs text-rose-600 mt-1 font-bold" x-show="!loadingLots && memberId && lots.length === 0"><?= $isEn ? 'This member has no active share.' : 'هذا المشترك لا يملك سهماً نشطاً.' ?></div>
+                                <template x-if="currentLot">
+                                    <div class="mt-2 p-2.5 rounded-xl border text-xs" :class="currentLot.eligible ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'">
+                                        <div class="font-bold" x-text="currentLot.eligible ? '<?= $isEn ? 'This share meets every condition.' : 'هذا السهم مستوفٍ لجميع شروط القرض.' ?>' : '<?= $isEn ? 'This share cannot take a loan yet:' : 'لا يمكن صرف قرض على هذا السهم حالياً:' ?>'"></div>
+                                        <template x-for="m in currentLot.messages" :key="m"><div x-text="m"></div></template>
+                                        <div class="mt-1 text-slate-600"><?= $isEn ? 'Founding amount of this share:' : 'مبلغ تأسيس هذا السهم:' ?> <b x-text="currentLot.founding"></b></div>
+                                    </div>
+                                </template>
+                            </div>
+                            <?php endif; ?>
 
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Loan Reason' : 'سبب التمويل' ?> <span class="text-rose-500">*</span></label>
@@ -136,11 +183,31 @@ $defaultFee = (float)($feePercent ?? 0);
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Admin Fee (%)' : 'نسبة المصاريف الإدارية %' ?></label>
                                 <input type="number" step="0.01" name="admin_fee_percent" x-model.number="feePercent" class="form-control font-numeric text-base font-bold" min="0">
                             </div>
+
+                            <!-- The commission is NOT assumed received: tick this only if it was already paid, with the day it was received -->
+                            <div class="col-12" x-show="parseFloat(adminFeeAmount) > 0" x-cloak>
+                                <div class="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" name="fee_paid_now" value="1" id="feePaidNow" x-model="feePaidNow">
+                                        <label class="form-check-label font-bold text-xs text-slate-800" for="feePaidNow">
+                                            <?= $isEn ? 'The commission was already received' : 'تم استلام العمولة بالفعل' ?>
+                                            (<span class="font-numeric" x-text="adminFeeAmount"></span> <?= __('currency') ?>)
+                                        </label>
+                                    </div>
+                                    <div class="mt-2" x-show="feePaidNow" x-cloak>
+                                        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Commission payment date' : 'تاريخ استلام العمولة' ?></label>
+                                        <input type="date" name="fee_paid_at" class="form-control text-sm font-numeric" x-model="feePaidAt" :min="loanDate" max="<?= date('Y-m-d') ?>" :required="feePaidNow">
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-1.5">
+                                        <?= $isEn ? 'Leave unticked if it has not been paid yet; you can record the payment and its date later from the loan page.' : 'اتركها بدون تأشير إن لم تُسدَّد بعد؛ يمكنك تسجيل السداد وتاريخه لاحقاً من صفحة القرض أو من قائمة القروض.' ?>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="pt-4 border-t border-slate-100 flex items-center gap-3">
-                        <button type="submit" class="btn btn-primary px-5 py-2.5 font-bold shadow-sm inline-flex items-center gap-2">
+                        <button type="submit" class="btn btn-primary px-5 py-2.5 font-bold shadow-sm inline-flex items-center gap-2" <?= $requestLotId ? '' : ':disabled="memberId && !loadingLots && !(currentLot && currentLot.eligible)"' ?>>
                             <i class="bi bi-check2-circle text-lg"></i>
                             <span><?= $isEn ? 'Approve & Generate Installments' : 'اعتماد القرض وجدولة الأقساط' ?></span>
                         </button>

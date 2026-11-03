@@ -10,7 +10,7 @@ class Transaction extends Model
 
     public static function withMember(array $filters = []): array
     {
-        $sql = 'SELECT transactions.*, members.name as member_name, members.shares_count as member_shares_count, admins.name as admin_name,
+        $sql = 'SELECT transactions.*, members.name as member_name, members.serial_no as member_serial, members.uid as member_uid, members.shares_count as member_shares_count, admins.name as admin_name,
                        ms.month as sub_month, ms.lot_id as sub_lot_id, sl.shares_count as lot_shares_count
                 FROM transactions
                 JOIN members ON members.id = transactions.member_id
@@ -37,8 +37,13 @@ class Transaction extends Model
             $params['to'] = $filters['to'];
         }
         if (!empty($filters['search'])) {
-            $sql .= ' AND members.name LIKE :search';
+            // By member name, or exactly by the member's serial number ("12" / "#12") or User ID.
+            $code = ltrim(trim((string) $filters['search']), '#');
+            $sql .= ' AND (members.name LIKE :search OR members.uid = :uid OR (:serial_gt > 0 AND members.serial_no = :serial))';
             $params['search'] = '%' . $filters['search'] . '%';
+            $params['uid'] = $code;
+            $params['serial'] = ctype_digit($code) ? (int) $code : 0;
+            $params['serial_gt'] = $params['serial'];
         }
 
         $sql .= ' ORDER BY transactions.transaction_date DESC, transactions.id DESC';

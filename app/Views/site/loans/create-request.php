@@ -12,8 +12,13 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
     <div class="card-panel"
          x-data="{ 
              lots: <?= htmlspecialchars(json_encode($lotsData ?? []), ENT_QUOTES, 'UTF-8') ?>,
-             selectedLotId: <?= !empty($lotsData) ? (int) $lotsData[0]['id'] : 'null' ?>,
-             foundingMet: <?= !empty($foundingMet) ? 'true' : 'false' ?>,
+             selectedLotId: <?php
+                 // Start on the first share that can take a loan (else the first share).
+                 $startLot = null;
+                 foreach ($lotsData ?? [] as $ld) { if ($ld['is_eligible']) { $startLot = $ld; break; } }
+                 $startLot ??= ($lotsData[0] ?? null);
+                 echo $startLot ? (int) $startLot['id'] : 'null';
+             ?>,
              amount: '', 
              feePercent: <?= (float) \App\Models\Setting::get('loan_admin_fee_percent', 0) ?>,
              months: 6, 
@@ -22,7 +27,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                  return this.lots.find(l => l.id === this.selectedLotId) || (this.lots.length > 0 ? this.lots[0] : null); 
              },
              get isCurrentLotEligible() {
-                 return this.foundingMet && this.currentLot && this.currentLot.six_months_met;
+                 return !!(this.currentLot && this.currentLot.is_eligible);
              },
              get installment() { 
                  return (this.amount > 0 && this.months > 0) ? this.amount / this.months : 0; 
@@ -46,7 +51,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                     <span><?= is_rtl() ? 'تنبيه مبلغ التأسيس:' : 'Founding Amount Notice:' ?></span>
                 </div>
                 <p class="mb-2 text-slate-700" style="font-size: 13px; line-height: 1.6;">
-                    <?= is_rtl() ? 'لا يمكن طلب قرض إلا بعد سداد كامل مبلغ التأسيس (' . money($founding['total_required'] ?? ($shares * 500)) . '). المبلغ المسدد حالياً: ' . money($founding['amount_paid'] ?? 0) . '.' : 'A loan cannot be requested except after full payment of the founding amount (' . money($founding['total_required'] ?? ($shares * 500)) . ').' ?>
+                    <?= is_rtl() ? 'لا يمكن طلب قرض على سهم إلا بعد سداد كامل مبلغ التأسيس الخاص بذلك السهم. حالة كل سهم موضحة في القائمة على اليمين.' : 'A loan can only be requested on a share whose own founding amount is fully paid. Each share is shown separately on the side.' ?>
                 </p>
                 <a href="<?= url('founding') ?>" class="btn btn-warning btn-sm fw-bold">
                     <i class="bi bi-wallet2"></i> <?= is_rtl() ? 'سداد مبلغ التأسيس الآن' : 'Pay Founding Amount Now' ?>
@@ -57,10 +62,10 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
             <div class="tip-box mb-3" style="border: 1.5px solid #e0e7ff; background: #eef2ff; border-radius: 14px; padding: 14px 18px;">
                 <div class="d-flex align-items-center gap-2 font-bold mb-1" style="font-size: 14px; color: #4338ca;">
                     <i class="bi bi-hourglass-split text-indigo-600 text-lg"></i>
-                    <span><?= is_rtl() ? 'تنبيه شرط استحقاق القرض (مرور 6 أشهر):' : 'Loan Eligibility Notice (6 Months Rule):' ?></span>
+                    <span><?= is_rtl() ? 'تنبيه شروط استحقاق القرض:' : 'Loan Eligibility Notice:' ?></span>
                 </div>
                 <p class="mb-0 text-slate-700" style="font-size: 13px; line-height: 1.6;">
-                    <?= is_rtl() ? 'لا يمكن تقديم طلب قرض حالياً؛ حيث تشترط لائحة الصندوق مرور 6 أشهر كاملة على تاريخ بداية الاشتراك في السهم لتأكيد أهلية الاقتراض (أقرب سهم مؤهل يكتمل بتاريخ: ' . (!empty($lotsData) ? $lotsData[0]['target_date_ar'] : '') . ').' : 'A loan cannot be requested at this time as the 6-month share subscription condition has not yet been completed.' ?>
+                    <?= is_rtl() ? 'لا يوجد حالياً سهم مستوفٍ لجميع الشروط (مرور 6 أشهر على بداية اشتراك السهم، وسداد مبلغ تأسيسه، وعدم وجود قرض قائم عليه). حالة كل سهم موضحة على اليمين.' : 'None of your shares meets every condition yet (6 months since its start, its founding amount paid, no loan in progress on it). Each share is shown separately on the side.' ?>
                 </p>
             </div>
         <?php endif; ?>
@@ -79,7 +84,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                             </label>
                             <select name="lot_id" x-model.number="selectedLotId" class="form-select font-num" required>
                                 <template x-for="l in lots" :key="l.id">
-                                    <option :value="l.id" x-text="`السهم رقم ${l.number} (${l.shares_count} سهم) - [${l.six_months_met ? 'مستوفية شرط 6 أشهر' : ('متبقي ' + l.months_remaining_label)}]`"></option>
+                                    <option :value="l.id" x-text="`السهم رقم ${l.number} (${l.shares_count} سهم) - [${l.is_eligible ? 'مستوفٍ للشروط' : (l.has_open_loan ? 'عليه قرض قائم' : (!l.founding_met ? 'التأسيس غير مكتمل' : 'متبقي ' + l.months_remaining_label))}]`"></option>
                                 </template>
                             </select>
                             <div class="text-muted small mt-1">
@@ -101,9 +106,15 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                                             <span x-text="currentLot.six_months_met ? 'مكتمل مرور 6 أشهر' : ('متبقي ' + currentLot.months_remaining_label)"></span>
                                         </span>
                                     </div>
-                                    <div x-show="!currentLot.six_months_met" class="text-danger fw-bold mt-1.5 pt-1.5 border-t border-slate-200/60">
+                                    <div class="d-flex flex-wrap gap-3 text-slate-600 font-num mt-1">
+                                        <span :class="currentLot.founding_met ? 'text-emerald-700' : 'text-amber-700'">
+                                            <i class="bi" :class="currentLot.founding_met ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'"></i>
+                                            <span x-text="`مبلغ التأسيس: ${currentLot.founding_paid} من ${currentLot.founding_required} ريال`"></span>
+                                        </span>
+                                    </div>
+                                    <div x-show="!currentLot.is_eligible" class="text-danger fw-bold mt-1.5 pt-1.5 border-t border-slate-200/60">
                                         <i class="bi bi-exclamation-triangle-fill"></i>
-                                        <span><?= is_rtl() ? 'هذه الحصة لم تستوفِ شرط مرور 6 أشهر بعد، ولا يمكن تقديم طلب قرض عليها حالياً.' : 'This share lot has not yet completed the 6-month condition.' ?></span>
+                                        <span><?= is_rtl() ? 'هذا السهم لم يستوفِ كل الشروط، ولا يمكن تقديم طلب قرض عليه حالياً.' : 'This share does not meet every condition yet.' ?></span>
                                     </div>
                                 </div>
                             </template>
@@ -173,8 +184,9 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                 <template x-if="!isCurrentLotEligible">
                     <div class="mt-2 text-danger fw-bold small text-center">
                         <i class="bi bi-exclamation-circle-fill"></i>
-                        <span x-show="!foundingMet"><?= is_rtl() ? 'لا يمكن طلب قرض إلا بعد سداد كامل مبلغ التأسيس' : 'Cannot request loan until founding amount is paid' ?></span>
-                        <span x-show="foundingMet && currentLot && !currentLot.six_months_met"><?= is_rtl() ? 'لا يمكن طلب قرض على هذه الحصة قبل اكتمال مرور 6 أشهر' : 'Cannot request loan on this lot before 6 months have passed' ?></span>
+                        <span x-show="currentLot && !currentLot.founding_met"><?= is_rtl() ? 'لا يمكن طلب قرض على هذا السهم إلا بعد سداد كامل مبلغ التأسيس الخاص به' : 'Cannot request a loan on this share until its own founding amount is paid' ?></span>
+                        <span x-show="currentLot && currentLot.founding_met && currentLot.has_open_loan"><?= is_rtl() ? 'عليه قرض قائم لم يُسدد بالكامل بعد' : 'This share still has a loan in progress' ?></span>
+                        <span x-show="currentLot && currentLot.founding_met && !currentLot.has_open_loan && !currentLot.six_months_met"><?= is_rtl() ? 'لا يمكن طلب قرض على هذا السهم قبل اكتمال مرور 6 أشهر' : 'Cannot request a loan on this share before 6 months have passed' ?></span>
                     </div>
                 </template>
             </fieldset>
@@ -207,7 +219,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                                  :class="currentLot && currentLot.id === <?= (int) $lot['id'] ?> ? 'ring-2 ring-brand-500 bg-sky-50/50' : ''">
                                 <div class="flex items-center justify-between font-bold text-slate-800 mb-1">
                                     <span><?= e(\App\Models\ShareLot::label((int) $member['id'], (int) $lot['id'], (int) $lot['shares_count'])) ?></span>
-                                    <span class="badge-status badge-<?= $elig['is_eligible'] ? 'success' : 'secondary' ?>"><?= $elig['is_eligible'] ? (is_rtl() ? 'مستوفية' : 'Eligible') : (is_rtl() ? 'قيد الاستيفاء' : 'Pending') ?></span>
+                                    <?= lot_eligibility_badge($elig) ?>
                                 </div>
                                 <div class="text-[11px] text-slate-500 font-num mb-1">
                                     <i class="bi bi-calendar-event"></i>
@@ -219,7 +231,7 @@ $canRequest = ($shares > 0) && ($foundingMet ?? false) && ($hasEligibleLot ?? fa
                                 </div>
                                 <div class="flex items-center gap-1.5 text-[11px] <?= $elig['founding_met'] ? 'text-emerald-700' : 'text-amber-700' ?> mt-0.5">
                                     <i class="bi <?= $elig['founding_met'] ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
-                                    <span><?= $elig['founding_met'] ? (is_rtl() ? 'سداد 500 ريال تأسيس للسهم (مكتمل)' : '500 SAR founding paid') : (is_rtl() ? 'سداد 500 ريال تأسيس (مسدد: ' . money($elig['founding_paid_per_share']) . ')' : 'Founding: ' . money($elig['founding_paid_per_share'])) ?></span>
+                                    <span><?= $elig['founding_met'] ? (is_rtl() ? 'مبلغ تأسيس هذا السهم مسدد بالكامل (' . money($elig['founding_required']) . ')' : 'Founding amount of this share fully paid') : (is_rtl() ? 'مبلغ تأسيس هذا السهم: مسدد ' . money($elig['founding_paid']) . ' من ' . money($elig['founding_required']) : 'Founding of this share: ' . money($elig['founding_paid']) . ' of ' . money($elig['founding_required'])) ?></span>
                                 </div>
                             </div>
                         <?php endforeach; ?>

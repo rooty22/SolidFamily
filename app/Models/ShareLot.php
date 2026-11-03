@@ -14,7 +14,7 @@ class ShareLot extends Model
 
     public static function activeFor(int $memberId): array
     {
-        return self::where(['member_id' => $memberId, 'status' => 'active'], 'created_at ASC');
+        return self::where(['member_id' => $memberId, 'status' => 'active'], 'created_at ASC, id ASC');
     }
 
     /**
@@ -76,8 +76,8 @@ class ShareLot extends Model
         }
     }
 
-    /** Check if 6 months have passed since this share lot was subscribed. */
-    public static function isSixMonthsPassed(array $lot): bool
+    /** Check if 6 months have passed since this share lot was subscribed (as of $asOf, default today). */
+    public static function isSixMonthsPassed(array $lot, ?string $asOf = null): bool
     {
         if (empty($lot['created_at'])) {
             return false;
@@ -86,18 +86,21 @@ class ShareLot extends Model
         if ($targetStr === '-') {
             return false;
         }
-        return date('Y-m-d') >= $targetStr;
+        return ($asOf ?: date('Y-m-d')) >= $targetStr;
     }
 
-    /** Calculate how many full months have passed since this share lot was started. */
-    public static function monthsPassed(array $lot): int
+    /** Calculate how many full months have passed since this share lot was started (as of $asOf, default today). */
+    public static function monthsPassed(array $lot, ?string $asOf = null): int
     {
         if (empty($lot['created_at'])) {
             return 0;
         }
         try {
             $start = new \DateTime(substr($lot['created_at'], 0, 10));
-            $now = new \DateTime(date('Y-m-d'));
+            $now = new \DateTime($asOf ?: date('Y-m-d'));
+            if ($now < $start) {
+                return 0;
+            }
             $diff = $start->diff($now);
             return ($diff->y * 12) + $diff->m;
         } catch (\Throwable $e) {
@@ -106,27 +109,78 @@ class ShareLot extends Model
     }
 
     /**
-     * Complete eligibility evaluation for this share lot according to the fund rules:
-     * 1) 6 months passed since subscription start date (documented with day, month, year)
-     * 2) 500 SAR founding amount paid per share
+     * Whether only ONE loan at a time may be open on a share: a share that still owes a loan (active / partial) cannot
+     * take another until it is repaid. Set to false to allow several open loans on the same share.
      */
-    public static function eligibilityDetails(array $lot, array $member, ?array $founding = null): array
+    public const ONE_OPEN_LOAN_PER_LOT = true;
+
+    /** The lot's id plus the ids of every lot merged into it (directly or through other merges). */
+    public static function withMergedChildren(int $lotId): array
     {
+        $ids = [$lotId];
+        $queue = [$lotId];
+        while ($queue) {
+            $parent = array_shift($queue);
+            foreach (self::where(['merged_into_id' => $parent]) as $child) {
+                if (!in_array((int) $child['id'], $ids, true)) {
+                    $ids[] = (int) $child['id'];
+                    $queue[] = (int) $child['id'];
+                }
+            }
+        }
+        return $ids;
+    }
+
+    /** A loan of this share (or of a lot merged into it) that is not fully repaid yet, or null. */
+    public static function openLoan(int $lotId): ?array
+    {
+        $ids = self::withMergedChildren($lotId);
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        return Loan::rawOne("SELECT * FROM loans WHERE lot_id IN ($in) AND status IN ('active', 'partial') ORDER BY id DESC LIMIT 1", $ids);
+    }
+
+    /**
+     * Complete loan-eligibility evaluation of ONE share (lot) -- never of the member's shares as a whole:
+     * 1) the share is active,
+     * 2) 6 months passed since THIS share's subscription start date (documented with day, month, year),
+     * 3) the founding amount of THIS share is fully paid (what was paid for the member's other shares does not count),
+     * 4) this share has no loan that is still being repaid.
+     * $asOf (YYYY-MM-DD) evaluates the 6-month rule on another day, e.g. the date of a back-dated loan.
+     */
+    public static function eligibilityDetails(array $lot, array $member, ?array $founding = null, ?string $asOf = null): array
+    {
+        $asOf = $asOf ?: date('Y-m-d');
         $startDate = self::startDate($lot);
         $targetDate = self::sixMonthsTargetDate($lot);
-        $sixMonthsMet = self::isSixMonthsPassed($lot);
-        $monthsPassed = self::monthsPassed($lot);
+        $sixMonthsMet = self::isSixMonthsPassed($lot, $asOf);
+        $monthsPassed = self::monthsPassed($lot, $asOf);
         $monthsRemaining = max(0, 6 - $monthsPassed);
         $remLabelAr = $monthsRemaining === 1 ? 'شهر واحد' : ($monthsRemaining === 2 ? 'شهران' : ($monthsRemaining >= 3 && $monthsRemaining <= 10 ? "{$monthsRemaining} أشهر" : "{$monthsRemaining} شهراً"));
 
-        if (!$founding) {
-            $founding = FoundingAmount::ensureForMember((int) $member['id']);
+        $founding ??= FoundingAmount::ensureForMember((int) $member['id']);
+        $isActive = ($lot['status'] ?? 'active') === 'active';
+
+        $row = FoundingAmount::lotBreakdown((int) $member['id'], $founding)[(int) $lot['id']] ?? null;
+        if ($row === null) {
+            // Not an active share any more (merged / cancelled): it owes nothing and nothing counts for it.
+            $row = ['required' => 0.0, 'paid' => 0.0, 'remaining' => 0.0, 'status' => 'paid', 'met' => true];
         }
 
-        $totalShares = (int) ($member['shares_count'] ?? 1);
-        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
-        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
-        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500);
+        $openLoan = $isActive ? self::openLoan((int) $lot['id']) : null;
+
+        $blockers = [];
+        if (!$isActive) {
+            $blockers[] = 'inactive';
+        }
+        if (!$sixMonthsMet) {
+            $blockers[] = 'six_months';
+        }
+        if (!$row['met']) {
+            $blockers[] = 'founding';
+        }
+        if (self::ONE_OPEN_LOAN_PER_LOT && $openLoan !== null) {
+            $blockers[] = 'open_loan';
+        }
 
         return [
             'start_date' => $startDate,
@@ -135,10 +189,45 @@ class ShareLot extends Model
             'months_remaining' => $monthsRemaining,
             'months_remaining_label' => $remLabelAr,
             'six_months_met' => $sixMonthsMet,
-            'founding_paid_per_share' => round($paidPerShare, 2),
-            'founding_met' => $foundingMet,
-            'is_eligible' => $sixMonthsMet && $foundingMet,
+            'founding_required' => $row['required'],
+            'founding_paid' => $row['paid'],
+            'founding_remaining' => $row['remaining'],
+            'founding_status' => $row['status'],
+            'founding_paid_per_share' => $row['paid'], // kept for older views: now the amount paid for THIS share
+            'founding_met' => $row['met'],
+            'open_loan' => $openLoan,
+            'blockers' => $blockers,
+            'is_eligible' => $blockers === [],
         ];
+    }
+
+    /** Human-readable (Arabic) reasons a share cannot take a loan, from eligibilityDetails()['blockers']. */
+    public static function blockerMessages(array $elig, string $label): array
+    {
+        $out = [];
+        foreach ($elig['blockers'] as $b) {
+            $out[] = match ($b) {
+                'inactive' => "{$label} ليس سهماً نشطاً.",
+                'six_months' => "{$label}: لم تمضِ 6 أشهر على بداية الاشتراك (تاريخ الاستحقاق " . date_ar($elig['target_date']) . ' - متبقي ' . $elig['months_remaining_label'] . ').',
+                'founding' => "{$label}: مبلغ التأسيس غير مكتمل (مسدد " . money($elig['founding_paid']) . ' من ' . money($elig['founding_required']) . ').',
+                'open_loan' => "{$label}: عليه قرض قائم رقم " . ($elig['open_loan']['id'] ?? '') . ' لم يُسدد بالكامل بعد.',
+                default => '',
+            };
+        }
+        return array_values(array_filter($out));
+    }
+
+    /** The admin note of a share ('' when none). */
+    public static function note(array $lot): string
+    {
+        return trim((string) ($lot['admin_note'] ?? ''));
+    }
+
+    /** Saves (or, when empty, deletes) the note of ONE share. Notes never touch the member's other shares. */
+    public static function setNote(int $lotId, ?string $note): void
+    {
+        $note = trim((string) $note);
+        self::update($lotId, ['admin_note' => $note === '' ? null : $note]);
     }
 
     /**
@@ -234,12 +323,15 @@ class ShareLot extends Model
             Member::update($memberId, ['shares_count' => max(0, (int) $member['shares_count'] - $removedShares)]);
         }
 
+        // The notes the admin kept on the folded shares are not lost: they continue on the merged share.
+        $notes = array_values(array_filter(array_map(fn($l) => self::note($l), $selected)));
         $id = self::create([
             'member_id' => $memberId,
             'shares_count' => 1,
             'subscription_due_day' => $dueDay,
             'status' => 'active',
             'source_request_id' => $sourceRequestId,
+            'admin_note' => $notes ? mb_substr(implode(' | ', $notes), 0, 500) : null,
         ]);
 
         // Remember what each folded lot became, so splitLot() can bring the originals back untouched.
@@ -325,6 +417,16 @@ class ShareLot extends Model
                 'status' => $paid >= (float) $row['amount_due'] ? 'paid' : 'partial',
             ]);
         }
+
+        // Founding money paid for the merged share itself (after the merge) goes back to the shares it was made from;
+        // what was paid for each original share while it stood alone is already on that share.
+        $owed = [];
+        foreach (FoundingAmount::lotBreakdown($memberId) as $lotId => $b) {
+            if (in_array($lotId, array_map(fn($c) => (int) $c['id'], $children), true)) {
+                $owed[$lotId] = $b['remaining'];
+            }
+        }
+        FoundingAllocation::moveToLots($lotId, $owed);
 
         return $children;
     }

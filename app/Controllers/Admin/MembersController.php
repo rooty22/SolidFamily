@@ -277,6 +277,10 @@ class MembersController extends Controller
 
         $approve = $decision === 'approve';
         Member::update((int) $id, ['status' => $approve ? 'active' : 'rejected']);
+        if ($approve) {
+            // The registration becomes a member now: it gets the next serial number (kept forever, never reused).
+            Member::ensureSerial((int) $id);
+        }
         Session::flash('success', $approve ? 'تمت الموافقة على التسجيل ويمكن للمشترك الدخول الآن.' : 'تم رفض طلب التسجيل.');
         $this->redirect('admin/members');
     }

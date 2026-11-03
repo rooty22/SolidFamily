@@ -136,7 +136,7 @@
                         </div>
                     <?php endif; ?>
                 </td>
-                <td class="fw-bold text-slate-900"><?= e($t['member_name']) ?></td>
+                <td class="fw-bold text-slate-900"><?= member_serial_chip(['serial_no' => $t['member_serial'] ?? null]) ?> <?= e($t['member_name']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($t['amount']) ?></td>
                 <td class="text-xs text-slate-600"><?= e($t['admin_name'] ?? '-') ?></td>
             </tr>

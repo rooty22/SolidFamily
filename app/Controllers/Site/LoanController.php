@@ -72,7 +72,7 @@ class LoanController extends Controller
             'requestsPager' => $requestsPager,
             'reasonLabels' => $this->reasonLabels,
             'runningCount' => count($running),
-            'runningRemaining' => array_sum(array_column($running, 'amount_remaining')),
+            'runningRemaining' => array_sum(array_map('loan_member_remaining', $running)),
             'pendingRequests' => count(array_filter($requests, fn($r) => $r['status'] === 'pending')),
             'nextInstallment' => $nextInstallment,
         ], 'site/layout');
@@ -91,13 +91,15 @@ class LoanController extends Controller
         $shares = (int) $member['shares_count'];
         $shareValue = (float) Setting::get('share_value', 0);
         $running = Loan::rawOne(
-            "SELECT COUNT(*) AS c, COALESCE(SUM(amount_remaining), 0) AS s FROM loans WHERE member_id = ? AND status IN ('active', 'partial')",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(amount_remaining + CASE WHEN fee_status = 'paid' THEN 0 ELSE admin_fee_amount END), 0) AS s FROM loans WHERE member_id = ? AND status IN ('active', 'partial')",
             [$member['id']]
         );
 
         $lots = \App\Models\ShareLot::activeFor($member['id']);
         $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
 
+        // Every share (lot) is judged on its own: its start date, ITS founding amount, its own loans. What was paid for
+        // the member's other shares never counts for it (and never against it).
         $lotNumbers = \App\Models\ShareLot::numbersFor((int) $member['id']);
         $lotsData = [];
         foreach ($lots as $lot) {
@@ -117,25 +119,19 @@ class LoanController extends Controller
                 'months_remaining' => (int) $elig['months_remaining'],
                 'months_remaining_label' => $elig['months_remaining_label'],
                 'founding_met' => (bool) $elig['founding_met'],
-                'founding_paid_per_share' => (float) $elig['founding_paid_per_share'],
+                'founding_paid' => (float) $elig['founding_paid'],
+                'founding_required' => (float) $elig['founding_required'],
+                'founding_paid_per_share' => (float) $elig['founding_paid'],
+                'has_open_loan' => in_array('open_loan', $elig['blockers'], true),
                 'is_eligible' => (bool) $elig['is_eligible'],
             ];
         }
 
-        $totalShares = (int) ($member['shares_count'] ?? 0);
-        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
-        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
-        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500) || ((float)($founding['total_required'] ?? 0) <= 0);
-
-        $hasEligibleLot = false;
-        foreach ($lotsData as $ld) {
-            if ($ld['six_months_met']) {
-                $hasEligibleLot = true;
-                break;
-            }
-        }
-
-        $canRequest = ($shares > 0) && $foundingMet && $hasEligibleLot;
+        $hasEligibleLot = (bool) array_filter($lotsData, fn($ld) => $ld['is_eligible']);
+        // "founding met" only tells whether ANY share has its founding amount complete (used for the notice); the
+        // decision to allow a request is made per selected share by is_eligible.
+        $foundingMet = (bool) array_filter($lotsData, fn($ld) => $ld['founding_met']);
+        $canRequest = ($shares > 0) && $hasEligibleLot;
 
         $this->view('site/loans/create-request', [
             'pageTitle' => __('new_loan_request'),
@@ -217,27 +213,18 @@ class LoanController extends Controller
             $this->redirect('loans/request');
         }
 
-        // Validate Founding Amount: Cannot make debt until paying founding amount in full
-        $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
-        $totalShares = (int) ($member['shares_count'] ?? 1);
-        $foundingPaid = (float) ($founding['amount_paid'] ?? 0);
-        $paidPerShare = $totalShares > 0 ? ($foundingPaid / $totalShares) : 0;
-        $foundingMet = ($founding['status'] === 'paid') || ($paidPerShare >= 500) || ((float)($founding['total_required'] ?? 0) <= 0);
-
-        if (!$foundingMet) {
-            Session::flash('error', 'تنبيه مبلغ التأسيس: لا يمكن طلب قرض إلا بعد سداد كامل مبلغ التأسيس.');
-            $this->redirect('loans/request');
-        }
-
         if (count($activeLots) > 1 && !$selectedLot) {
             Session::flash('error', 'يرجى تحديد السهم / الحصة المراد تقديم طلب القرض عليها.');
             $this->redirect('loans/request');
         }
 
-        // Validate 6 months passing for the selected lot
+        // Only the chosen share's conditions are checked (6 months from ITS start date, ITS founding amount fully paid,
+        // no unsettled loan on it). The member's other shares have no effect on this request.
+        $founding = \App\Models\FoundingAmount::ensureForMember($member['id']);
         $lotElig = \App\Models\ShareLot::eligibilityDetails($selectedLot, $member, $founding);
-        if (!$lotElig['six_months_met']) {
-            Session::flash('error', 'تنبيه شرط المدة: لا يمكن تقديم طلب قرض على هذه الحصة قبل مرور 6 أشهر كاملة على تاريخ بداية الاشتراك (تاريخ الاستحقاق: ' . date_ar($lotElig['target_date']) . ' - متبقي ' . $lotElig['months_remaining_label'] . ').');
+        if (!$lotElig['is_eligible']) {
+            $label = \App\Models\ShareLot::label((int) $member['id'], (int) $selectedLot['id']);
+            Session::flash('error', 'لا يمكن تقديم طلب قرض على هذا السهم: ' . implode(' ', \App\Models\ShareLot::blockerMessages($lotElig, $label)));
             $this->redirect('loans/request');
         }
 

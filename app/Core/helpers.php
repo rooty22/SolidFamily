@@ -155,7 +155,8 @@ function dir_attr(): string
 
 /**
  * A loan as the member sees it: ONE total that already includes the commission / admin fee (e.g. 1000 + 2% = 1020),
- * never itemised. The fee is collected when the loan is disbursed, so it counts as already paid: paid + remaining = total.
+ * never itemised. The commission counts as paid only once the administration confirmed it (loans.fee_status), so
+ * paid + remaining = total always holds: a confirmed commission is part of "paid", an unconfirmed one of "remaining".
  */
 function loan_member_total(array $loan): float
 {
@@ -164,7 +165,15 @@ function loan_member_total(array $loan): float
 
 function loan_member_paid(array $loan): float
 {
-    return round((float) ($loan['amount_paid'] ?? 0) + (float) ($loan['admin_fee_amount'] ?? 0), 2);
+    $fee = \App\Models\Loan::feeIsPaid($loan) ? (float) $loan['admin_fee_amount'] : 0.0;
+    return round((float) ($loan['amount_paid'] ?? 0) + $fee, 2);
+}
+
+/** What the member still owes on the loan: the unpaid installments plus the commission if it is not confirmed paid yet. */
+function loan_member_remaining(array $loan): float
+{
+    $fee = (\App\Models\Loan::hasFee($loan) && !\App\Models\Loan::feeIsPaid($loan)) ? (float) $loan['admin_fee_amount'] : 0.0;
+    return round((float) ($loan['amount_remaining'] ?? 0) + $fee, 2);
 }
 
 function money_plain(?float $amount, int $decimals = 2): string
@@ -367,6 +376,54 @@ function status_badge(string $status): array
     }
 
     return [$label, $variants[$status] ?? 'secondary'];
+}
+
+/** The member's fixed serial number as "#12" (or "-" when they have none yet, e.g. a pending registration). */
+function member_serial(?array $member): string
+{
+    return !empty($member['serial_no']) ? '#' . (int) $member['serial_no'] : '-';
+}
+
+/** Small "#12" chip for lists: the member's fixed serial number. */
+function member_serial_chip(?array $member): string
+{
+    if (empty($member['serial_no'])) {
+        return '';
+    }
+    return '<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold font-numeric" title="'
+        . e(is_rtl() ? 'الرقم التسلسلي' : 'Serial number') . '">#' . (int) $member['serial_no'] . '</span>';
+}
+
+/**
+ * "Founding amount of this share" badge from ShareLot::eligibilityDetails(): paid / partial / unpaid for THIS share only,
+ * e.g. "مسدد 250 من 500 ريال".
+ */
+function lot_founding_badge(array $elig): string
+{
+    $required = (float) $elig['founding_required'];
+    $paid = (float) $elig['founding_paid'];
+    if (!empty($elig['founding_met'])) {
+        $text = $required > 0
+            ? (is_rtl() ? 'مسدد بالكامل (' . money($required) . ')' : 'Fully paid (' . money($required) . ')')
+            : (is_rtl() ? 'لا يوجد مبلغ تأسيس' : 'Nothing due');
+        return '<span class="badge-status badge-success"><i class="bi bi-check-circle-fill"></i> ' . e($text) . '</span>';
+    }
+    $text = is_rtl()
+        ? ($paid > 0 ? 'مسدد جزئياً ' . money($paid) . ' من ' . money($required) : 'غير مسدد (' . money($required) . ')')
+        : ($paid > 0 ? 'Partly paid ' . money($paid) . ' of ' . money($required) : 'Unpaid (' . money($required) . ')');
+    return '<span class="badge-status badge-' . ($paid > 0 ? 'warning' : 'secondary') . '"><i class="bi bi-exclamation-circle-fill"></i> ' . e($text) . '</span>';
+}
+
+/** "Loan eligibility" badge of one share from ShareLot::eligibilityDetails(). */
+function lot_eligibility_badge(array $elig): string
+{
+    if (!empty($elig['is_eligible'])) {
+        return '<span class="badge-status badge-success font-bold"><i class="bi bi-shield-check"></i> ' . e(is_rtl() ? 'مؤهل للقرض' : 'Eligible') . '</span>';
+    }
+    if (in_array('open_loan', $elig['blockers'] ?? [], true)) {
+        return '<span class="badge-status badge-info"><i class="bi bi-cash-coin"></i> ' . e(is_rtl() ? 'عليه قرض قائم' : 'Loan in progress') . '</span>';
+    }
+    return '<span class="badge-status badge-secondary"><i class="bi bi-clock"></i> ' . e(is_rtl() ? 'قيد استيفاء الشروط' : 'Pending') . '</span>';
 }
 
 function loan_reasons(): array

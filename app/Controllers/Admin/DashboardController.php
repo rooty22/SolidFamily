@@ -86,14 +86,23 @@ class DashboardController extends Controller
 
         // A founding row is only re-computed when someone opens it, so one can still reflect shares that changed
         // since; bring every member's row up to date first so these numbers match the founding page exactly.
+        // The founding amount is also counted share by share (each share is paid on its own).
+        $foundingShares = ['total' => 0, 'met' => 0];
         foreach ($approvedMembers as $m) {
-            \App\Models\FoundingAmount::ensureForMember((int) $m['id']);
+            $fRow = \App\Models\FoundingAmount::ensureForMember((int) $m['id']);
+            foreach (\App\Models\FoundingAmount::lotBreakdown((int) $m['id'], $fRow) as $b) {
+                if ($b['required'] > 0) {
+                    $foundingShares['total']++;
+                    $foundingShares['met'] += $b['met'] ? 1 : 0;
+                }
+            }
         }
         // Founding amounts of approved members who actually owe one (a member with no shares owes nothing and
         // is neither "paid" nor "unpaid"); the same members the founding page lists.
         $foundRow = $db->query("SELECT
             COALESCE(SUM(f.total_required),0) as total_required,
             COALESCE(SUM(f.amount_paid),0) as total_paid,
+            COALESCE(SUM(GREATEST(f.total_required - f.amount_paid, 0)),0) as total_remaining,
             COALESCE(SUM(f.status='paid'),0) as paid_count,
             COALESCE(SUM(f.status='partial'),0) as partial_count,
             COALESCE(SUM(f.status='unpaid'),0) as unpaid_count
@@ -106,7 +115,9 @@ class DashboardController extends Controller
             SUM(status IN ('paid','closed')) as paid_count,
             SUM(status='partial') as partial_count,
             SUM(status='active') as active_count,
-            COALESCE(SUM(admin_fee_amount),0) as total_fees
+            COALESCE(SUM(CASE WHEN fee_status = 'paid' THEN admin_fee_amount ELSE 0 END),0) as total_fees,
+            COALESCE(SUM(CASE WHEN fee_status = 'paid' THEN 0 ELSE admin_fee_amount END),0) as pending_fees,
+            COALESCE(SUM(status IN ('active','partial')),0) as running_count
             FROM loans")->fetch();
 
         $loanRequestsCount = (int) $db->query('SELECT COUNT(*) as c FROM loan_requests')->fetch()['c'];
@@ -124,16 +135,19 @@ class DashboardController extends Controller
         // 2. Remaining loans portfolio (receivables owed back to the fund)
         $loansRemaining = (float) $db->query("SELECT COALESCE(SUM(amount_remaining), 0) FROM loans WHERE status IN ('active', 'partial')")->fetchColumn();
 
-        // 3. Total Fund Assets / Net Worth (includes cash in bank + remaining loans portfolio)
-        $totalFundBalance = $bankBalance + $loansRemaining;
+        // 3. Loan commissions (administrative fee). They enter the bank balance only once the administration
+        // confirmed the payment (a transaction is booked then); until then they are money the members still owe.
+        $loanAdminFees = (float) ($loanRow['total_fees'] ?? 0);               // confirmed as received
+        $loanAdminFeesPending = (float) ($loanRow['pending_fees'] ?? 0);      // not received yet
+        $loanAdminFeesTotal = round($loanAdminFees + $loanAdminFeesPending, 2); // all commissions of all loans
 
-        // 4. Detailed Admin Revenue / Commissions earned from loans
-        $loanAdminFees = (float) ($loanRow['total_fees'] ?? 0);
+        // 4. Total Fund Assets / Net Worth = cash in bank + loan principal still to come back + commissions still to be collected
+        $totalFundBalance = $bankBalance + $loansRemaining + $loanAdminFeesPending;
         $totalLoansAmount = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM loans")->fetchColumn();
         $avgFeePercent = (float) ($db->query("SELECT AVG(admin_fee_percent) FROM loans WHERE admin_fee_percent > 0")->fetchColumn() ?: 0);
 
         // Detailed loan commissions list (for the dedicated breakdown card)
-        $detailedFeeLoans = $db->query("SELECT l.id, l.member_id, l.amount, l.admin_fee_percent, l.admin_fee_amount, l.loan_date, l.status, m.name as member_name
+        $detailedFeeLoans = $db->query("SELECT l.id, l.member_id, l.amount, l.admin_fee_percent, l.admin_fee_amount, l.fee_status, l.fee_paid_at, l.loan_date, l.status, m.name as member_name
             FROM loans l
             JOIN members m ON m.id = l.member_id
             WHERE l.admin_fee_amount > 0
@@ -168,23 +182,31 @@ class DashboardController extends Controller
             'طلبات التسجيل بانتظار الموافقة' => $pendingRegistrations,
             'إجمالي عدد الأسهم المسجلة' => $totalShares,
             'الرصيد الفعلي في البنك (السيولة المتاحة)' => $bankBalance,
-            'الرصيد الإجمالي للصندوق (شامل محفظة القروض)' => $totalFundBalance,
-            'مستحقات القروض القائمة والمتبقية' => $loansRemaining,
+            'الرصيد الإجمالي للصندوق (سيولة + متبقي القروض + العمولات المستحقة)' => $totalFundBalance,
+            'مستحقات القروض القائمة والمتبقية (أصل القرض)' => $loansRemaining,
+            'عدد القروض القائمة' => $loanRow['running_count'],
             'إجمالي قيمة الاشتراكات الشهرية (الشهر الحالي)' => $subRow['total_due'],
+            'المحصّل من الاشتراكات (الشهر الحالي)' => $subRow['total_paid'],
+            'المتبقي من الاشتراكات (الشهر الحالي)' => round(max(0, $subRow['total_due'] - $subRow['total_paid']), 2),
             'الاشتراكات المسددة (الشهر الحالي)' => $subRow['paid_count'],
             'الاشتراكات المسددة جزئياً (الشهر الحالي)' => $subRow['partial_count'],
             'الاشتراكات غير المسددة (الشهر الحالي)' => $subRow['unpaid_count'],
             'إجمالي مبالغ التأسيس المطلوبة' => $foundRow['total_required'],
-            'مبالغ التأسيس المسددة' => $foundRow['paid_count'],
-            'مبالغ التأسيس المسددة جزئياً' => $foundRow['partial_count'],
-            'مبالغ التأسيس غير المسددة' => $foundRow['unpaid_count'],
+            'مبالغ التأسيس المسددة (المبلغ)' => $foundRow['total_paid'],
+            'مبالغ التأسيس المتبقية (المبلغ)' => $foundRow['total_remaining'],
+            'الأسهم المكتمل مبلغ تأسيسها (من إجمالي الأسهم المطلوب تأسيسها)' => $foundingShares['met'] . ' / ' . $foundingShares['total'],
+            'المشتركون المسددون تأسيسهم (عدد)' => $foundRow['paid_count'],
+            'المشتركون المسددون جزئياً (عدد)' => $foundRow['partial_count'],
+            'المشتركون غير المسددين (عدد)' => $foundRow['unpaid_count'],
             'إجمالي عدد القروض' => $loanRow['total_loans'],
             'إجمالي مبالغ القروض الصادرة' => $totalLoansAmount,
             'القروض المسددة' => $loanRow['paid_count'],
             'القروض المسددة جزئياً' => $loanRow['partial_count'],
             'القروض غير المسددة' => $loanRow['active_count'],
             'إجمالي طلبات القروض' => $loanRequestsCount,
-            'إجمالي عمولات القروض الإدارية المكتسبة' => $loanAdminFees,
+            'إجمالي عمولات القروض الإدارية (كل القروض)' => $loanAdminFeesTotal,
+            'عمولات القروض الإدارية المؤكد سدادها' => $loanAdminFees,
+            'عمولات القروض الإدارية غير المسددة بعد' => $loanAdminFeesPending,
             'متوسط نسبة العمولة الإدارية للقروض' => round($avgFeePercent, 2) . '%',
             'إجمالي طلبات الأسهم' => $shareRequestsCount,
             'الأسهم المخصومة بسبب الدمج (عدد)' => $mergeSummary['merged']['shares'],
@@ -200,7 +222,7 @@ class DashboardController extends Controller
         return compact(
             'totalMembers', 'activeMembers', 'suspendedMembers', 'pendingRegistrations', 'pendingMembersList', 'pendingSharesTotal', 'totalShares', 'subRow', 'foundRow', 'loanRow',
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
-            'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'totalLoansAmount',
+            'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'loanAdminFeesPending', 'loanAdminFeesTotal', 'foundingShares', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
             'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'export'
         );

@@ -234,6 +234,70 @@ class FoundingAmount extends Model
         return empty($founding['plan_start']) || (int) ($founding['plan_months'] ?? 1) <= 1;
     }
 
+    /** The founding fee of one share the member's amount was computed with (falls back to the current setting). */
+    public static function feePerShare(array $founding): float
+    {
+        $linked = (int) ($founding['shares_count_linked'] ?? 0);
+        return $linked > 0
+            ? round((float) $founding['total_required'] / $linked, 2)
+            : (float) Setting::get('founding_fee_per_share', 0);
+    }
+
+    /**
+     * The founding amount share by share: for every ACTIVE lot of the member ("السهم رقم N"), keyed by lot id,
+     *   required  - what that share owes (its shares x the fee per share),
+     *   paid      - what was paid FOR THAT SHARE (its own allocations, plus those of the lots merged into it),
+     *   remaining - what it still owes,
+     *   status    - 'paid' / 'partial' / 'unpaid' (a share that owes nothing counts as paid),
+     *   met       - true when the share's founding amount is complete.
+     * Nothing is ever spread from one share to another: a member with 4 shares who paid for share 1 only has share 1
+     * paid and shares 2-4 unpaid.
+     */
+    public static function lotBreakdown(int $memberId, ?array $founding = null): array
+    {
+        $founding ??= self::ensureForMember($memberId);
+        $fee = self::feePerShare($founding);
+        $totals = FoundingAllocation::totalsByLot($memberId);
+        $numbers = ShareLot::numbersFor($memberId);
+
+        $lots = ShareLot::where(['member_id' => $memberId], 'created_at ASC, id ASC');
+        $children = [];
+        foreach ($lots as $l) {
+            if (!empty($l['merged_into_id'])) {
+                $children[(int) $l['merged_into_id']][] = (int) $l['id'];
+            }
+        }
+        // A merged lot inherits what was paid for the lots it was made from (and, through them, theirs).
+        $paidWithChildren = function (int $lotId) use (&$paidWithChildren, $totals, $children): float {
+            $sum = $totals[$lotId] ?? 0.0;
+            foreach ($children[$lotId] ?? [] as $child) {
+                $sum += $paidWithChildren($child);
+            }
+            return $sum;
+        };
+
+        $out = [];
+        foreach ($lots as $l) {
+            if ($l['status'] !== 'active') {
+                continue;
+            }
+            $required = round((int) $l['shares_count'] * $fee, 2);
+            $paid = round($paidWithChildren((int) $l['id']), 2);
+            $status = $required <= 0 || $paid >= $required ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+            $out[(int) $l['id']] = [
+                'lot_id' => (int) $l['id'],
+                'number' => $numbers[(int) $l['id']] ?? 0,
+                'shares_count' => (int) $l['shares_count'],
+                'required' => $required,
+                'paid' => $paid,
+                'remaining' => max(0.0, round($required - $paid, 2)),
+                'status' => $status,
+                'met' => $status === 'paid',
+            ];
+        }
+        return $out;
+    }
+
     /** First installment that is not fully paid, or null. */
     public static function nextInstallment(array $schedule): ?array
     {

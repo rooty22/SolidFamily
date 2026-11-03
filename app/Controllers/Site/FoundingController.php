@@ -29,6 +29,8 @@ class FoundingController extends Controller
             'feePerShare' => $feePerShare,
             'schedule' => FoundingAmount::schedule($founding, $member),
             'maxPlanMonths' => FoundingAmount::MAX_PLAN_MONTHS,
+            // The founding amount share by share: what was paid for each share is shown on that share only.
+            'breakdown' => FoundingAmount::lotBreakdown((int) $member['id'], $founding),
         ], 'site/layout');
     }
 

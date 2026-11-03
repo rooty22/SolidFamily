@@ -83,6 +83,8 @@ class Admin extends Model
     {
         return [
             '^/admin/subscriptions/[0-9]+/lot/[0-9]+/date$' => ['shares', 'members'],
+            // The note of a share is written from the Shares page (its own section) and from the member's page.
+            '^/admin/shares/[0-9]+/lot/[0-9]+/note$' => ['members', 'subscriptions'],
         ];
     }
 

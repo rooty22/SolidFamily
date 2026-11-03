@@ -18,8 +18,8 @@
 
 <!-- Executive KPI Stat Cards (Financial & Operational Breakdown) -->
 <div class="row g-3 mb-4">
-    <!-- 1. Total Fund Balance (Includes cash in bank + remaining loans portfolio) -->
-    <div class="col-xl-4 col-md-6">
+    <!-- 1. Total Fund Balance = bank cash + loan principal still to come back + commissions still to be collected -->
+    <div class="col-xl-3 col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-green">
                 <i class="bi bi-bank2"></i>
@@ -28,14 +28,14 @@
                 <div class="stat-label"><?= __('total_fund_balance') ?></div>
                 <div class="stat-value font-num text-emerald-700"><?= money($stats['totalFundBalance']) ?></div>
                 <div class="stat-sub text-slate-500 font-medium">
-                    <?= is_rtl() ? 'شامل سيولة البنك ومتبقي القروض المستحقة' : 'Includes bank cash + active loans portfolio' ?>
+                    <?= is_rtl() ? 'سيولة البنك + متبقي القروض + العمولات المستحقة' : 'Bank cash + loans outstanding + commissions due' ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 2. Actual Bank Balance (Liquidity available after loans disbursed & expenses) -->
-    <div class="col-xl-4 col-md-6">
+    <!-- 2. Actual Bank Balance (cash really received minus loans paid out) -->
+    <div class="col-xl-3 col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-blue">
                 <i class="bi bi-wallet2"></i>
@@ -44,29 +44,47 @@
                 <div class="stat-label"><?= __('actual_bank_balance') ?></div>
                 <div class="stat-value font-num text-sky-800"><?= money($stats['bankBalance']) ?></div>
                 <div class="stat-sub text-emerald-600 font-bold">
-                    <?= is_rtl() ? 'السيولة المتاحة بعد خصم القروض والمصروفات' : 'Available cash after loans & expenses' ?>
+                    <?= is_rtl() ? 'السيولة المتاحة بعد خصم القروض المصروفة' : 'Available cash after loans paid out' ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. Earned Loan Commissions (Admin Revenue) -->
-    <div class="col-xl-4 col-md-6">
-        <div class="stat-card">
-            <div class="stat-icon bg-grad-purple">
-                <i class="bi bi-cash-stack"></i>
+    <!-- 3. Loans still to come back (principal) -->
+    <div class="col-xl-3 col-md-6">
+        <a href="<?= url('admin/loans') ?>" class="stat-card text-decoration-none block">
+            <div class="stat-icon bg-grad-amber">
+                <i class="bi bi-cash-coin"></i>
             </div>
             <div>
-                <div class="stat-label"><?= __('loan_admin_fees_stat') ?></div>
-                <div class="stat-value font-num text-purple-700"><?= money($stats['loanAdminFees']) ?></div>
-                <div class="stat-sub text-purple-600 font-bold">
-                    <?= is_rtl() ? 'إيرادات الإدارة المحققة (متوسط ' . round($stats['avgFeePercent'], 1) . '%)' : 'Earned loan admin revenue (avg ' . round($stats['avgFeePercent'], 1) . '%)' ?>
+                <div class="stat-label"><?= is_rtl() ? 'القروض القائمة (المتبقي)' : 'Loans outstanding' ?></div>
+                <div class="stat-value font-num text-amber-700"><?= money($stats['loansRemaining']) ?></div>
+                <div class="stat-sub text-amber-600 font-bold">
+                    <?= is_rtl() ? number_format((int) $stats['loanRow']['running_count']) . ' قرض قائم من ' . number_format((int) $stats['loanRow']['total_loans']) . ' · الإجمالي المصروف ' . money($stats['totalLoansAmount']) : number_format((int) $stats['loanRow']['running_count']) . ' running of ' . number_format((int) $stats['loanRow']['total_loans']) . ' · disbursed ' . money($stats['totalLoansAmount']) ?>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- 4. Loan commissions: ALL commissions, split into received (confirmed by the admin) and still due -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-grad-purple">
+                <i class="bi bi-percent"></i>
+            </div>
+            <div>
+                <div class="stat-label"><?= is_rtl() ? 'عمولات القروض (الإجمالي)' : 'Loan commissions (total)' ?></div>
+                <div class="stat-value font-num text-purple-700"><?= money($stats['loanAdminFeesTotal']) ?></div>
+                <div class="stat-sub font-bold">
+                    <span class="text-emerald-600"><?= is_rtl() ? 'مسددة ' : 'Received ' ?><?= money($stats['loanAdminFees']) ?></span>
+                    <span class="text-slate-300"> · </span>
+                    <span class="text-amber-600"><?= is_rtl() ? 'مستحقة ' : 'Due ' ?><?= money($stats['loanAdminFeesPending']) ?></span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 4. Approved Members -->
+    <!-- 5. Approved Members -->
     <div class="col-xl-4 col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-blue">
@@ -83,7 +101,7 @@
         </div>
     </div>
 
-    <!-- 5. Total Shares -->
+    <!-- 6. Total Shares -->
     <div class="col-xl-4 col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-purple">
@@ -97,7 +115,7 @@
         </div>
     </div>
 
-    <!-- 6. Overdue Members (Clickable with delay type breakdown) -->
+    <!-- 7. Overdue Members (Clickable with delay type breakdown) -->
     <div class="col-xl-4 col-md-6">
         <a href="<?= url('admin/members?payment_status=late') ?>" class="stat-card text-decoration-none block transition-all hover:scale-[1.02] hover:shadow-lg hover:border-rose-400 group cursor-pointer" title="<?= is_rtl() ? 'انتقال إلى قائمة المشتركين المتأخرين' : 'View overdue members' ?>">
             <div class="d-flex items-center justify-between mb-2">
@@ -224,6 +242,10 @@
                     <b class="font-num text-emerald-600"><?= money($stats['subRow']['total_paid']) ?></b>
                 </div>
                 <div class="d-flex justify-content-between">
+                    <span class="text-slate-500"><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></span>
+                    <b class="font-num text-rose-600"><?= money(max(0, (float) $stats['subRow']['total_due'] - (float) $stats['subRow']['total_paid'])) ?></b>
+                </div>
+                <div class="d-flex justify-content-between">
                     <span class="text-slate-500"><?= is_rtl() ? 'مسدد / جزئي / غير مسدد' : 'Paid / Partial / Unpaid' ?></span>
                     <b class="font-num"><?= (int) $stats['subRow']['paid_count'] ?> / <?= (int) $stats['subRow']['partial_count'] ?> / <?= (int) $stats['subRow']['unpaid_count'] ?><?php if (!empty($stats['subRow']['late_count'])): ?> <small class="text-rose-600">(<?= is_rtl() ? 'منها ' . (int) $stats['subRow']['late_count'] . ' متأخر' : (int) $stats['subRow']['late_count'] . ' late' ?>)</small><?php endif; ?></b>
                 </div>
@@ -247,27 +269,27 @@
         </a>
     </div>
 
-    <!-- 4 Quick Metric Badges for Loan Revenue -->
+    <!-- Quick metric tiles: total commissions, received, still due, and the loans they come from -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100">
-            <div class="text-xs text-purple-700 font-bold"><?= is_rtl() ? 'إجمالي العمولات الإدارية المكتسبة' : 'Total Admin Fees Earned' ?></div>
-            <div class="text-xl font-black font-numeric text-purple-900 mt-1"><?= money($stats['loanAdminFees']) ?></div>
-            <div class="text-[11px] text-purple-600 mt-0.5"><?= is_rtl() ? 'إيرادات فعلية محققة للصندوق' : 'Net fund revenue earned' ?></div>
-        </div>
-        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-            <div class="text-xs text-slate-500 font-bold"><?= is_rtl() ? 'إجمالي مبالغ القروض الصادرة' : 'Total Disbursed Loans' ?></div>
-            <div class="text-xl font-black font-numeric text-slate-900 mt-1"><?= money($stats['totalLoansAmount']) ?></div>
-            <div class="text-[11px] text-slate-400 mt-0.5"><?= (int) $stats['loanRow']['total_loans'] ?> <?= is_rtl() ? 'قروض تم صرفها' : 'disbursed loans' ?></div>
+            <div class="text-xs text-purple-700 font-bold"><?= is_rtl() ? 'إجمالي عمولات القروض' : 'Total loan commissions' ?></div>
+            <div class="text-xl font-black font-numeric text-purple-900 mt-1"><?= money($stats['loanAdminFeesTotal']) ?></div>
+            <div class="text-[11px] text-purple-600 mt-0.5"><?= is_rtl() ? 'كل القروض: المسددة + المستحقة (متوسط ' . round($stats['avgFeePercent'], 2) . '%)' : 'All loans: received + due (avg ' . round($stats['avgFeePercent'], 2) . '%)' ?></div>
         </div>
         <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
-            <div class="text-xs text-emerald-800 font-bold"><?= is_rtl() ? 'متوسط نسبة العمولة الإدارية' : 'Avg Commission Rate' ?></div>
-            <div class="text-xl font-black font-numeric text-emerald-700 mt-1"><?= round($stats['avgFeePercent'], 2) ?>%</div>
-            <div class="text-[11px] text-emerald-600 mt-0.5"><?= is_rtl() ? 'نسبة المصاريف على أصل القرض' : 'Fee on principal' ?></div>
+            <div class="text-xs text-emerald-800 font-bold"><?= is_rtl() ? 'عمولات تم تحصيلها (مؤكد سدادها)' : 'Commissions received' ?></div>
+            <div class="text-xl font-black font-numeric text-emerald-700 mt-1"><?= money($stats['loanAdminFees']) ?></div>
+            <div class="text-[11px] text-emerald-600 mt-0.5"><?= is_rtl() ? 'داخلة في رصيد البنك' : 'Included in the bank balance' ?></div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-amber-50/60 border border-amber-100">
+            <div class="text-xs text-amber-800 font-bold"><?= is_rtl() ? 'عمولات مستحقة لم تُسدَّد بعد' : 'Commissions still due' ?></div>
+            <div class="text-xl font-black font-numeric text-amber-700 mt-1"><?= money($stats['loanAdminFeesPending']) ?></div>
+            <div class="text-[11px] text-amber-600 mt-0.5"><?= is_rtl() ? 'تدخل في الرصيد عند تأكيد السداد' : 'Added to the bank balance once confirmed' ?></div>
         </div>
         <div class="p-3.5 rounded-xl bg-sky-50/60 border border-sky-100">
-            <div class="text-xs text-sky-800 font-bold"><?= is_rtl() ? 'مستحقات القروض المتبقية' : 'Remaining Loans Portfolio' ?></div>
+            <div class="text-xs text-sky-800 font-bold"><?= is_rtl() ? 'مستحقات القروض المتبقية (أصل)' : 'Loans outstanding (principal)' ?></div>
             <div class="text-xl font-black font-numeric text-sky-800 mt-1"><?= money($stats['loansRemaining']) ?></div>
-            <div class="text-[11px] text-sky-600 mt-0.5"><?= is_rtl() ? 'أصول مستحقة التحصيل' : 'Receivable loan assets' ?></div>
+            <div class="text-[11px] text-sky-600 mt-0.5"><?= is_rtl() ? 'من إجمالي مصروف ' . money($stats['totalLoansAmount']) : 'of ' . money($stats['totalLoansAmount']) . ' disbursed' ?></div>
         </div>
     </div>
 
@@ -285,7 +307,8 @@
                         <th><?= is_rtl() ? 'المشترك / رقم القرض' : 'Member / Loan #' ?></th>
                         <th><?= is_rtl() ? 'قيمة القرض' : 'Loan Amount' ?></th>
                         <th><?= is_rtl() ? 'نسبة العمولة' : 'Fee %' ?></th>
-                        <th><?= is_rtl() ? 'العمولة المكتسبة' : 'Admin Fee Earned' ?></th>
+                        <th><?= is_rtl() ? 'العمولة' : 'Admin Fee' ?></th>
+                        <th><?= is_rtl() ? 'حالة العمولة' : 'Fee status' ?></th>
                         <th><?= is_rtl() ? 'تاريخ الصرف' : 'Disbursement Date' ?></th>
                         <th><?= __('status') ?></th>
                         <th class="text-end"><?= __('actions') ?></th>
@@ -301,6 +324,7 @@
                         <td class="font-numeric font-bold text-slate-900"><?= money($fl['amount']) ?></td>
                         <td class="font-numeric font-bold text-slate-700"><?= rtrim(rtrim(number_format((float) $fl['admin_fee_percent'], 2), '0'), '.') ?>%</td>
                         <td class="font-numeric font-bold text-purple-700"><?= money($fl['admin_fee_amount']) ?></td>
+                        <td><span class="badge-status badge-<?= ($fl['fee_status'] ?? 'unpaid') === 'paid' ? 'success' : 'warning' ?>"><?= ($fl['fee_status'] ?? 'unpaid') === 'paid' ? (is_rtl() ? 'مدفوعة' : 'Paid') : (is_rtl() ? 'غير مدفوعة' : 'Unpaid') ?></span></td>
                         <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($fl['loan_date']) ?></bdi></td>
                         <td><span class="badge-status badge-<?= $flVariant ?>"><?= $flLabel ?></span></td>
                         <td class="text-end">
@@ -463,6 +487,18 @@
                     <b class="font-num text-slate-900"><?= money($stats['foundRow']['total_required']) ?></b>
                 </div>
                 <div class="d-flex justify-content-between py-1.5 border-b border-slate-100">
+                    <span class="text-slate-500"><?= is_rtl() ? 'المسدد' : 'Paid' ?></span>
+                    <b class="font-num text-emerald-600"><?= money($stats['foundRow']['total_paid']) ?></b>
+                </div>
+                <div class="d-flex justify-content-between py-1.5 border-b border-slate-100">
+                    <span class="text-slate-500"><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></span>
+                    <b class="font-num text-rose-600"><?= money($stats['foundRow']['total_remaining']) ?></b>
+                </div>
+                <div class="d-flex justify-content-between py-1.5 border-b border-slate-100">
+                    <span class="text-slate-500" title="<?= is_rtl() ? 'كل سهم يُحسب بمفرده' : 'Each share is counted on its own' ?>"><?= is_rtl() ? 'الأسهم المكتمل تأسيسها' : 'Shares fully paid' ?></span>
+                    <b class="font-num text-slate-900"><?= (int) $stats['foundingShares']['met'] ?> / <?= (int) $stats['foundingShares']['total'] ?></b>
+                </div>
+                <div class="d-flex justify-content-between py-1.5 border-b border-slate-100">
                     <span class="text-slate-500"><?= __('status_paid') ?></span>
                     <b class="text-emerald-600 font-num"><?= (int)$stats['foundRow']['paid_count'] ?> <?= is_rtl() ? 'عضو' : 'members' ?></b>
                 </div>
@@ -499,8 +535,8 @@
                     <b class="text-amber-600 font-num"><?= (int)$stats['loanRequestsCount'] ?></b>
                 </div>
                 <div class="d-flex justify-content-between py-1.5 border-b border-slate-100">
-                    <span class="text-slate-500"><?= is_rtl() ? 'إيرادات المصاريف الإدارية' : 'Admin Fee Revenues' ?></span>
-                    <b class="text-emerald-600 font-num"><?= money($stats['loanRow']['total_fees']) ?></b>
+                    <span class="text-slate-500"><?= is_rtl() ? 'العمولات: مسددة / مستحقة' : 'Commissions: received / due' ?></span>
+                    <b class="font-num"><span class="text-emerald-600"><?= money($stats['loanAdminFees']) ?></span> / <span class="text-amber-600"><?= money($stats['loanAdminFeesPending']) ?></span></b>
                 </div>
                 <div class="d-flex justify-content-between py-1.5">
                     <span class="text-slate-500"><?= is_rtl() ? 'إجمالي طلبات الأسهم' : 'Total Share Requests' ?></span>

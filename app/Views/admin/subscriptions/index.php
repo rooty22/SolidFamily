@@ -88,7 +88,7 @@ $hasSubFilters = ($status !== '' || $q !== '');
             <tr>
                 <td class="fw-bold text-slate-900">
                     <a href="<?= url('admin/subscriptions/' . $row['member']['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
-                        <?= e($row['member']['name']) ?>
+                        <?= member_serial_chip($row['member']) ?> <?= e($row['member']['name']) ?>
                     </a>
                 </td>
                 <td class="font-numeric"><?= number_format($row['member']['shares_count']) ?></td>

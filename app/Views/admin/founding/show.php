@@ -1,6 +1,6 @@
 <?php [$label, $variant] = status_badge($founding['status']); $remaining = round($founding['total_required'] - $founding['amount_paid'], 2); $payInFull = \App\Models\FoundingAmount::mustPayInFull($founding); $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid'] / $founding['total_required'] * 100)) : 0; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><?= e($member['name']) ?></h5>
+    <h5 class="fw-bold mb-0"><?= member_serial_chip($member) ?> <?= e($member['name']) ?></h5>
     <a href="<?= url('admin/members/' . $member['id']) ?>" class="btn btn-sm btn-soft">ملف المشترك</a>
 </div>
 
@@ -54,27 +54,49 @@
             <div class="panel-head"><h3><i class="bi bi-plus-circle"></i> تسجيل دفعة</h3></div>
             <form method="post" action="<?= url('admin/founding/' . $member['id'] . '/pay') ?>">
                 <?= csrf_field() ?>
+                <?php
+                // The first share that still owes something is pre-selected; its remaining amount is the default payment.
+                $firstOpen = null;
+                foreach ($breakdown as $b) {
+                    if ($b['remaining'] > 0) { $firstOpen = $b; break; }
+                }
+                ?>
                 <div class="mb-2">
-                    <label class="form-label text-xs font-bold text-slate-700">تخصيص الدفعة لسهم محدد (اختياري)</label>
-                    <select name="lot_id" class="form-select text-sm font-bold">
-                        <option value="">عام / إجمالي مبلغ التأسيس</option>
-                        <?php if (!empty($activeLots)): ?>
-                            <?php foreach ($activeLots as $lIdx => $aLot): ?>
-                                <option value="<?= $aLot['id'] ?>">السهم رقم <?= $lIdx + 1 ?> (<?= number_format($aLot['shares_count']) ?> سهم)</option>
+                    <label class="form-label text-xs font-bold text-slate-700">السهم المسدَّد عنه <?= !empty($activeLots) ? '<span class="text-rose-500">*</span>' : '' ?></label>
+                    <select name="lot_id" id="foundingLotSelect" class="form-select text-sm font-bold" <?= !empty($activeLots) ? 'required' : '' ?>>
+                        <?php if (empty($activeLots)): ?>
+                            <option value="">لا توجد أسهم نشطة</option>
+                        <?php else: ?>
+                            <option value="" data-remaining="0" disabled <?= $firstOpen ? '' : 'selected' ?>>— اختر السهم —</option>
+                            <?php foreach ($breakdown as $b): ?>
+                                <option value="<?= $b['lot_id'] ?>" data-remaining="<?= $b['remaining'] ?>" <?= $b['remaining'] <= 0 ? 'disabled' : '' ?> <?= $firstOpen && $firstOpen['lot_id'] === $b['lot_id'] ? 'selected' : '' ?>>
+                                    السهم رقم <?= $b['number'] ?> (<?= number_format($b['shares_count']) ?> سهم) — <?= $b['remaining'] <= 0 ? 'مسدد' : 'المتبقي ' . money($b['remaining']) ?>
+                                </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </select>
-                    <div class="text-muted small mt-1">تحديد السهم يوضح في المعاملات المالية والسجل أن السداد مخصص لهذا السهم (مثلاً 500 ريال للسهم رقم 1).</div>
+                    <div class="text-muted small mt-1">تُسجَّل الدفعة على السهم المحدد فقط ولا تُوزَّع على بقية أسهم المشترك (مثلاً 500 ريال للسهم رقم 1 يبقي الأسهم الأخرى غير مسددة).</div>
                 </div>
                 <div class="mb-2">
                     <label class="form-label text-xs font-bold text-slate-700">المبلغ</label>
-                    <input type="number" step="0.01" min="0.01" max="<?= $remaining ?>" name="amount" class="form-control font-numeric font-bold" value="<?= $remaining > 0 ? ($nextInstallment ? $nextInstallment['remaining'] : ($remaining >= 500 ? 500 : $remaining)) : '' ?>" required>
+                    <input type="number" step="0.01" min="0.01" max="<?= $firstOpen ? min($remaining, $firstOpen['remaining']) : $remaining ?>" name="amount" id="foundingAmountInput" class="form-control font-numeric font-bold" value="<?= $remaining > 0 ? ($firstOpen ? min($remaining, $firstOpen['remaining']) : ($nextInstallment ? $nextInstallment['remaining'] : $remaining)) : '' ?>" required>
                     <?php if ($nextInstallment): ?>
-                        <div class="text-muted small mt-1">القسط القادم رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>) بقيمة <?= money($nextInstallment['remaining']) ?></div>
+                        <div class="text-muted small mt-1">القسط القادم من خطة السداد رقم <?= (int) $nextInstallment['number'] ?> (<?= date_ar($nextInstallment['due_date']) ?>) بقيمة <?= money($nextInstallment['remaining']) ?></div>
                     <?php else: ?>
-                        <div class="text-muted small mt-1">يمكنك إدخال أي مبلغ (مثل 500 ريال لتسديد سهم محدد) حتى المتبقي: <?= money($remaining) ?></div>
+                        <div class="text-muted small mt-1">حتى المتبقي على السهم المحدد، وإجمالي المتبقي على المشترك: <?= money($remaining) ?></div>
                     <?php endif; ?>
                 </div>
+                <script>
+                    (function () {
+                        var sel = document.getElementById('foundingLotSelect'), amt = document.getElementById('foundingAmountInput');
+                        if (!sel || !amt) { return; }
+                        var total = <?= json_encode((float) $remaining) ?>;
+                        sel.addEventListener('change', function () {
+                            var rem = parseFloat(sel.options[sel.selectedIndex].dataset.remaining || '0');
+                            if (rem > 0) { var v = Math.min(rem, total); amt.max = v; amt.value = v; }
+                        });
+                    })();
+                </script>
                 <div class="mb-2">
                     <label class="form-label text-xs font-bold text-slate-700">تاريخ الدفع</label>
                     <input type="date" name="payment_date" class="form-control font-numeric" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
@@ -91,6 +113,57 @@
         </div>
     </div>
 </div>
+
+<?php if (!empty($breakdown)): ?>
+<div class="card-panel mb-3">
+    <div class="panel-head"><h3><i class="bi bi-pie-chart-fill"></i> مبلغ التأسيس لكل سهم</h3><span class="text-muted small">كل سهم يُحاسَب بمفرده</span></div>
+    <table class="table-modern">
+        <thead><tr><th>السهم</th><th>المطلوب</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th></tr></thead>
+        <tbody>
+        <?php foreach ($breakdown as $b): [$bl, $bv] = status_badge($b['status']); ?>
+            <tr>
+                <td class="fw-bold">السهم رقم <?= $b['number'] ?> <span class="text-muted small fw-normal">(<?= number_format($b['shares_count']) ?> سهم)</span></td>
+                <td class="font-numeric"><?= money($b['required']) ?></td>
+                <td class="font-numeric text-success fw-bold"><?= money($b['paid']) ?></td>
+                <td class="font-numeric text-danger fw-bold"><?= money($b['remaining']) ?></td>
+                <td><span class="badge-status badge-<?= $bv ?>"><?= $bl ?></span></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($unallocated)): ?>
+<div class="card-panel mb-3" style="border:1.5px solid #fde68a;background:#fffbeb;">
+    <div class="panel-head"><h3 class="text-amber-800"><i class="bi bi-exclamation-triangle-fill"></i> مبالغ مسددة غير مخصصة لسهم</h3><span class="text-muted small"><?= money(array_sum(array_column($unallocated, 'unallocated'))) ?></span></div>
+    <p class="text-sm text-slate-700 mb-2">هذه المبالغ سُجلت قبل ربط مبلغ التأسيس بكل سهم على حدة، ولا تُحتسب لأي سهم حتى تخصصها لسهم محدد (لن يُوزَّع منها شيء تلقائياً على بقية الأسهم).</p>
+    <table class="table-modern">
+        <thead><tr><th>تاريخ الدفعة</th><th>غير المخصص</th><th>تخصيص لسهم</th></tr></thead>
+        <tbody>
+        <?php foreach ($unallocated as $u): ?>
+            <tr>
+                <td class="font-numeric"><?= date_ar($u['payment_date']) ?><?= !empty($u['notes']) ? ' <span class="text-muted small">— ' . e(localize_dates($u['notes'])) . '</span>' : '' ?></td>
+                <td class="font-numeric fw-bold"><?= money($u['unallocated']) ?></td>
+                <td>
+                    <form method="post" action="<?= url('admin/founding/' . $member['id'] . '/allocate') ?>" class="d-flex gap-2 align-items-center flex-wrap">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="payment_id" value="<?= (int) $u['id'] ?>">
+                        <select name="lot_id" class="form-select form-select-sm" style="max-width:240px" required>
+                            <?php foreach ($breakdown as $b): if ($b['remaining'] <= 0) { continue; } ?>
+                                <option value="<?= $b['lot_id'] ?>">السهم رقم <?= $b['number'] ?> — المتبقي <?= money($b['remaining']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="number" step="0.01" min="0.01" max="<?= $u['unallocated'] ?>" name="amount" value="<?= $u['unallocated'] ?>" class="form-control form-control-sm font-numeric" style="max-width:130px" required>
+                        <button type="submit" class="btn btn-sm btn-primary">تخصيص</button>
+                    </form>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 
 <?php if (!empty($schedule)): ?>
 <div class="card-panel mb-3">
@@ -115,13 +188,27 @@
 <div class="card-panel">
     <div class="panel-head"><h3><i class="bi bi-receipt"></i> سجل الدفعات</h3></div>
     <table class="table-modern">
-        <thead><tr><th>المبلغ</th><th>تاريخ الدفع</th><th>ملاحظات</th></tr></thead>
+        <thead><tr><th>المبلغ</th><th>السهم المسدَّد عنه</th><th>تاريخ الدفع</th><th>ملاحظات</th></tr></thead>
         <tbody>
-        <?php foreach ($payments as $p): ?>
-            <tr><td class="fw-bold"><?= money($p['amount']) ?></td><td><?= date_ar($p['payment_date']) ?></td><td><?= e(localize_dates($p['notes'] ?: '-')) ?></td></tr>
+        <?php foreach ($payments as $p): $allocs = $allocByPayment[(int) $p['id']] ?? []; $free = round((float) $p['amount'] - array_sum(array_column($allocs, 'amount')), 2); ?>
+            <tr>
+                <td class="fw-bold"><?= money($p['amount']) ?></td>
+                <td>
+                    <?php foreach ($allocs as $a): ?>
+                        <form method="post" action="<?= url('admin/founding/' . $member['id'] . '/allocation/' . (int) $a['id'] . '/delete') ?>" class="d-inline-flex align-items-center gap-1 me-1" data-confirm="إلغاء تخصيص هذا المبلغ من السهم؟ سيعود إلى (غير مخصص) ويمكنك تخصيصه لسهم آخر.">
+                            <?= csrf_field() ?>
+                            <span class="badge-status badge-info">السهم رقم <?= (int) ($lotNumbers[(int) $a['lot_id']] ?? 0) ?> · <?= money($a['amount']) ?></span>
+                            <button type="submit" class="btn btn-sm p-0 border-0 text-slate-400" title="إلغاء التخصيص"><i class="bi bi-x-circle"></i></button>
+                        </form>
+                    <?php endforeach; ?>
+                    <?php if ($free > 0): ?><span class="badge-status badge-warning">غير مخصص · <?= money($free) ?></span><?php endif; ?>
+                </td>
+                <td><?= date_ar($p['payment_date']) ?></td>
+                <td><?= e(localize_dates($p['notes'] ?: '-')) ?></td>
+            </tr>
         <?php endforeach; ?>
         <?php if (empty($payments)): ?>
-            <tr><td colspan="3"><div class="empty-state"><i class="bi bi-receipt"></i>لا توجد دفعات مسجلة</div></td></tr>
+            <tr><td colspan="4"><div class="empty-state"><i class="bi bi-receipt"></i>لا توجد دفعات مسجلة</div></td></tr>
         <?php endif; ?>
         </tbody>
     </table>

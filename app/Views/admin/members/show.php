@@ -27,7 +27,14 @@ $catLabels = transaction_categories();
                     <span class="badge-status badge-success"><?= is_rtl() ? 'سداد منتظم' : 'Up to date' ?></span>
                 <?php endif; ?>
             </div>
-            <div class="text-xs text-slate-500 font-numeric font-medium flex items-center gap-2">
+            <div class="text-xs text-slate-500 font-numeric font-medium flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 font-bold" title="<?= is_rtl() ? 'الرقم التسلسلي الثابت' : 'Fixed serial number' ?>">
+                    <i class="bi bi-hash"></i><span><?= is_rtl() ? 'رقم' : 'No.' ?> <?= !empty($member['serial_no']) ? (int) $member['serial_no'] : '-' ?></span>
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-bold" dir="ltr" title="User ID">
+                    <i class="bi bi-person-badge"></i><span>User ID: <?= e($member['uid'] ?? '-') ?></span>
+                </span>
+                <span>•</span>
                 <span dir="ltr"><?= e($member['mobile']) ?></span>
                 <span>•</span>
                 <span dir="ltr"><?= e($member['national_id'] ?? '-') ?></span>
@@ -147,8 +154,9 @@ $catLabels = transaction_categories();
                         <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك (يوم/شهر/سنة)' : 'Start Date (Full Date)' ?></th>
                         <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق الشهري' : 'Due Day' ?></th>
                         <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6-Month Rule' ?></th>
-                        <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
+                        <th class="col-found"><?= is_rtl() ? 'مبلغ تأسيس السهم' : 'Share Founding Amount' ?></th>
                         <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
+                        <th class="col-note"><?= is_rtl() ? 'ملاحظة السهم' : 'Share Note' ?></th>
                         <th class="col-actions"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                     </tr>
                 </thead>
@@ -184,36 +192,17 @@ $catLabels = transaction_categories();
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="col-found">
-                            <?php if ($elig['founding_met']): ?>
-                                <span class="badge-status badge-success">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <?= is_rtl() ? 'مستوفى (مسدد بالكامل)' : 'Fulfilled (Paid)' ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge-status badge-warning">
-                                    <i class="bi bi-exclamation-circle-fill"></i>
-                                    <?= is_rtl() ? 'مسدد ' . money($elig['founding_paid_per_share']) . ' من 500 ريال' : money($elig['founding_paid_per_share']) . ' of 500' ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="col-status">
-                            <?php if ($elig['is_eligible']): ?>
-                                <span class="badge-status badge-success font-bold">
-                                    <i class="bi bi-shield-check"></i>
-                                    <?= is_rtl() ? 'مؤهل للقرض' : 'Eligible' ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge-status badge-secondary">
-                                    <i class="bi bi-clock"></i>
-                                    <?= is_rtl() ? 'قيد استيفاء الشروط' : 'Pending' ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
+                        <td class="col-found"><?= lot_founding_badge($elig) ?></td>
+                        <td class="col-status"><?= lot_eligibility_badge($elig) ?></td>
+                        <td class="col-note"><?php $lotNote = \App\Models\ShareLot::note($lot); echo $lotNote !== '' ? '<span class="lot-note">' . e($lotNote) . '</span>' : '<span class="text-slate-400">—</span>'; ?></td>
                         <td class="col-actions">
                             <button type="button" class="btn btn-sm btn-outline-purple inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors shadow-2xs" data-bs-toggle="modal" data-bs-target="#editLotDateModal<?= $lot['id'] ?>">
                                 <i class="bi bi-calendar-event"></i>
                                 <span><?= is_rtl() ? 'تعديل التاريخ' : 'Edit Date' ?></span>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold mt-1" data-bs-toggle="modal" data-bs-target="#lotNoteModal<?= $lot['id'] ?>">
+                                <i class="bi bi-sticky"></i>
+                                <span><?= is_rtl() ? 'الملاحظة' : 'Note' ?></span>
                             </button>
                         </td>
                     </tr>
@@ -221,6 +210,10 @@ $catLabels = transaction_categories();
                 </tbody>
             </table>
         </div>
+
+        <?php foreach ($lots as $idx => $lot):
+            \App\Core\View::partial('admin/partials/lot-note-modal', ['member' => $member, 'lot' => $lot, 'shareNumber' => $idx + 1, 'redirectTo' => 'admin/members/' . $member['id']]);
+        endforeach; ?>
 
         <?php foreach ($lots as $idx => $lot): ?>
         <div class="modal fade" id="editLotDateModal<?= $lot['id'] ?>" tabindex="-1" aria-hidden="true">
@@ -390,8 +383,10 @@ $catLabels = transaction_categories();
                         <thead>
                             <tr>
                                 <th><?= __('value') ?></th>
+                                <th><?= is_rtl() ? 'السهم' : 'Share' ?></th>
                                 <th><?= __('date') ?></th>
                                 <th><?= __('remaining') ?></th>
+                                <th><?= is_rtl() ? 'العمولة' : 'Commission' ?></th>
                                 <th><?= __('status') ?></th>
                             </tr>
                         </thead>
@@ -399,8 +394,14 @@ $catLabels = transaction_categories();
                         <?php foreach ($loans as $l): [$lb,$v] = status_badge($l['display_status']); ?>
                             <tr>
                                 <td class="font-numeric font-bold text-slate-900"><?= money($l['amount']) ?></td>
+                                <td class="text-xs font-bold text-purple-700"><?= !empty($l['lot_id']) ? e(\App\Models\ShareLot::label((int) $l['member_id'], (int) $l['lot_id'])) : '<span class="text-slate-400">-</span>' ?></td>
                                 <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($l['loan_date']) ?></bdi></td>
                                 <td class="font-numeric font-bold text-rose-600"><?= money($l['amount_remaining']) ?></td>
+                                <td>
+                                    <?php $feeState = \App\Models\Loan::feeState($l); ?>
+                                    <?php if ($feeState === 'none'): ?><span class="text-slate-400">-</span>
+                                    <?php else: ?><span class="badge-status badge-<?= $feeState === 'paid' ? 'success' : 'warning' ?>"><?= $feeState === 'paid' ? (is_rtl() ? 'مدفوعة' : 'Paid') : (is_rtl() ? 'غير مدفوعة' : 'Unpaid') ?></span><?php endif; ?>
+                                </td>
                                 <td><a href="<?= url('admin/loans/' . $l['id']) ?>"><span class="badge-status badge-<?= $v ?>"><?= $lb ?></span></a></td>
                             </tr>
                         <?php endforeach; ?>

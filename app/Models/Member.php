@@ -76,11 +76,84 @@ class Member extends Model
         return array_values(array_filter($members, fn($m) => !in_array($m['status'], ['pending', 'rejected'], true)));
     }
 
+    /**
+     * Search by name, mobile, national ID -- or by the member's fixed serial number ("12" / "#12") or User ID ("U1234567"),
+     * which match exactly and are listed first.
+     */
     public static function search(string $term): array
     {
-        $sql = 'SELECT * FROM members WHERE mobile LIKE ? OR national_id LIKE ? OR name LIKE ? ORDER BY created_at DESC';
+        $term = trim($term);
+        $code = ltrim($term, '#');
+        $serial = ctype_digit($code) ? (int) $code : 0;
         $like = "%{$term}%";
-        return self::raw($sql, [$like, $like, $like]);
+        return self::raw(
+            'SELECT * FROM members
+              WHERE mobile LIKE ? OR national_id LIKE ? OR name LIKE ? OR uid = ? OR (? > 0 AND serial_no = ?)
+              ORDER BY (uid = ? OR (? > 0 AND serial_no = ?)) DESC, created_at DESC',
+            [$like, $like, $like, $code, $serial, $serial, $code, $serial, $serial]
+        );
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Fixed serial number (registration order) and independent User ID
+    // ---------------------------------------------------------------------------------------------------------
+
+    /** Registrations still waiting for / refused by an admin are not members yet and have no serial number. */
+    private static function hasMemberStatus(array $data): bool
+    {
+        return !in_array($data['status'] ?? 'active', ['pending', 'rejected'], true);
+    }
+
+    /** New members get their User ID at once and, unless still pending approval, the next serial number. */
+    public static function create(array $data): int
+    {
+        if (empty($data['uid'])) {
+            $data['uid'] = self::newUid();
+        }
+        if (empty($data['serial_no']) && self::hasMemberStatus($data)) {
+            $data['serial_no'] = self::nextSerial();
+        }
+        return parent::create($data);
+    }
+
+    /** The serial number and the User ID never change: no edit of a member can write them. */
+    public static function update($id, array $data): bool
+    {
+        unset($data['serial_no'], $data['uid']);
+        return $data === [] ? true : parent::update($id, $data);
+    }
+
+    /**
+     * The next serial number: 1, 2, 3 ... The counter only ever goes up (settings.member_serial_seq), so the number of a
+     * deleted or suspended member is never handed out again. The increment is one atomic UPDATE.
+     */
+    public static function nextSerial(): int
+    {
+        self::execute("INSERT IGNORE INTO settings (`key`, value) SELECT 'member_serial_seq', COALESCE(MAX(serial_no), 0) FROM members");
+        do {
+            self::execute("UPDATE settings SET value = LAST_INSERT_ID(CAST(value AS UNSIGNED) + 1) WHERE `key` = 'member_serial_seq'");
+            $serial = (int) self::rawOne('SELECT LAST_INSERT_ID() AS n')['n'];
+        } while (self::findBy('serial_no', $serial) !== null); // only if the counter was ever restored behind the data
+        return $serial;
+    }
+
+    /** A random, unique User ID: "U" + 7 digits. Independent of the database id and of the serial number. */
+    public static function newUid(): string
+    {
+        do {
+            $uid = 'U' . random_int(1000000, 9999999);
+        } while (self::findBy('uid', $uid) !== null);
+        return $uid;
+    }
+
+    /** Gives an approved member the next serial number if they do not have one yet (a pending registration approved later). */
+    public static function ensureSerial(int $memberId): void
+    {
+        $m = self::find($memberId);
+        if (!$m || !empty($m['serial_no']) || !self::hasMemberStatus($m)) {
+            return;
+        }
+        self::execute('UPDATE members SET serial_no = ? WHERE id = ? AND serial_no IS NULL', [self::nextSerial(), $memberId]);
     }
 
     /**

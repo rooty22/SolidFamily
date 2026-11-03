@@ -47,6 +47,8 @@
         <div class="card-panel">
             <div class="panel-head"><h3><i class="bi bi-person-badge-fill"></i> <?= __('account_summary') ?></h3></div>
             <div class="info-list">
+                <div class="info-row"><span><?= is_rtl() ? 'الرقم التسلسلي' : 'Serial number' ?></span><b class="font-num"><?= !empty($member['serial_no']) ? (int) $member['serial_no'] : '-' ?></b></div>
+                <div class="info-row"><span>User ID</span><b class="font-num" dir="ltr"><?= e($member['uid'] ?? '-') ?></b></div>
                 <div class="info-row"><span><?= __('shares_count') ?></span><b class="font-num"><?= number_format($member['shares_count']) ?></b></div>
                 <div class="info-row"><span><?= __('join_date') ?></span><b class="font-num"><?= date_ar($member['created_at']) ?></b></div>
                 <div class="info-row"><span><?= __('status') ?></span><b><?= $member['status'] === 'active' ? __('status_active') : __('status_inactive') ?></b></div>

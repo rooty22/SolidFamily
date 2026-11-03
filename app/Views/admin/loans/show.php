@@ -9,6 +9,7 @@ $isEn = is_en();
     <div>
         <div class="flex items-center gap-3 mb-1">
             <h4 class="text-xl sm:text-2xl font-black text-slate-900 m-0"><?= e($member['name']) ?></h4>
+            <?= member_serial_chip($member) ?>
             <span class="badge-status badge-<?= $variant ?>"><?= $label ?></span>
         </div>
         <div class="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -85,6 +86,66 @@ $isEn = is_en();
                         <div class="text-[11px] font-bold text-slate-400 mt-0.5">(<?= $loan['admin_fee_percent'] ?>%)</div>
                     </div>
                 </div>
+
+                <!-- The member's account on this loan: loan + commission, what is settled and what is still to pay -->
+                <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div class="text-[11px] text-slate-500 font-bold"><?= is_rtl() ? 'إجمالي المطلوب (قرض + عمولة)' : 'Total due (loan + commission)' ?></div>
+                        <div class="font-black font-numeric text-slate-900"><?= money(loan_member_total($loan)) ?></div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                        <div class="text-[11px] text-emerald-800 font-bold"><?= is_rtl() ? 'المسدد (يشمل العمولة المؤكدة)' : 'Settled (incl. confirmed commission)' ?></div>
+                        <div class="font-black font-numeric text-emerald-700"><?= money(loan_member_paid($loan)) ?></div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-rose-50/60 border border-rose-100">
+                        <div class="text-[11px] text-rose-800 font-bold"><?= is_rtl() ? 'المتبقي على المشترك' : 'Still to pay' ?></div>
+                        <div class="font-black font-numeric text-rose-700"><?= money(loan_member_remaining($loan)) ?></div>
+                    </div>
+                </div>
+
+                <?php if (\App\Models\Loan::hasFee($loan)):
+                    $feePaid = \App\Models\Loan::feeIsPaid($loan);
+                    $feeAdmin = !empty($loan['fee_confirmed_by']) ? \App\Models\Admin::find((int) $loan['fee_confirmed_by']) : null;
+                ?>
+                <!-- Commission (administrative fee): confirmed by hand, never marked paid automatically -->
+                <div class="mb-4 p-3.5 rounded-2xl border <?= $feePaid ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60' ?> flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl <?= $feePaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' ?> flex items-center justify-center text-lg shrink-0">
+                            <i class="bi <?= $feePaid ? 'bi-patch-check-fill' : 'bi-hourglass-split' ?>"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-black text-slate-900"><?= is_rtl() ? 'عمولة القرض' : 'Loan commission' ?> <span class="font-numeric"><?= money($loan['admin_fee_amount']) ?></span></span>
+                                <span class="badge-status badge-<?= $feePaid ? 'success' : 'warning' ?>"><?= $feePaid ? (is_rtl() ? 'مدفوعة' : 'Paid') : (is_rtl() ? 'غير مدفوعة' : 'Unpaid') ?></span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">
+                                <?php if ($feePaid): ?>
+                                    <?= is_rtl() ? 'تاريخ السداد: ' : 'Paid on: ' ?><b class="font-numeric"><?= date_ar($loan['fee_paid_at']) ?></b>
+                                    <?php if ($feeAdmin): ?> · <?= is_rtl() ? 'أكدها: ' : 'Confirmed by: ' ?><?= e($feeAdmin['name']) ?><?php endif; ?>
+                                <?php else: ?>
+                                    <?= is_rtl() ? 'لا تُعتبر العمولة مدفوعة إلا بعد تأكيد الإدارة تسجيل السداد.' : 'The commission counts as paid only after the administration confirms the payment.' ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" class="btn btn-sm <?= $feePaid ? 'btn-outline-secondary' : 'btn-success' ?> inline-flex items-center gap-1.5 font-bold rounded-lg" data-bs-toggle="modal" data-bs-target="#loanFeeModal">
+                            <i class="bi <?= $feePaid ? 'bi-calendar-event' : 'bi-cash-coin' ?>"></i>
+                            <span><?= $feePaid ? (is_rtl() ? 'تعديل تاريخ السداد' : 'Edit date') : (is_rtl() ? 'تسجيل سداد العمولة' : 'Record commission payment') ?></span>
+                        </button>
+                        <?php if ($feePaid): ?>
+                            <form method="post" action="<?= url('admin/loans/' . $loan['id'] . '/fee') ?>" class="m-0" data-confirm="<?= is_rtl() ? 'إرجاع العمولة إلى غير مدفوعة؟ سيُحذف قيدها من المعاملات المالية.' : 'Mark the commission as unpaid? Its ledger entry will be removed.' ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="fee_status" value="unpaid">
+                                <button type="submit" class="btn btn-sm btn-outline-danger inline-flex items-center gap-1.5 font-bold rounded-lg">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                    <span><?= is_rtl() ? 'إلغاء السداد' : 'Mark unpaid' ?></span>
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Progress Bar -->
                 <div class="mb-3">
@@ -248,6 +309,43 @@ $isEn = is_en();
         </table>
     </div>
 </div>
+
+<?php if (\App\Models\Loan::hasFee($loan)): ?>
+<div class="modal fade" id="loanFeeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-2xl border-0 shadow-2xl">
+            <div class="modal-header border-b border-slate-100 bg-slate-50/70 p-4">
+                <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
+                    <i class="bi bi-cash-coin text-emerald-600"></i>
+                    <span><?= is_rtl() ? 'تسجيل سداد عمولة القرض' : 'Record commission payment' ?></span>
+                </h5>
+                <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="<?= url('admin/loans/' . $loan['id'] . '/fee') ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="fee_status" value="paid">
+                <div class="modal-body p-4 space-y-3">
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <span class="text-slate-600 font-bold"><?= is_rtl() ? 'قيمة العمولة:' : 'Commission:' ?></span>
+                        <span class="font-numeric font-extrabold text-slate-900"><?= money($loan['admin_fee_amount']) ?></span>
+                    </div>
+                    <div>
+                        <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ سداد العمولة' : 'Payment date' ?></label>
+                        <input type="date" name="fee_paid_at" class="form-control font-numeric font-bold" value="<?= e(\App\Models\Loan::feeIsPaid($loan) && !empty($loan['fee_paid_at']) ? $loan['fee_paid_at'] : date('Y-m-d')) ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                        <p class="text-[11px] text-muted mb-0 mt-1.5"><?= is_rtl() ? 'يوم استلام العمولة فعلياً (لا يمكن أن يكون في المستقبل). يُسجَّل قيدها في المعاملات المالية بهذا التاريخ.' : 'The day the commission was actually received (not in the future). It is booked in the ledger on this date.' ?></p>
+                    </div>
+                </div>
+                <div class="modal-footer border-t border-slate-100 p-3 bg-slate-50/50 flex justify-between">
+                    <button type="button" class="btn btn-light text-xs font-bold px-3 py-2 rounded-xl" data-bs-dismiss="modal"><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></button>
+                    <button type="submit" class="btn btn-primary text-xs font-bold px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 border-0">
+                        <i class="bi bi-check-lg me-1"></i><?= is_rtl() ? 'تأكيد السداد' : 'Confirm payment' ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php foreach ($installments as $i): if ((float) $i['amount_paid'] > 0): ?>
 <div class="modal fade" id="editLoanInstModal<?= $i['id'] ?>" tabindex="-1" aria-hidden="true">

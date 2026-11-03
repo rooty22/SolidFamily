@@ -27,7 +27,7 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
     <div class="stat-card"><div class="stat-icon bg-grad-green"><i class="bi bi-check2-circle"></i></div>
         <div><div class="stat-label"><?= __('paid_amount') ?></div><div class="stat-value font-num"><?= money($paidWithFee) ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-red"><i class="bi bi-wallet2"></i></div>
-        <div><div class="stat-label"><?= __('remaining_amount') ?></div><div class="stat-value font-num"><?= money($loan['amount_remaining']) ?></div></div></div>
+        <div><div class="stat-label"><?= __('remaining_amount') ?></div><div class="stat-value font-num"><?= money(loan_member_remaining($loan)) ?></div></div></div>
     <div class="stat-card"><div class="stat-icon bg-grad-amber"><i class="bi bi-list-ol"></i></div>
         <div><div class="stat-label"><?= __('remaining_installments') ?></div><div class="stat-value font-num"><?= $remainingCount ?><small class="text-muted fs-6"> / <?= (int) $loan['installments_count'] ?></small></div></div></div>
 </div>
@@ -71,6 +71,9 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
             <div class="info-list">
                 <div class="info-row"><span><?= __('loan_reason') ?></span><b><?= $reasonLabels[$loan['reason']] ?? $loan['reason'] ?></b></div>
                 <div class="info-row"><span><?= __('loan_date') ?></span><b class="font-num"><?= date_ar($loan['loan_date']) ?></b></div>
+                <?php if (\App\Models\Loan::hasFee($loan)): $feePaid = \App\Models\Loan::feeIsPaid($loan); ?>
+                    <div class="info-row"><span><?= is_rtl() ? 'عمولة القرض' : 'Loan commission' ?></span><b><span class="badge-status badge-<?= $feePaid ? 'success' : 'warning' ?>"><?= $feePaid ? (is_rtl() ? 'مدفوعة' : 'Paid') : (is_rtl() ? 'غير مدفوعة' : 'Unpaid') ?></span><?= $feePaid && !empty($loan['fee_paid_at']) ? ' <span class="font-num small text-muted">' . date_ar($loan['fee_paid_at']) . '</span>' : '' ?></b></div>
+                <?php endif; ?>
                 <?php if (!empty($loan['lot_id'])): ?>
                     <div class="info-row"><span><?= is_rtl() ? 'السهم / الحصة المرتبطة' : 'Linked Share Lot' ?></span><b class="font-num text-purple-700"><?= e(\App\Models\ShareLot::label((int) $loan['member_id'], (int) $loan['lot_id'])) ?></b></div>
                 <?php endif; ?>

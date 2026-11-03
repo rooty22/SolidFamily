@@ -23,6 +23,8 @@ CREATE TABLE admins (
 -- =========================================================
 CREATE TABLE members (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    serial_no INT UNSIGNED NULL COMMENT 'fixed registration-order number, never reused or changed (NULL while a registration is pending)',
+    uid VARCHAR(16) NULL COMMENT 'independent User ID, never changed',
     name VARCHAR(150) NOT NULL,
     mobile VARCHAR(20) NOT NULL UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -37,7 +39,9 @@ CREATE TABLE members (
     subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28), NULL falls back to the site setting',
     status ENUM('active','inactive','pending','rejected') NOT NULL DEFAULT 'active' COMMENT 'pending/rejected: a self-registration waiting for / refused by an admin; neither can log in',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_members_serial_no (serial_no),
+    UNIQUE KEY uniq_members_uid (uid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
@@ -85,6 +89,7 @@ CREATE TABLE share_lots (
     status ENUM('active','merged','cancelled') NOT NULL DEFAULT 'active' COMMENT 'merged = folded into another lot (or retired by a split); cancelled = given up, its unpaid dues cleared',
     source_request_id INT UNSIGNED NULL COMMENT 'the share_request that created/merged this lot, for traceability',
     merged_into_id INT UNSIGNED NULL COMMENT 'for a lot folded away by a merge: the merged lot it became, so the merge can be split back',
+    admin_note VARCHAR(500) NULL COMMENT 'internal note the admin keeps about this share',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_lots_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
@@ -162,6 +167,20 @@ CREATE TABLE founding_payments (
     CONSTRAINT fk_founding_payments_admin FOREIGN KEY (recorded_by) REFERENCES admins(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Which share (lot) each founding payment was paid for. A payment can cover more than one share, so this is separate
+-- from founding_payments; the amount paid for a share is never spread over the member's other shares.
+CREATE TABLE founding_payment_allocations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payment_id INT UNSIGNED NOT NULL COMMENT 'the founding payment (or the part of it) this row covers',
+    lot_id INT UNSIGNED NOT NULL COMMENT 'the share the money was paid for',
+    amount DECIMAL(12,2) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_alloc_lot (lot_id),
+    INDEX idx_alloc_payment (payment_id),
+    CONSTRAINT fk_alloc_payment FOREIGN KEY (payment_id) REFERENCES founding_payments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_alloc_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =========================================================
 -- Loan requests
 -- =========================================================
@@ -200,6 +219,9 @@ CREATE TABLE loans (
     installment_value DECIMAL(12,2) NOT NULL,
     admin_fee_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
     admin_fee_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    fee_status ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid' COMMENT 'the commission is paid only once an admin confirms it',
+    fee_paid_at DATE NULL COMMENT 'date the commission was received',
+    fee_confirmed_by INT UNSIGNED NULL COMMENT 'admin who last confirmed / reverted the commission payment',
     amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0,
     amount_remaining DECIMAL(12,2) NOT NULL DEFAULT 0,
     status ENUM('active','partial','paid','closed') NOT NULL DEFAULT 'active',
@@ -208,7 +230,8 @@ CREATE TABLE loans (
     closed_at DATETIME NULL,
     CONSTRAINT fk_loans_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
     CONSTRAINT fk_loans_request FOREIGN KEY (loan_request_id) REFERENCES loan_requests(id) ON DELETE SET NULL,
-    CONSTRAINT fk_loans_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE SET NULL
+    CONSTRAINT fk_loans_lot FOREIGN KEY (lot_id) REFERENCES share_lots(id) ON DELETE SET NULL,
+    CONSTRAINT fk_loans_fee_admin FOREIGN KEY (fee_confirmed_by) REFERENCES admins(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE loan_installments (

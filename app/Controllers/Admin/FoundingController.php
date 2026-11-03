@@ -3,11 +3,14 @@
 namespace App\Controllers\Admin;
 
 use App\Core\Controller;
+use App\Core\Database;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Models\Member;
+use App\Models\FoundingAllocation;
 use App\Models\FoundingAmount;
 use App\Models\FoundingPayment;
+use App\Models\ShareLot;
 use App\Models\Transaction;
 use App\Models\Notification;
 
@@ -27,7 +30,7 @@ class FoundingController extends Controller
         foreach ($members as $m) {
             $f = FoundingAmount::ensureForMember($m['id']);
             $next = FoundingAmount::nextInstallment(FoundingAmount::schedule($f, $m));
-            $rows[] = $f + ['member' => $m, 'next_installment' => $next];
+            $rows[] = $f + ['member' => $m, 'next_installment' => $next, 'lots' => FoundingAmount::lotBreakdown((int) $m['id'], $f)];
         }
 
         $this->view('admin/founding/index', [
@@ -47,7 +50,14 @@ class FoundingController extends Controller
         $founding = FoundingAmount::ensureForMember((int) $memberId);
         $payments = FoundingPayment::forMember((int) $memberId);
         $schedule = FoundingAmount::schedule($founding, $member);
-        $activeLots = \App\Models\ShareLot::activeFor((int) $memberId);
+        $activeLots = ShareLot::activeFor((int) $memberId);
+
+        // Which share each payment was paid for (a payment can cover more than one).
+        $allocations = FoundingAllocation::forMember((int) $memberId);
+        $allocByPayment = [];
+        foreach ($allocations as $a) {
+            $allocByPayment[(int) $a['payment_id']][] = $a;
+        }
 
         $this->view('admin/founding/show', [
             'pageTitle' => __('founding_for', ['name' => $member['name']]),
@@ -57,6 +67,10 @@ class FoundingController extends Controller
             'schedule' => $schedule,
             'nextInstallment' => FoundingAmount::nextInstallment($schedule),
             'activeLots' => $activeLots,
+            'lotNumbers' => ShareLot::numbersFor((int) $memberId),
+            'breakdown' => FoundingAmount::lotBreakdown((int) $memberId, $founding),
+            'allocByPayment' => $allocByPayment,
+            'unallocated' => FoundingAllocation::unallocatedPayments((int) $memberId),
         ], 'admin/layout');
     }
 
@@ -97,38 +111,128 @@ class FoundingController extends Controller
             $this->redirect('admin/founding/' . $memberId);
         }
 
-        // Lot association if selected
+        // The payment is paid FOR ONE SHARE: the admin names it, and only that share is credited. A member who owns
+        // shares must name one; the money is never spread over the member's other shares.
+        $activeLots = ShareLot::activeFor((int) $memberId);
+        $breakdown = FoundingAmount::lotBreakdown((int) $memberId, $founding);
         $lotId = !empty($data['lot_id']) ? (int) $data['lot_id'] : null;
-        $activeLots = \App\Models\ShareLot::activeFor((int) $memberId);
         $lotLabel = '';
-        if ($lotId) {
-            $lotIdx = array_search($lotId, array_column($activeLots, 'id'));
-            $lotLabel = ($lotIdx !== false) ? ('السهم رقم ' . ($lotIdx + 1)) : ('السهم رقم ' . (\App\Models\ShareLot::numbersFor((int) $memberId)[$lotId] ?? ''));
+        if ($activeLots) {
+            if (!$lotId || !isset($breakdown[$lotId])) {
+                Session::flash('error', 'اختر السهم الذي تُسدَّد عنه هذه الدفعة.');
+                $this->redirect('admin/founding/' . $memberId);
+            }
+            $lotRow = $breakdown[$lotId];
+            if ($lotRow['remaining'] <= 0) {
+                Session::flash('error', 'مبلغ التأسيس للسهم رقم ' . $lotRow['number'] . ' مسدد بالكامل.');
+                $this->redirect('admin/founding/' . $memberId);
+            }
+            if ($amount > $lotRow['remaining']) {
+                Session::flash('error', 'المبلغ يتجاوز المتبقي من مبلغ تأسيس السهم رقم ' . $lotRow['number'] . ' (' . money($lotRow['remaining']) . ').');
+                $this->redirect('admin/founding/' . $memberId);
+            }
+            $lotLabel = 'السهم رقم ' . $lotRow['number'];
+        } else {
+            $lotId = null;
         }
 
         $customNotes = trim((string) ($data['notes'] ?? ''));
-        $paymentNotes = $lotLabel 
+        $paymentNotes = $lotLabel
             ? ($lotLabel . ($customNotes !== '' ? ' - ' . $customNotes : ''))
             : $customNotes;
 
-        $paymentId = FoundingPayment::create([
-            'founding_amount_id' => $founding['id'],
-            'member_id' => $member['id'],
-            'amount' => $amount,
-            'payment_date' => $date,
-            'recorded_by' => current_admin_id(),
-            'notes' => $paymentNotes ?: null,
-        ]);
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            $paymentId = FoundingPayment::create([
+                'founding_amount_id' => $founding['id'],
+                'member_id' => $member['id'],
+                'amount' => $amount,
+                'payment_date' => $date,
+                'recorded_by' => current_admin_id(),
+                'notes' => $paymentNotes ?: null,
+            ]);
+            if ($lotId) {
+                FoundingAllocation::allocate($paymentId, $lotId, $amount);
+            }
 
-        $newPaid = round((float) $founding['amount_paid'] + $amount, 2);
-        $status = $newPaid >= (float) $founding['total_required'] ? 'paid' : ($newPaid > 0 ? 'partial' : 'unpaid');
-        FoundingAmount::update($founding['id'], ['amount_paid' => $newPaid, 'status' => $status]);
+            $newPaid = round((float) $founding['amount_paid'] + $amount, 2);
+            $status = $newPaid >= (float) $founding['total_required'] ? 'paid' : ($newPaid > 0 ? 'partial' : 'unpaid');
+            FoundingAmount::update($founding['id'], ['amount_paid' => $newPaid, 'status' => $status]);
 
-        $txDesc = 'دفعة مبلغ تأسيس' . ($lotLabel ? ' (' . $lotLabel . ')' : '');
-        Transaction::record($member['id'], 'founding', $paymentId, $amount, current_admin_id(), $txDesc, $date);
+            $txDesc = 'دفعة مبلغ تأسيس' . ($lotLabel ? ' (' . $lotLabel . ')' : '');
+            Transaction::record($member['id'], 'founding', $paymentId, $amount, current_admin_id(), $txDesc, $date);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
         Notification::systemNotify($member['id'], 'تسجيل سداد مبلغ التأسيس', 'تم تسجيل دفعة بقيمة ' . money($amount) . ' على مبلغ التأسيس' . ($lotLabel ? ' (' . $lotLabel . ')' : '') . '.');
 
-        Session::flash('success', 'تم تسجيل الدفعة بنجاح.');
+        Session::flash('success', 'تم تسجيل الدفعة' . ($lotLabel ? ' على ' . $lotLabel : '') . ' بنجاح.');
+        $this->redirect('admin/founding/' . $memberId);
+    }
+
+    /**
+     * Assigns money that was paid before shares were tracked separately (a payment, or part of one, that belongs to
+     * no share yet) to ONE share. Nothing is recorded in the ledger: the money was already received.
+     */
+    public function allocate(string $memberId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $memberId);
+        if (!$member) {
+            $this->redirect('admin/founding');
+        }
+        $back = 'admin/founding/' . $memberId;
+
+        $data = $this->all();
+        $validator = Validator::make($data)
+            ->required('payment_id', 'الدفعة')->integer('payment_id', 'الدفعة', 1)
+            ->required('lot_id', 'السهم')->integer('lot_id', 'السهم', 1)
+            ->required('amount', 'المبلغ')->decimal('amount', 'المبلغ', 0.01, 10000000);
+        if ($validator->fails()) {
+            Session::flash('error', $validator->firstError());
+            $this->redirect($back);
+        }
+
+        $payment = null;
+        foreach (FoundingAllocation::unallocatedPayments((int) $memberId) as $p) {
+            if ((int) $p['id'] === (int) $data['payment_id']) {
+                $payment = $p;
+            }
+        }
+        $breakdown = FoundingAmount::lotBreakdown((int) $memberId);
+        $lotRow = $breakdown[(int) $data['lot_id']] ?? null;
+        $amount = round((float) $data['amount'], 2);
+
+        if (!$payment) {
+            Session::flash('error', 'هذه الدفعة مخصصة بالكامل لأسهم المشترك أو لا تتبعه.');
+        } elseif (!$lotRow) {
+            Session::flash('error', 'السهم المحدد ليس سهماً نشطاً لهذا المشترك.');
+        } elseif ($amount > $payment['unallocated']) {
+            Session::flash('error', 'المبلغ يتجاوز غير المخصص من هذه الدفعة (' . money($payment['unallocated']) . ').');
+        } elseif ($amount > $lotRow['remaining']) {
+            Session::flash('error', 'المبلغ يتجاوز المتبقي من مبلغ تأسيس السهم رقم ' . $lotRow['number'] . ' (' . money($lotRow['remaining']) . ').');
+        } else {
+            FoundingAllocation::allocate((int) $payment['id'], (int) $lotRow['lot_id'], $amount);
+            Session::flash('success', 'تم تخصيص ' . money($amount) . ' للسهم رقم ' . $lotRow['number'] . '.');
+        }
+        $this->redirect($back);
+    }
+
+    /** Takes a mistaken assignment back: the money returns to "not assigned to a share" so it can be assigned again. */
+    public function deallocate(string $memberId, string $allocationId): void
+    {
+        $this->verifyCsrf();
+        $alloc = FoundingAllocation::find((int) $allocationId);
+        $payment = $alloc ? FoundingPayment::find((int) $alloc['payment_id']) : null;
+        if ($alloc && $payment && (int) $payment['member_id'] === (int) $memberId) {
+            FoundingAllocation::delete((int) $alloc['id']);
+            Session::flash('success', 'تم إلغاء تخصيص ' . money($alloc['amount']) . ' من السهم، ويمكنك تخصيصه لسهم آخر.');
+        } else {
+            Session::flash('error', 'بيانات التخصيص غير صحيحة.');
+        }
         $this->redirect('admin/founding/' . $memberId);
     }
 

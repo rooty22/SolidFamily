@@ -60,6 +60,26 @@ $planMonths = (int) $founding['plan_months'];
         </div>
         <?php endif; ?>
 
+        <?php if (!empty($breakdown)): ?>
+        <div class="card-panel">
+            <div class="panel-head"><h3><i class="bi bi-pie-chart-fill"></i> <?= is_rtl() ? 'مبلغ التأسيس لكل سهم' : 'Founding amount per share' ?></h3><span class="text-muted small font-num"><?= count($breakdown) ?></span></div>
+            <table class="table-modern">
+                <thead><tr><th><?= is_rtl() ? 'السهم' : 'Share' ?></th><th><?= __('total_required') ?></th><th><?= __('paid_amount') ?></th><th><?= __('remaining_amount') ?></th><th><?= __('status') ?></th></tr></thead>
+                <tbody>
+                <?php foreach ($breakdown as $b): [$bl, $bv] = status_badge($b['status']); ?>
+                    <tr>
+                        <td class="fw-bold"><?= is_rtl() ? 'السهم رقم ' . (int) $b['number'] : 'Share #' . (int) $b['number'] ?> <span class="text-muted small fw-normal font-num">(<?= number_format($b['shares_count']) ?>)</span></td>
+                        <td class="font-num"><?= money($b['required']) ?></td>
+                        <td class="font-num text-success fw-bold"><?= money($b['paid']) ?></td>
+                        <td class="font-num text-danger fw-bold"><?= money($b['remaining']) ?></td>
+                        <td><span class="badge-status badge-<?= $bv ?>"><?= $bl ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($schedule)): ?>
         <div class="card-panel">
             <div class="panel-head"><h3><i class="bi bi-list-ol"></i> <?= __('founding_schedule_title') ?></h3><span class="text-muted small font-num"><?= count($schedule) ?></span></div>

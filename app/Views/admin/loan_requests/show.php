@@ -105,9 +105,7 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                                 <i class="bi bi-pie-chart-fill text-sky-600"></i>
                                 <span><?= is_rtl() ? 'السهم / الحصة المحددة من المشترك لتقديم القرض عليها:' : 'Selected Share Lot by Member:' ?></span>
                             </span>
-                            <span class="badge-status badge-<?= $selElig['is_eligible'] ? 'success' : 'warning' ?>">
-                                <?= $selElig['is_eligible'] ? (is_rtl() ? 'مستوفية الشروط' : 'Eligible') : (is_rtl() ? 'قيد الاستيفاء' : 'Pending') ?>
-                            </span>
+                            <?= lot_eligibility_badge($selElig) ?>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                             <div>
@@ -128,6 +126,16 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                                     <?= $selElig['six_months_met'] ? 'مكتمل' : 'متبقي ' . $selElig['months_remaining_label'] ?>
                                 </b>
                             </div>
+                            <div class="col-span-2 sm:col-span-4">
+                                <span class="text-slate-500 block mb-0.5"><?= is_rtl() ? 'مبلغ تأسيس هذا السهم' : 'Founding amount of this share' ?></span>
+                                <?= lot_founding_badge($selElig) ?>
+                            </div>
+                            <?php if (!empty($selElig['blockers'])): ?>
+                            <div class="col-span-2 sm:col-span-4 text-rose-700 font-bold">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <?= e(implode(' ', \App\Models\ShareLot::blockerMessages($selElig, \App\Models\ShareLot::label((int) $member['id'], (int) $selectedLot['id'])))) ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -318,7 +326,7 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                             </span>
                         </div>
                         <p class="text-[11px] text-slate-500 mb-2">
-                            <?= is_rtl() ? 'توثيق تاريخ بداية الاشتراك لكل سهم على حدة باليوم والشهر والسنة (مرور 6 أشهر وسداد 500 ريال تأسيس لكل سهم).' : 'Documenting subscription start date per share lot (Day, Month, Year) for 6-month & 500 SAR founding criteria.' ?>
+                            <?= is_rtl() ? 'كل سهم يُفحص بمفرده: تاريخ بداية اشتراكه (مرور 6 أشهر)، وسداد مبلغ التأسيس الخاص به، وخلوه من قرض قائم.' : 'Each share is checked on its own: its start date (6 months), its own founding amount and no loan in progress on it.' ?>
                         </p>
                         <?php if (empty($memberLots)): ?>
                             <div class="p-2.5 rounded-xl bg-slate-50 text-xs text-slate-500 text-center"><?= is_rtl() ? 'لا توجد حصص أسهم نشطة مسجلة' : 'No active share lots' ?></div>
@@ -336,7 +344,7 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                                                     <span class="badge-status badge-info py-0 px-2 text-[10px]"><?= is_rtl() ? 'محددة للقرض' : 'Chosen' ?></span>
                                                 <?php endif; ?>
                                             </span>
-                                            <span class="badge-status badge-<?= $elig['is_eligible'] ? 'success' : 'secondary' ?>"><?= $elig['is_eligible'] ? (is_rtl() ? 'مستوفية' : 'Eligible') : (is_rtl() ? 'غير مستوفية' : 'Pending') ?></span>
+                                            <?= lot_eligibility_badge($elig) ?>
                                         </div>
                                         <div class="text-[11px] text-slate-500 font-numeric mb-1.5">
                                             <i class="bi bi-calendar3"></i>
@@ -348,7 +356,7 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                                         </div>
                                         <div class="flex items-center gap-1.5 text-[11px] <?= $elig['founding_met'] ? 'text-emerald-700' : 'text-amber-700' ?> mt-0.5">
                                             <i class="bi <?= $elig['founding_met'] ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
-                                            <span><?= $elig['founding_met'] ? (is_rtl() ? 'سداد 500 ريال تأسيس للسهم (مستوفى)' : '500 SAR founding paid') : (is_rtl() ? 'سداد 500 ريال تأسيس (المسدد: ' . money($elig['founding_paid_per_share']) . ')' : 'Founding: ' . money($elig['founding_paid_per_share'])) ?></span>
+                                            <span><?= $elig['founding_met'] ? (is_rtl() ? 'مبلغ تأسيس هذا السهم مسدد (' . money($elig['founding_required']) . ')' : 'Founding of this share paid') : (is_rtl() ? 'مبلغ تأسيس هذا السهم: مسدد ' . money($elig['founding_paid']) . ' من ' . money($elig['founding_required']) : 'Founding of this share: ' . money($elig['founding_paid']) . ' of ' . money($elig['founding_required'])) ?></span>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>

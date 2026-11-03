@@ -102,8 +102,9 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
     <table class="table-modern">
         <thead>
             <tr>
-                <th style="width:48px">#</th>
+                <th style="width:70px" title="<?= is_rtl() ? 'الرقم التسلسلي الثابت (حسب ترتيب التسجيل)' : 'Fixed serial number (registration order)' ?>"><?= is_rtl() ? 'الرقم التسلسلي' : 'Serial' ?></th>
                 <th><?= __('name') ?></th>
+                <th>User ID</th>
                 <th><?= __('mobile') ?></th>
                 <th><?= __('national_id') ?></th>
                 <th><?= __('shares') ?></th>
@@ -114,9 +115,9 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             </tr>
         </thead>
         <tbody>
-            <?php $rowNo = ($pager["from"] ?? 1) - 1; foreach ($members as $m): [$label, $variant] = status_badge($m['status']); $rowNo++; ?>
+            <?php foreach ($members as $m): [$label, $variant] = status_badge($m['status']); ?>
             <tr>
-                <td class="font-numeric text-slate-500 fw-bold"><?= $rowNo ?></td>
+                <td class="font-numeric text-slate-700 fw-bold"><?= !empty($m['serial_no']) ? (int) $m['serial_no'] : '<span class="text-slate-300">-</span>' ?></td>
                 <td class="fw-bold text-slate-900">
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
                         <?= e($m['name']) ?>
@@ -128,6 +129,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                         </span>
                     <?php endif; ?>
                 </td>
+                <td class="font-numeric text-xs text-slate-500" dir="ltr"><?= e($m['uid'] ?? '-') ?></td>
                 <td class="font-numeric" dir="ltr"><?= e($m['mobile']) ?></td>
                 <td class="font-numeric" dir="ltr"><?= e($m['national_id']) ?></td>
                 <td class="font-numeric font-bold text-slate-800"><?= number_format($m['shares_count']) ?></td>
@@ -191,7 +193,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
             <?php endforeach; ?>
             <?php if (empty($members)): ?>
             <tr>
-                <td colspan="9" class="p-0">
+                <td colspan="11" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-people text-3xl text-slate-400 mb-2"></i>
                         <span><?= __('no_members_recorded') ?></span>

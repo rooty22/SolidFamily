@@ -87,13 +87,14 @@ class TransactionsController extends Controller
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output', 'w');
         $labels = $this->getCategoryLabels();
-        $headers = [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', __('member'), __('amount'), __('admin_user')];
+        $headers = [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', is_rtl() ? 'الرقم التسلسلي' : 'Serial', __('member'), __('amount'), __('admin_user')];
         csv_put($out, $headers);
         foreach ($transactions as $t) {
             csv_put($out, [
                 date_ar($t['transaction_date']),
                 $labels[$t['category']] ?? $t['category'],
                 localize_dates($t['display_details'] ?? '-'),
+                $t['member_serial'] ?? '',
                 $t['member_name'],
                 $t['amount'],
                 $t['admin_name'] ?? '-'
@@ -113,6 +114,7 @@ class TransactionsController extends Controller
                 date_ar($t['transaction_date']),
                 $labels[$t['category']] ?? $t['category'],
                 localize_dates($t['display_details'] ?? '-'),
+                $t['member_serial'] ?? '-',
                 $t['member_name'],
                 $t['amount'],
                 $t['admin_name'] ?? '-'
@@ -120,7 +122,7 @@ class TransactionsController extends Controller
         }
         $this->view('admin/reports/print', [
             'title' => __('transactions'),
-            'headers' => [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', __('member'), __('amount'), __('admin_user')],
+            'headers' => [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', is_rtl() ? 'الرقم التسلسلي' : 'Serial', __('member'), __('amount'), __('admin_user')],
             'rows' => $rows,
         ]);
     }

@@ -28,6 +28,7 @@ try {
 
     $tablesToTruncate = [
         'contact_messages',
+        'founding_payment_allocations',
         'founding_payments',
         'founding_amounts',
         'loan_installments',
@@ -43,10 +44,17 @@ try {
         'members',
     ];
 
+    $existingTables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     foreach ($tablesToTruncate as $table) {
+        if (!in_array($table, $existingTables, true)) {
+            continue; // a table whose migration was not run yet
+        }
         $pdo->exec("TRUNCATE TABLE `{$table}`;");
         echo "✓ تم مسح جدول: {$table}\n";
     }
+
+    // Every member was just removed, so the serial-number counter starts again from 1 for the first real member.
+    $pdo->exec("UPDATE settings SET value = '0' WHERE `key` = 'member_serial_seq'");
 
     $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 

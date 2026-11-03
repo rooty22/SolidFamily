@@ -8,6 +8,7 @@ $graceVisible = \App\Models\Setting::get('subscription_grace_enabled', '1') === 
         <h5 class="fw-bold mb-1 text-slate-900 flex items-center gap-2">
             <i class="bi bi-wallet2 text-emerald-600"></i>
             <span><?= e($member['name']) ?></span>
+            <?= member_serial_chip($member) ?>
             <span class="text-muted font-normal text-xs font-numeric">(<?= number_format($member['shares_count']) ?> سهم × <?= money($shareValue) ?>)</span>
         </h5>
         <p class="text-xs text-slate-500 mb-0"><?= is_rtl() ? 'إدارة ومتابعة اشتراكات ودفعات المشترك، وحساب المبالغ المستحقة والمدفوعة والمتبقية.' : 'Manage member subscriptions, paid, due, and remaining amounts.' ?></p>
@@ -194,8 +195,9 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك (باليوم والشهر والسنة)' : 'Start Date (Full Date)' ?></th>
                         <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق الشهري' : 'Due Day' ?></th>
                         <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
-                        <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
+                        <th class="col-found"><?= is_rtl() ? 'مبلغ تأسيس السهم' : 'Share Founding Amount' ?></th>
                         <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
+                        <th class="col-note"><?= is_rtl() ? 'ملاحظة السهم' : 'Share Note' ?></th>
                         <th class="col-actions"><?= is_rtl() ? 'الإجراءات' : 'Actions' ?></th>
                     </tr>
                 </thead>
@@ -231,36 +233,17 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="col-found">
-                            <?php if ($elig['founding_met']): ?>
-                                <span class="badge-status badge-success">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <?= is_rtl() ? 'مستوفى (مسدد بالكامل)' : 'Fulfilled (Paid)' ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge-status badge-warning">
-                                    <i class="bi bi-exclamation-circle-fill"></i>
-                                    <?= is_rtl() ? 'مسدد ' . money($elig['founding_paid_per_share']) . ' من 500 ريال' : money($elig['founding_paid_per_share']) . ' of 500' ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="col-status">
-                            <?php if ($elig['is_eligible']): ?>
-                                <span class="badge-status badge-success font-bold">
-                                    <i class="bi bi-shield-check"></i>
-                                    <?= is_rtl() ? 'مؤهل للقرض' : 'Eligible' ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge-status badge-secondary">
-                                    <i class="bi bi-clock"></i>
-                                    <?= is_rtl() ? 'قيد استيفاء الشروط' : 'Pending' ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
+                        <td class="col-found"><?= lot_founding_badge($elig) ?></td>
+                        <td class="col-status"><?= lot_eligibility_badge($elig) ?></td>
+                        <td class="col-note"><?php $lotNote = \App\Models\ShareLot::note($lot); echo $lotNote !== '' ? '<span class="lot-note">' . e($lotNote) . '</span>' : '<span class="text-slate-400">—</span>'; ?></td>
                         <td class="col-actions">
                             <button type="button" class="btn btn-sm btn-outline-purple inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors shadow-2xs" data-bs-toggle="modal" data-bs-target="#editLotDateModal<?= $lot['id'] ?>">
                                 <i class="bi bi-calendar-event"></i>
                                 <span><?= is_rtl() ? 'تعديل التاريخ' : 'Edit Date' ?></span>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-xs font-bold mt-1" data-bs-toggle="modal" data-bs-target="#lotNoteModal<?= $lot['id'] ?>">
+                                <i class="bi bi-sticky"></i>
+                                <span><?= is_rtl() ? 'الملاحظة' : 'Note' ?></span>
                             </button>
                         </td>
                     </tr>
@@ -268,6 +251,10 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 </tbody>
             </table>
         </div>
+
+        <?php foreach ($lots as $idx => $lot):
+            \App\Core\View::partial('admin/partials/lot-note-modal', ['member' => $member, 'lot' => $lot, 'shareNumber' => $idx + 1, 'redirectTo' => 'admin/subscriptions/' . $member['id']]);
+        endforeach; ?>
 
         <?php foreach ($lots as $idx => $lot): ?>
         <div class="modal fade" id="editLotDateModal<?= $lot['id'] ?>" tabindex="-1" aria-hidden="true">

@@ -10,6 +10,16 @@ $isEn = is_en();
             <span><?= $isEn ? 'Personal & Identity Data' : 'البيانات الشخصية والهوية' ?></span>
         </h4>
         <div class="row g-3">
+            <?php if (!empty($m['id'])): ?>
+            <div class="col-md-6">
+                <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Serial Number (fixed)' : 'الرقم التسلسلي (ثابت)' ?></label>
+                <input type="text" class="form-control text-sm font-numeric" value="<?= !empty($m['serial_no']) ? (int) $m['serial_no'] : '-' ?>" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label font-bold text-xs text-slate-700">User ID</label>
+                <input type="text" class="form-control text-sm font-numeric" dir="ltr" value="<?= e($m['uid'] ?? '-') ?>" disabled>
+            </div>
+            <?php endif; ?>
             <div class="col-md-6">
                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Full Name' : 'الاسم الكامل' ?> <span class="text-rose-500">*</span></label>
                 <input type="text" name="name" class="form-control text-sm" placeholder="<?= $isEn ? 'e.g. Mohammed Abdullah Al-Saleh' : 'مثال: محمد عبدالله الصالح' ?>" value="<?= e($m['name'] ?? old('name')) ?>" required>

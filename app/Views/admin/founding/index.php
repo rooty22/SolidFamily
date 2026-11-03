@@ -28,6 +28,7 @@
                 <th><?= is_rtl() ? 'المسدد' : 'Paid' ?></th>
                 <th><?= is_rtl() ? 'المتبقي' : 'Remaining' ?></th>
                 <th><?= is_rtl() ? 'الحالة' : 'Status' ?></th>
+                <th><?= is_rtl() ? 'الأسهم المسددة' : 'Shares paid' ?></th>
                 <th><?= is_rtl() ? 'خطة السداد' : 'Plan' ?></th>
                 <th class="text-end"><?= is_rtl() ? 'إجراءات' : 'Actions' ?></th>
             </tr>
@@ -35,12 +36,17 @@
         <tbody>
         <?php foreach ($rows as $r): [$l, $v] = status_badge((float) $r['total_required'] > 0 ? $r['status'] : 'no_shares'); $remaining = $r['total_required'] - $r['amount_paid']; ?>
             <tr>
-                <td class="fw-bold"><?= e($r['member']['name']) ?></td>
+                <td class="fw-bold"><?= member_serial_chip($r['member']) ?> <?= e($r['member']['name']) ?></td>
                 <td class="font-numeric"><?= number_format($r['shares_count_linked']) ?></td>
                 <td class="font-numeric"><?= money($r['total_required']) ?></td>
                 <td class="font-numeric text-emerald-600 font-bold"><?= money($r['amount_paid']) ?></td>
                 <td class="font-numeric text-rose-500 font-bold"><?= money($remaining) ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
+                <td class="text-xs font-numeric">
+                    <?php $lotsTotal = count($r['lots'] ?? []); $lotsMet = count(array_filter($r['lots'] ?? [], fn($b) => $b['met'])); ?>
+                    <?php if ($lotsTotal === 0): ?><span class="text-slate-400">-</span>
+                    <?php else: ?><span class="badge-status badge-<?= $lotsMet === $lotsTotal ? 'success' : ($lotsMet > 0 ? 'warning' : 'secondary') ?>" title="<?= is_rtl() ? 'عدد الأسهم التي اكتمل مبلغ تأسيسها من إجمالي أسهم المشترك' : 'Shares whose own founding amount is complete' ?>"><?= $lotsMet ?> / <?= $lotsTotal ?></span><?php endif; ?>
+                </td>
                 <td class="text-xs">
                     <?php if (empty($r['plan_start'])): ?>
                         <span class="text-slate-400"><?= is_rtl() ? 'لم يختر' : 'Not chosen' ?></span>
@@ -59,7 +65,7 @@
         <?php endforeach; ?>
         <?php if (empty($rows)): ?>
             <tr>
-                <td colspan="8" class="p-0">
+                <td colspan="9" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-bank2"></i>
                         <span><?= ($q ?? '') !== '' ? (is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.') : (is_rtl() ? 'لا توجد سجلات تأسيسية مسجلة' : 'No founding capital records found.') ?></span>

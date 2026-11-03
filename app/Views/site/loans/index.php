@@ -84,7 +84,7 @@
                 </div>
                 <div class="nums">
                     <div><small><?= __('paid_amount') ?></small><span class="text-success font-num"><?= money($lPaid) ?></span></div>
-                    <div><small><?= __('remaining_amount') ?></small><span class="text-danger font-num"><?= money($l['amount_remaining']) ?></span></div>
+                    <div><small><?= __('remaining_amount') ?></small><span class="text-danger font-num"><?= money(loan_member_remaining($l)) ?></span></div>
                     <div><small><?= __('installments') ?></small><span class="font-num"><?= (int) $l['installments_count'] ?></span></div>
                 </div>
             </a>

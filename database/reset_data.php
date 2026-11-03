@@ -33,6 +33,7 @@ $pdo = new PDO(
 
 // Child tables first. A table that does not exist yet (migration not run) is skipped.
 $wipe = [
+    'founding_payment_allocations' => 'DELETE FROM founding_payment_allocations',
     'founding_payments' => 'DELETE FROM founding_payments',
     'founding_amounts' => 'DELETE FROM founding_amounts',
     'loan_installments' => 'DELETE FROM loan_installments',

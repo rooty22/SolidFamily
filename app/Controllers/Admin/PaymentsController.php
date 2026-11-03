@@ -49,10 +49,10 @@ class PaymentsController extends Controller
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output', 'w');
         $labels = $this->getCategoryLabels();
-        $headers = [__('member'), __('transaction_category'), __('amount'), __('date'), __('admin_user')];
+        $headers = [is_rtl() ? 'الرقم التسلسلي' : 'Serial', __('member'), __('transaction_category'), __('amount'), __('date'), __('admin_user')];
         csv_put($out, $headers);
         foreach ($payments as $p) {
-            csv_put($out, [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-']);
+            csv_put($out, [$p['member_serial'] ?? '', $p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-']);
         }
         fclose($out);
         exit;
@@ -64,11 +64,11 @@ class PaymentsController extends Controller
         $labels = $this->getCategoryLabels();
         $rows = [];
         foreach ($this->paymentFilters() as $p) {
-            $rows[] = [$p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-'];
+            $rows[] = [$p['member_serial'] ?? '-', $p['member_name'], $labels[$p['category']] ?? $p['category'], $p['amount'], date_ar($p['transaction_date']), $p['admin_name'] ?? '-'];
         }
         $this->view('admin/reports/print', [
             'title' => __('payments'),
-            'headers' => [__('member'), __('transaction_category'), __('amount'), __('date'), __('admin_user')],
+            'headers' => [is_rtl() ? 'الرقم التسلسلي' : 'Serial', __('member'), __('transaction_category'), __('amount'), __('date'), __('admin_user')],
             'rows' => $rows,
         ]);
     }

@@ -70,6 +70,7 @@
             ?>
             <tr>
                 <td class="fw-bold">
+                    <?= member_serial_chip($m) ?>
                     <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
                         <?= e($m['name']) ?>
                     </a>
@@ -164,13 +165,14 @@
                                             <th><?= is_rtl() ? 'عدد الأسهم' : 'Shares' ?></th>
                                             <th><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></th>
                                             <th><?= is_rtl() ? 'يوم الاستحقاق' : 'Due Day' ?></th>
+                                            <th><?= is_rtl() ? 'ملاحظة السهم' : 'Share Note' ?></th>
                                             <th class="text-end"><?= is_rtl() ? 'إجراءات الحصة' : 'Actions' ?></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (empty($mLots)): ?>
                                             <tr>
-                                                <td colspan="7" class="text-center text-slate-400 py-3"><?= is_rtl() ? 'لا توجد حصص نشطة للمشترك.' : 'No active lots.' ?></td>
+                                                <td colspan="8" class="text-center text-slate-400 py-3"><?= is_rtl() ? 'لا توجد حصص نشطة للمشترك.' : 'No active lots.' ?></td>
                                             </tr>
                                         <?php else: ?>
                                             <?php foreach ($mLots as $lIdx => $lot): ?>
@@ -189,12 +191,21 @@
                                                     <td class="font-numeric text-slate-600">
                                                         <?= (int) \App\Models\MonthlySubscription::dueDayFor($m, $lot) ?> من كل شهر
                                                     </td>
+                                                    <td style="white-space:normal;min-width:170px;max-width:240px">
+                                                        <?php $lotNote = \App\Models\ShareLot::note($lot); ?>
+                                                        <?= $lotNote !== '' ? '<span class="inline-block px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900">' . e($lotNote) . '</span>' : '<span class="text-slate-300">—</span>' ?>
+                                                    </td>
                                                     <td class="text-end">
                                                         <div class="flex items-center justify-end gap-1">
                                                             <!-- Edit Lot Start Date Trigger -->
                                                             <button type="button" class="btn btn-xs btn-outline-secondary inline-flex items-center gap-1" data-bs-toggle="collapse" data-bs-target="#editDateCollapse<?= $lot['id'] ?>" title="<?= is_rtl() ? 'تعديل تاريخ بداية الحصة' : 'Edit Date' ?>">
                                                                 <i class="bi bi-calendar-event"></i>
                                                                 <span><?= is_rtl() ? 'تعديل التاريخ' : 'Date' ?></span>
+                                                            </button>
+                                                            <!-- Share note (own note per share) -->
+                                                            <button type="button" class="btn btn-xs btn-outline-warning inline-flex items-center gap-1" data-bs-toggle="collapse" data-bs-target="#noteCollapse<?= $lot['id'] ?>" title="<?= is_rtl() ? 'ملاحظة هذا السهم' : 'Share note' ?>">
+                                                                <i class="bi bi-sticky"></i>
+                                                                <span><?= is_rtl() ? 'ملاحظة' : 'Note' ?></span>
                                                             </button>
                                                             <!-- Split Lot Form (only a merged lot whose original lots are on record) -->
                                                             <?php $lotChildren = \App\Models\ShareLot::mergedChildren((int) $lot['id']); ?>
@@ -214,6 +225,16 @@
                                                                     <i class="bi bi-trash"></i>
                                                                     <span><?= is_rtl() ? 'إلغاء' : 'Cancel' ?></span>
                                                                 </button>
+                                                            </form>
+                                                        </div>
+                                                        <!-- Inline Edit Note Collapse: the note belongs to this share only -->
+                                                        <div class="collapse text-start mt-2" id="noteCollapse<?= $lot['id'] ?>">
+                                                            <form method="post" action="<?= url('admin/shares/' . $m['id'] . '/lot/' . $lot['id'] . '/note') ?>" class="p-2.5 bg-amber-50/60 border rounded-lg">
+                                                                <?= csrf_field() ?>
+                                                                <input type="hidden" name="redirect_to" value="admin/shares">
+                                                                <label class="form-label text-[11px] font-bold text-slate-700 mb-1"><?= is_rtl() ? 'ملاحظة السهم رقم ' . ($lIdx + 1) . ' (اتركها فارغة للحذف):' : 'Note for share #' . ($lIdx + 1) . ' (empty = delete):' ?></label>
+                                                                <textarea name="admin_note" rows="2" maxlength="500" class="form-control form-control-sm text-xs mb-1.5"><?= e($lotNote) ?></textarea>
+                                                                <button type="submit" class="btn btn-xs btn-primary font-bold"><?= is_rtl() ? 'حفظ الملاحظة' : 'Save note' ?></button>
                                                             </form>
                                                         </div>
                                                         <!-- Inline Edit Date Collapse -->

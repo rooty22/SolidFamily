@@ -29,7 +29,7 @@ abstract class Controller
         'partial_amount', 'shares_count', 'installments_count', 'installments_months', 'months_count',
         'admin_fee_percent', 'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio',
         'subscription_due_day', 'official_phone', 'official_whatsapp', 'start_month', 'partial_month',
-        'loan_date', 'payment_date', 'birth_date', 'member_id', 'installment_id', 'loan_request_id',
+        'loan_date', 'payment_date', 'birth_date', 'member_id', 'installment_id', 'loan_request_id', 'fee_paid_at', 'lot_id', 'payment_id',
     ];
 
     /**

@@ -55,7 +55,7 @@ class HomeController extends Controller
         } else {
             $loans = Loan::forMember($member['id']);
             $activeLoans = array_filter($loans, fn($l) => in_array($l['status'], ['active', 'partial']));
-            $activeLoansRemaining = array_sum(array_column($activeLoans, 'amount_remaining'));
+            $activeLoansRemaining = array_sum(array_map('loan_member_remaining', $activeLoans));
             $remainingInstallments = (int) Loan::rawOne(
                 "SELECT COUNT(*) AS c FROM loan_installments li JOIN loans l ON l.id = li.loan_id
                  WHERE l.member_id = ? AND l.status IN ('active', 'partial') AND li.status <> 'paid'",

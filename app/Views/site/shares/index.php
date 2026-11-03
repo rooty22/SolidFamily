@@ -147,7 +147,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                     <th class="col-date"><?= is_rtl() ? 'تاريخ بداية الاشتراك' : 'Start Date' ?></th>
                     <th class="col-due"><?= is_rtl() ? 'يوم الاستحقاق' : 'Due Day' ?></th>
                     <th class="col-sixmo"><?= is_rtl() ? 'شرط مرور 6 أشهر' : '6 Months Rule' ?></th>
-                    <th class="col-found"><?= is_rtl() ? 'سداد 500 ريال تأسيس' : '500 SAR Founding' ?></th>
+                    <th class="col-found"><?= is_rtl() ? 'مبلغ تأسيس السهم' : 'Share Founding Amount' ?></th>
                     <th class="col-status"><?= is_rtl() ? 'أهلية القرض' : 'Loan Eligibility' ?></th>
                 </tr>
             </thead>
@@ -183,32 +183,8 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                             </span>
                         <?php endif; ?>
                     </td>
-                    <td class="col-found">
-                        <?php if ($elig['founding_met']): ?>
-                            <span class="badge-status badge-success">
-                                <i class="bi bi-check-circle-fill"></i>
-                                <?= is_rtl() ? 'مستوفى (مسدد بالكامل)' : 'Fulfilled (Paid)' ?>
-                            </span>
-                        <?php else: ?>
-                            <span class="badge-status badge-warning">
-                                <i class="bi bi-exclamation-circle-fill"></i>
-                                <?= is_rtl() ? 'مسدد ' . money($elig['founding_paid_per_share']) . ' من 500 ريال' : money($elig['founding_paid_per_share']) . ' of 500' ?>
-                            </span>
-                        <?php endif; ?>
-                    </td>
-                    <td class="col-status">
-                        <?php if ($elig['is_eligible']): ?>
-                            <span class="badge-status badge-success fw-bold">
-                                <i class="bi bi-shield-check"></i>
-                                <?= is_rtl() ? 'مؤهل للقرض' : 'Eligible' ?>
-                            </span>
-                        <?php else: ?>
-                            <span class="badge-status badge-secondary">
-                                <i class="bi bi-clock"></i>
-                                <?= is_rtl() ? 'قيد استيفاء الشروط' : 'Pending' ?>
-                            </span>
-                        <?php endif; ?>
-                    </td>
+                    <td class="col-found"><?= lot_founding_badge($elig) ?></td>
+                    <td class="col-status"><?= lot_eligibility_badge($elig) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

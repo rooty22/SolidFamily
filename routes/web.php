@@ -149,6 +149,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/shares/{id}/split-lot/{lotId}', [SharesController::class, 'splitLot']);
     $router->post('/shares/{id}/cancel-lot/{lotId}', [SharesController::class, 'cancelLot']);
     $router->post('/shares/{id}/add-lot', [SharesController::class, 'addLot']);
+    $router->post('/shares/{id}/lot/{lotId}/note', [SharesController::class, 'updateLotNote']);
 
     $router->get('/share-requests', [AdminShareRequestsController::class, 'index']);
     $router->get('/share-requests/{id}', [AdminShareRequestsController::class, 'show']);
@@ -166,6 +167,8 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/founding/{memberId}', [AdminFoundingController::class, 'show']);
     $router->post('/founding/{memberId}/pay', [AdminFoundingController::class, 'recordPayment']);
     $router->post('/founding/{memberId}/plan', [AdminFoundingController::class, 'setPlan']);
+    $router->post('/founding/{memberId}/allocate', [AdminFoundingController::class, 'allocate']);
+    $router->post('/founding/{memberId}/allocation/{allocationId}/delete', [AdminFoundingController::class, 'deallocate']);
 
     $router->get('/loan-requests', [LoanRequestsController::class, 'index']);
     $router->get('/loan-requests/{id}', [LoanRequestsController::class, 'show']);
@@ -174,6 +177,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
 
     $router->get('/loans', [LoansController::class, 'index']);
     $router->get('/loans/create', [LoansController::class, 'create']);
+    $router->get('/loans/member-lots/{memberId}', [LoansController::class, 'memberLots']);
     $router->post('/loans', [LoansController::class, 'store']);
     $router->get('/loans/{id}', [LoansController::class, 'show']);
     $router->get('/loans/{id}/edit', [LoansController::class, 'edit']);
@@ -182,6 +186,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/loans/{id}/installments/{installmentId}/reset-payment', [LoansController::class, 'resetPayment']);
     $router->post('/loans/{id}/installments/{installmentId}/update-payment', [LoansController::class, 'updatePayment']);
     $router->post('/loans/{id}/close', [LoansController::class, 'close']);
+    $router->post('/loans/{id}/fee', [LoansController::class, 'updateFee']);
     $router->post('/loans/{id}/delete', [LoansController::class, 'destroy']);
 
     $router->get('/payments', [PaymentsController::class, 'index']);

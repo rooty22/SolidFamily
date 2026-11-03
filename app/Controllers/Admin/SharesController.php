@@ -162,6 +162,39 @@ class SharesController extends Controller
         $this->redirect('admin/shares');
     }
 
+    /**
+     * Writes, edits or (when left empty) deletes the small note of ONE share. The note belongs to that share alone:
+     * the member's other shares keep their own notes.
+     */
+    public function updateLotNote(string $id, string $lotId): void
+    {
+        $this->verifyCsrf();
+        $member = Member::find((int) $id);
+        $lot = \App\Models\ShareLot::find((int) $lotId);
+
+        // Only an internal admin path may be returned to (no external redirects).
+        $redirect = ltrim(trim((string) $this->input('redirect_to', '')), '/');
+        $back = ($redirect !== '' && str_starts_with($redirect, 'admin/') && !str_contains($redirect, '://')) ? $redirect : 'admin/members/' . (int) $id;
+
+        if (!$member || !$lot || (int) $lot['member_id'] !== (int) $id || $lot['status'] !== 'active') {
+            Session::flash('error', 'بيانات السهم غير صحيحة.');
+            $this->redirect($back);
+            return;
+        }
+
+        $note = trim((string) $this->input('admin_note', ''));
+        if (mb_strlen($note) > 500) {
+            Session::flash('error', 'ملاحظة السهم يجب ألا تزيد عن 500 حرف.');
+            $this->redirect($back);
+            return;
+        }
+
+        $label = \App\Models\ShareLot::label((int) $id, (int) $lotId);
+        \App\Models\ShareLot::setNote((int) $lotId, $note);
+        Session::flash('success', $note === '' ? "تم حذف ملاحظة {$label}." : "تم حفظ ملاحظة {$label}.");
+        $this->redirect($back);
+    }
+
     /** Add a specific new share lot for a member */
     public function addLot(string $id): void
     {

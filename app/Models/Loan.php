@@ -11,7 +11,7 @@ class Loan extends Model
     public static function withMember(array $conditions = []): array
     {
         [$whereSql, $params] = self::joinWhere($conditions);
-        $sql = 'SELECT loans.*, members.name as member_name, members.mobile as member_mobile, ' . self::LATE_COUNT_SQL . ' AS late_installments
+        $sql = 'SELECT loans.*, members.name as member_name, members.mobile as member_mobile, members.serial_no as member_serial, members.uid as member_uid, ' . self::LATE_COUNT_SQL . ' AS late_installments
                 FROM loans JOIN members ON members.id = loans.member_id'
                 . ($whereSql ? " WHERE $whereSql" : '') . ' ORDER BY loans.created_at DESC';
         return self::withDisplayStatus(self::raw($sql, $params));
@@ -23,6 +23,27 @@ class Loan extends Model
             'SELECT loans.*, ' . self::LATE_COUNT_SQL . ' AS late_installments FROM loans WHERE loans.member_id = ? ORDER BY loans.created_at DESC',
             [$memberId]
         ));
+    }
+
+    /** Whether the loan carries a commission (administrative fee) at all. */
+    public static function hasFee(array $loan): bool
+    {
+        return (float) ($loan['admin_fee_amount'] ?? 0) > 0;
+    }
+
+    /**
+     * The commission is paid only when an admin confirmed it by hand (fee_status = 'paid'); creating a loan never
+     * marks it paid. A loan without a commission has nothing to pay.
+     */
+    public static function feeIsPaid(array $loan): bool
+    {
+        return self::hasFee($loan) && ($loan['fee_status'] ?? 'unpaid') === 'paid';
+    }
+
+    /** 'paid', 'unpaid' or 'none' (no commission) -- the key used for the badge and the list filter. */
+    public static function feeState(array $loan): string
+    {
+        return !self::hasFee($loan) ? 'none' : (self::feeIsPaid($loan) ? 'paid' : 'unpaid');
     }
 
     /** Installments of the loan that still owe money although their due date has passed. */

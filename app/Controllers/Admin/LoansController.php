@@ -11,6 +11,7 @@ use App\Models\Loan;
 use App\Models\LoanRequest;
 use App\Models\LoanInstallment;
 use App\Models\Setting;
+use App\Models\ShareLot;
 use App\Models\Transaction;
 use App\Models\Notification;
 
@@ -36,6 +37,18 @@ class LoansController extends Controller
         return $v;
     }
 
+    /** Y-m-d / d/m/Y / d-m-Y -> Y-m-d, or null when it is not a real date. */
+    private function parseDate(string $raw): ?string
+    {
+        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $fmt) {
+            $parsed = \DateTime::createFromFormat('!' . $fmt, $raw);
+            if ($parsed && $parsed->format($fmt) === $raw) {
+                return $parsed->format('Y-m-d');
+            }
+        }
+        return null;
+    }
+
     public function index(): void
     {
         $q = trim((string) $this->input('q', ''));
@@ -46,17 +59,40 @@ class LoansController extends Controller
         }
         $loans = Loan::withMember($conditions);
         if ($q !== '') {
-            $loans = array_values(array_filter($loans, fn($l) => str_contains($l['member_name'], $q) || str_contains($l['member_mobile'], $q)));
+            $code = ltrim($q, '#');
+            $loans = array_values(array_filter($loans, fn($l) => str_contains($l['member_name'], $q) || str_contains($l['member_mobile'], $q)
+                || (ctype_digit($code) && (string) ($l['member_serial'] ?? '') === $code)
+                || strcasecmp((string) ($l['member_uid'] ?? ''), $q) === 0));
         }
+        // Commission (administrative fee) filter: paid / unpaid (loans without a commission never match).
+        $fee = (string) $this->input('fee', '');
+        if (in_array($fee, ['paid', 'unpaid'], true)) {
+            $loans = array_values(array_filter($loans, fn($l) => Loan::feeState($l) === $fee));
+        }
+
+        // Totals of everything that matches the filters (all pages, not only the one on screen).
+        $totals = ['count' => count($loans), 'amount' => 0.0, 'paid' => 0.0, 'remaining' => 0.0, 'fee_total' => 0.0, 'fee_paid' => 0.0, 'fee_due' => 0.0];
+        foreach ($loans as $l) {
+            $totals['amount'] += (float) $l['amount'];
+            $totals['paid'] += (float) $l['amount_paid'];
+            $totals['remaining'] += (float) $l['amount_remaining'];
+            if (Loan::hasFee($l)) {
+                $totals['fee_total'] += (float) $l['admin_fee_amount'];
+                $totals[Loan::feeIsPaid($l) ? 'fee_paid' : 'fee_due'] += (float) $l['admin_fee_amount'];
+            }
+        }
+        $totals = array_map(fn($v) => is_float($v) ? round($v, 2) : $v, $totals);
 
         $pager = paginate($loans);
 
         $this->view('admin/loans/index', [
+            'totals' => $totals,
             'pageTitle' => __('loans'),
             'loans' => $pager['items'],
             'pager' => $pager,
             'q' => $q,
             'status' => $status,
+            'fee' => $fee,
             'reasonLabels' => $this->reasonLabels,
         ], 'admin/layout');
     }
@@ -81,7 +117,7 @@ class LoansController extends Controller
     {
         $this->verifyCsrf();
         $data = $this->all();
-        $data += ['loan_date' => '', 'admin_fee_percent' => '', 'reason_other_text' => '', 'loan_request_id' => ''];
+        $data += ['loan_date' => '', 'admin_fee_percent' => '', 'reason_other_text' => '', 'loan_request_id' => '', 'fee_paid_now' => '', 'fee_paid_at' => ''];
         if ($data['loan_date'] === '') {
             $data['loan_date'] = date('Y-m-d');
         }
@@ -96,7 +132,8 @@ class LoansController extends Controller
             ->required('installments_count', 'عدد الأقساط')->integer('installments_count', 'عدد الأقساط', 1, 60)
             ->decimal('admin_fee_percent', 'نسبة المصاريف الإدارية', 0, 100)
             ->date('loan_date', 'بدء القرض', 366)
-            ->integer('loan_request_id', 'رقم الطلب', 1);
+            ->integer('loan_request_id', 'رقم الطلب', 1)
+            ->integer('lot_id', 'السهم المستفيد', 1);
 
         $targetMember = Member::find((int) ($data['member_id'] ?? 0));
         if (!$validator->fails() && !$targetMember) {
@@ -135,20 +172,58 @@ class LoansController extends Controller
         $feeAmount = round($amount * $feePercent / 100, 2);
         $installmentValue = round($amount / $installmentsCount, 2);
 
-        $lotId = null;
-        if (!empty($data['lot_id'])) {
-            $lotId = (int) $data['lot_id'];
-        } elseif (!empty($data['loan_request_id'])) {
-            $req = LoanRequest::find((int) $data['loan_request_id']);
-            if ($req && !empty($req['lot_id'])) {
-                $lotId = (int) $req['lot_id'];
+        // The commission is normally confirmed later, from the loan page, with the day it was really received. The admin
+        // may also say right here that it was already received (and when); otherwise it starts as unpaid.
+        $feePaidAt = null;
+        if (!empty($data['fee_paid_now']) && $feeAmount > 0) {
+            $feePaidAt = $data['fee_paid_at'] !== '' ? $this->parseDate($data['fee_paid_at']) : $loanDate;
+            if ($feePaidAt === null || $feePaidAt > date('Y-m-d') || $feePaidAt < $loanDate) {
+                Session::flash('error', $feePaidAt === null ? 'تاريخ سداد العمولة غير صحيح.' : ($feePaidAt > date('Y-m-d') ? 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.' : 'تاريخ سداد العمولة لا يمكن أن يسبق تاريخ القرض (' . date_ar($loanDate) . ').'));
+                $this->redirect($retry);
+                return;
             }
         }
-        if (!$lotId) {
-            $activeLots = \App\Models\ShareLot::activeFor($memberId);
-            if (count($activeLots) === 1) {
-                $lotId = (int) $activeLots[0]['id'];
+
+        // The loan is issued against ONE share (lot): the admin picks it (or it comes from the member's request) and only
+        // that share's conditions are checked -- never the member's other shares, never the member's totals.
+        $request = $data['loan_request_id'] !== '' ? LoanRequest::find((int) $data['loan_request_id']) : null;
+        $activeLots = ShareLot::activeFor($memberId);
+        if (!$activeLots) {
+            Session::flash('error', 'لا يمكن إنشاء قرض لمشترك لا يملك سهماً نشطاً.');
+            $this->redirect($retry);
+            return;
+        }
+        if ($request && !empty($request['lot_id'])) {
+            $lotId = (int) $request['lot_id'];
+        } elseif (!empty($data['lot_id'])) {
+            $lotId = (int) $data['lot_id'];
+        } elseif (count($activeLots) === 1) {
+            $lotId = (int) $activeLots[0]['id'];
+        } else {
+            Session::flash('error', 'اختر السهم المستفيد من القرض.');
+            $this->redirect($retry);
+            return;
+        }
+
+        $lot = null;
+        foreach ($activeLots as $l) {
+            if ((int) $l['id'] === $lotId) {
+                $lot = $l;
             }
+        }
+        if (!$lot) {
+            Session::flash('error', 'السهم المحدد ليس سهماً نشطاً لهذا المشترك.');
+            $this->redirect($retry);
+            return;
+        }
+
+        // The 6 months are counted up to the loan date (a back-dated entry is judged on that day, a future one on today).
+        $elig = ShareLot::eligibilityDetails($lot, $targetMember, null, min($loanDate, date('Y-m-d')));
+        if (!$elig['is_eligible']) {
+            $messages = ShareLot::blockerMessages($elig, ShareLot::label($memberId, $lotId));
+            Session::flash('error', 'لا يمكن إنشاء القرض على هذا السهم لعدم استيفاء الشروط: ' . implode(' ', $messages));
+            $this->redirect($retry);
+            return;
         }
 
         $pdo = Database::connection();
@@ -166,6 +241,9 @@ class LoansController extends Controller
                 'installment_value' => $installmentValue,
                 'admin_fee_percent' => $feePercent,
                 'admin_fee_amount' => $feeAmount,
+                'fee_status' => $feePaidAt ? 'paid' : 'unpaid',
+                'fee_paid_at' => $feePaidAt,
+                'fee_confirmed_by' => $feePaidAt ? current_admin_id() : null,
                 'amount_paid' => 0,
                 'amount_remaining' => $amount,
                 'status' => 'active',
@@ -186,8 +264,11 @@ class LoansController extends Controller
             }
 
             Transaction::record($memberId, 'loan_disbursement', $loanId, $amount, current_admin_id(), 'صرف قرض جديد', $loanDate);
-            if ($feeAmount > 0) {
-                Transaction::record($memberId, 'loan_admin_fee', $loanId, $feeAmount, current_admin_id(), 'مصاريف إدارية على القرض', $loanDate);
+            // The commission is NOT booked automatically: it counts as received only once the admin confirms the
+            // payment, with the day it was really received (here, or later from the loan page: updateFee), because
+            // members often pay it a week or more after the loan.
+            if ($feePaidAt) {
+                Transaction::record($memberId, 'loan_admin_fee', $loanId, $feeAmount, current_admin_id(), 'تحصيل عمولة القرض رقم ' . $loanId, $feePaidAt);
             }
 
             $pdo->commit();
@@ -200,6 +281,118 @@ class LoansController extends Controller
 
         Session::flash('success', 'تم إنشاء القرض وجدولة الأقساط بنجاح.');
         $this->redirect('admin/loans/' . $loanId);
+    }
+
+    /**
+     * JSON for the "create loan" form: the member's active shares with the eligibility of EACH share on its own
+     * (so the admin sees which share can take a loan). ?as_of=YYYY-MM-DD judges the 6 months on the loan date.
+     */
+    public function memberLots(string $memberId): void
+    {
+        $member = Member::find((int) $memberId);
+        if (!$member) {
+            $this->json(['lots' => []], 404);
+        }
+        $asOf = (string) $this->input('as_of', '');
+        $asOf = preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf) ? min($asOf, date('Y-m-d')) : date('Y-m-d');
+
+        $founding = \App\Models\FoundingAmount::ensureForMember((int) $member['id']);
+        $lots = [];
+        foreach (ShareLot::activeFor((int) $member['id']) as $lot) {
+            $elig = ShareLot::eligibilityDetails($lot, $member, $founding, $asOf);
+            $lots[] = [
+                'id' => (int) $lot['id'],
+                'label' => ShareLot::label((int) $member['id'], (int) $lot['id'], (int) $lot['shares_count']),
+                'eligible' => (bool) $elig['is_eligible'],
+                'founding' => money($elig['founding_paid']) . ' / ' . money($elig['founding_required']),
+                'messages' => ShareLot::blockerMessages($elig, ShareLot::label((int) $member['id'], (int) $lot['id'])),
+            ];
+        }
+        $this->json(['lots' => $lots]);
+    }
+
+    /**
+     * Manual commission management: the admin confirms (paid + payment date) or reverts (unpaid) the receipt of the
+     * loan's administrative fee. Only a confirmed payment appears in the ledger, dated with the payment date.
+     */
+    public function updateFee(string $id): void
+    {
+        $this->verifyCsrf();
+        $loan = Loan::find((int) $id);
+        if (!$loan) {
+            $this->redirect('admin/loans');
+        }
+        // Called from the loan page, or from the quick form of the loans list (which says where to come back to).
+        $back = 'admin/loans/' . $id;
+        $returnTo = ltrim(trim((string) $this->input('redirect_to', '')), '/');
+        if ($returnTo === 'admin/loans' || str_starts_with($returnTo, 'admin/loans?')) {
+            $back = $returnTo;
+        }
+
+        if (!Loan::hasFee($loan)) {
+            Session::flash('error', 'لا توجد عمولة على هذا القرض.');
+            $this->redirect($back);
+        }
+
+        $status = (string) $this->input('fee_status', '');
+        if (!in_array($status, ['paid', 'unpaid'], true)) {
+            Session::flash('error', 'حالة العمولة غير صحيحة.');
+            $this->redirect($back);
+        }
+
+        $paidAt = null;
+        if ($status === 'paid') {
+            $raw = trim((string) $this->input('fee_paid_at', ''));
+            $paidAt = date('Y-m-d');
+            if ($raw !== '') {
+                $paidAt = $this->parseDate($raw);
+                if ($paidAt === null) {
+                    Session::flash('error', 'تاريخ سداد العمولة غير صحيح.');
+                    $this->redirect($back);
+                }
+            }
+            if ($paidAt > date('Y-m-d')) {
+                Session::flash('error', 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.');
+                $this->redirect($back);
+            }
+            if ($paidAt < $loan['loan_date']) {
+                Session::flash('error', 'تاريخ سداد العمولة لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
+                $this->redirect($back);
+            }
+        }
+
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            $feeTx = Transaction::first(['related_id' => (int) $id, 'category' => 'loan_admin_fee']);
+            if ($status === 'paid') {
+                $note = 'تحصيل عمولة القرض رقم ' . $id;
+                if ($feeTx) {
+                    Transaction::update($feeTx['id'], ['amount' => $loan['admin_fee_amount'], 'transaction_date' => $paidAt, 'recorded_by' => current_admin_id(), 'notes' => $note]);
+                } else {
+                    Transaction::record((int) $loan['member_id'], 'loan_admin_fee', (int) $id, (float) $loan['admin_fee_amount'], current_admin_id(), $note, $paidAt);
+                }
+            } else {
+                Transaction::deleteWhere(['related_id' => (int) $id, 'category' => 'loan_admin_fee']);
+            }
+            Loan::update((int) $id, [
+                'fee_status' => $status,
+                'fee_paid_at' => $paidAt,
+                'fee_confirmed_by' => current_admin_id(),
+            ]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        if ($status === 'paid') {
+            Notification::systemNotify((int) $loan['member_id'], 'تسجيل سداد عمولة القرض', 'تم تسجيل سداد عمولة القرض رقم ' . $id . ' بقيمة ' . money($loan['admin_fee_amount']) . ' بتاريخ ' . date_ar($paidAt) . '.');
+            Session::flash('success', 'تم تسجيل سداد العمولة بتاريخ ' . date_ar($paidAt) . '.');
+        } else {
+            Session::flash('success', 'تم إرجاع حالة العمولة إلى غير مدفوعة.');
+        }
+        $this->redirect($back);
     }
 
     public function show(string $id): void
@@ -281,13 +474,17 @@ class LoansController extends Controller
                 $feeAmount = round($amount * (float) $loan['admin_fee_percent'] / 100, 2);
                 $update['admin_fee_amount'] = $feeAmount;
                 Transaction::updateWhere(['related_id' => (int) $id, 'category' => 'loan_disbursement'], ['amount' => $amount]);
+                // The ledger holds the commission only after the admin confirmed it was received: keep that entry in
+                // step with the new amount, and never create one here.
                 $feeTx = Transaction::first(['related_id' => (int) $id, 'category' => 'loan_admin_fee']);
                 if ($feeTx && $feeAmount > 0) {
                     Transaction::update($feeTx['id'], ['amount' => $feeAmount]);
                 } elseif ($feeTx) {
                     Transaction::delete($feeTx['id']);
-                } elseif ($feeAmount > 0) {
-                    Transaction::record((int) $loan['member_id'], 'loan_admin_fee', (int) $id, $feeAmount, current_admin_id(), 'مصاريف إدارية على القرض', $loan['loan_date']);
+                }
+                if ($feeAmount <= 0) {
+                    $update['fee_status'] = 'unpaid';
+                    $update['fee_paid_at'] = null;
                 }
 
                 LoanInstallment::deleteWhere(['loan_id' => $id]);
