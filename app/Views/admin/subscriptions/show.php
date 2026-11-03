@@ -126,12 +126,24 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <?= $lotPicker() ?>
                 <div class="row g-2">
                     <div class="col-7">
-                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ السداد / الشهر الأول (يوم/شهر/سنة)' : 'Start Date (Day/Month/Year)' ?></label>
-                        <input type="date" name="start_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" required>
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'الشهر الأول المراد سداده' : 'First month to pay' ?></label>
+                        <input type="month" name="start_month" class="form-control font-numeric font-bold js-pay-month" value="<?= date('Y-m') ?>" max="<?= date('Y-m') ?>" required>
                     </div>
                     <div class="col-5">
                         <label class="form-label font-bold text-xs"><?= is_rtl() ? 'عدد الأشهر' : 'Months Count' ?></label>
                         <input type="number" name="months_count" class="form-control font-numeric font-bold" value="1" min="1" max="24">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ استلام المبلغ (اليوم أو قبله)' : 'Date the money was received (today or earlier)' ?></label>
+                        <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check p-2 rounded-xl border border-amber-200 bg-amber-50/60 d-flex align-items-start gap-2">
+                            <input class="form-check-input m-0 mt-1 js-advance-check" type="checkbox" name="advance" value="1" id="advanceFull">
+                            <label class="form-check-label text-[11px] font-bold text-amber-900" for="advanceFull">
+                                <?= is_rtl() ? 'سداد مقدّم لأشهر لم تحن بعد (الشهر الحالي: ' . e(month_label(date('Y-m'))) . ')' : 'Advance payment for months that have not started (current month: ' . e(month_label(date('Y-m'))) . ')' ?>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 mt-3 font-bold py-2 rounded-xl">
@@ -155,12 +167,24 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <?= $lotPicker() ?>
                 <div class="row g-2">
                     <div class="col-7">
-                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ الدفعة / الشهر (يوم/شهر/سنة)' : 'Payment Date / Month' ?></label>
-                        <input type="date" name="partial_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" required>
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'الشهر المراد سداده' : 'Month to pay' ?></label>
+                        <input type="month" name="partial_month" class="form-control font-numeric font-bold js-pay-month" value="<?= date('Y-m') ?>" max="<?= date('Y-m') ?>" required>
                     </div>
                     <div class="col-5">
                         <label class="form-label font-bold text-xs"><?= is_rtl() ? 'قيمة الدفعة' : 'Amount' ?></label>
                         <input type="number" step="0.01" min="0.01" name="partial_amount" class="form-control font-numeric font-bold" placeholder="0.00" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ استلام الدفعة (اليوم أو قبله)' : 'Date the money was received (today or earlier)' ?></label>
+                        <input type="date" name="partial_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check p-2 rounded-xl border border-amber-200 bg-amber-50/60 d-flex align-items-start gap-2">
+                            <input class="form-check-input m-0 mt-1 js-advance-check" type="checkbox" name="advance" value="1" id="advancePartial">
+                            <label class="form-check-label text-[11px] font-bold text-amber-900" for="advancePartial">
+                                <?= is_rtl() ? 'سداد مقدّم لشهر لم يحن بعد' : 'Advance payment for a month that has not started' ?>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-soft w-100 mt-3 font-bold py-2 rounded-xl">
@@ -430,7 +454,14 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                 }
             ?>
                 <tr class="admin-sub-row <?= $isOverdue ? 'bg-rose-50/30' : '' ?>" data-lot-id="<?= (int)($h['lot_id'] ?? 0) ?>">
-                    <td class="fw-bold font-numeric text-slate-900"><?= e(month_label($h['month'])) ?></td>
+                    <td class="fw-bold font-numeric text-slate-900">
+                        <?= e(month_label($h['month'])) ?>
+                        <?php if ($h['month'] === date('Y-m')): ?>
+                            <span class="badge-status badge-info" style="font-size:10.5px;padding:2px 8px"><?= is_rtl() ? 'الشهر الحالي' : 'Current' ?></span>
+                        <?php elseif ($h['month'] > date('Y-m')): ?>
+                            <span class="badge-status badge-warning" style="font-size:10.5px;padding:2px 8px" title="<?= is_rtl() ? 'شهر لم يحن بعد' : 'Month has not started yet' ?>"><?= $paidVal > 0 ? (is_rtl() ? 'سداد مقدّم' : 'Advance') : (is_rtl() ? 'قادم' : 'Upcoming') ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td class="text-slate-600 text-xs">
                         <?php if ($lotIdx !== false): ?>
                             <span class="font-bold text-purple-700"><?= is_rtl() ? 'السهم رقم ' . ($lotIdx + 1) : 'Share #' . ($lotIdx + 1) ?></span>
@@ -599,6 +630,7 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                 <h5 class="modal-title text-sm font-black text-slate-800 flex items-center gap-2">
                     <i class="bi bi-pencil-square text-emerald-600"></i>
                     <span><?= is_rtl() ? "تعديل سداد اشتراك شهر " . month_label($h['month']) . "" : "Edit Payment for Month " . month_label($h['month']) . "" ?></span>
+                    <?php if ($h['month'] > date('Y-m')): ?><span class="badge-status badge-warning"><?= is_rtl() ? 'سداد مقدّم' : 'Advance' ?></span><?php endif; ?>
                 </h5>
                 <button type="button" class="btn-close text-xs" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -611,7 +643,8 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد (يوم/شهر/سنة)' : 'Payment Date (Day/Month/Year)' ?></label>
-                        <input type="date" name="payment_date" class="form-control text-sm font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+                        <input type="date" name="payment_date" class="form-control text-sm font-numeric font-bold" value="<?= e(!empty($h['payment_date']) ? min((string) $h['payment_date'], date('Y-m-d')) : date('Y-m-d')) ?>" max="<?= date('Y-m-d') ?>">
+                        <p class="text-[11px] text-muted mb-0 mt-1"><?= is_rtl() ? 'التاريخ الحالي المسجّل للسداد؛ لا يتغير إلا إذا غيّرته أنت، ولا يمكن أن يكون في المستقبل.' : 'The date currently recorded for the payment; it only changes if you change it, and cannot be in the future.' ?></p>
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>
@@ -635,6 +668,14 @@ $totalAllRem = max(0.0, round($totalAllDue - $totalAllPaid, 2));
 <?php endif; endforeach; ?>
 
 <script>
+// The month fields stop at the current month; ticking "advance payment" lifts that limit (the server checks it again).
+document.querySelectorAll('.js-advance-check').forEach(function (box) {
+    var form = box.closest('form');
+    var month = form && form.querySelector('.js-pay-month');
+    if (!month) { return; }
+    var max = month.getAttribute('max');
+    box.addEventListener('change', function () { if (box.checked) { month.removeAttribute('max'); } else { month.setAttribute('max', max); if (month.value > max) { month.value = max; } } });
+});
 function filterAdminLots(lotId, btn) {
     document.querySelectorAll('.btn-admin-lot-tab').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');

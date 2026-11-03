@@ -236,17 +236,11 @@ class SubscriptionsController extends Controller
         $lotIdInput = trim((string) ($data['lot_id'] ?? ''));
 
         if ($action === 'bulk_pay') {
-            $rawDate = trim((string) ($data['start_date'] ?? $data['start_month'] ?? date('Y-m-d')));
-            $paymentDate = date('Y-m-d');
-            $startMonth = date('Y-m');
-
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
-                $startMonth = substr($rawDate, 0, 7);
-                $paymentDate = $rawDate;
-            } elseif (preg_match('/^\d{4}-\d{2}$/', $rawDate)) {
-                $startMonth = $rawDate;
-            } else {
-                Session::flash('error', 'صيغة تاريخ السداد غير صحيحة.');
+            // Two separate things: the FIRST MONTH being paid (start_month, default: the current month) and the day the money
+            // was really received (payment_date, never in the future). Older forms sent one date (start_date) for both.
+            [$startMonth, $paymentDate] = $this->monthAndPaymentDate($data['start_month'] ?? '', $data['payment_date'] ?? ($data['start_date'] ?? ''));
+            if ($startMonth === null) {
+                Session::flash('error', $paymentDate);
                 $this->redirect($back);
                 return;
             }
@@ -268,6 +262,14 @@ class SubscriptionsController extends Controller
             $count = (int) $data['months_count'];
             $ts = strtotime($startMonth . '-01');
             $paidAny = false;
+
+            // A month that has not started yet is an ADVANCE payment: allowed, but only when the admin says so explicitly.
+            $lastMonth = date('Y-m', strtotime('+' . ($count - 1) . ' month', $ts));
+            if ($lastMonth > date('Y-m') && empty($data['advance'])) {
+                Session::flash('error', 'الأشهر المحددة تصل إلى شهر لم يحن بعد (الشهر الحالي ' . month_label(date('Y-m')) . '، وآخر شهر محدد ' . month_label($lastMonth) . '). إن كان المقصود سداداً مقدّماً فعّل خيار «سداد مقدّم»، وإلا صحّح الشهر أو عدد الأشهر.');
+                $this->redirect($back);
+                return;
+            }
 
             for ($i = 0; $i < $count; $i++) {
                 $month = date('Y-m', strtotime("+{$i} month", $ts));
@@ -298,17 +300,14 @@ class SubscriptionsController extends Controller
                 Session::flash('error', 'الأشهر المحددة مسددة بالكامل مسبقاً.');
             }
         } elseif ($action === 'partial_pay' || $action === 'partial') {
-            $rawDate = trim((string) ($data['partial_date'] ?? $data['partial_month'] ?? date('Y-m-d')));
-            $paymentDate = date('Y-m-d');
-            $month = date('Y-m');
-
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
-                $month = substr($rawDate, 0, 7);
-                $paymentDate = $rawDate;
-            } elseif (preg_match('/^\d{4}-\d{2}$/', $rawDate)) {
-                $month = $rawDate;
-            } else {
-                Session::flash('error', 'صيغة تاريخ الدفعة غير صحيحة.');
+            [$month, $paymentDate] = $this->monthAndPaymentDate($data['partial_month'] ?? '', $data['partial_date'] ?? '');
+            if ($month === null) {
+                Session::flash('error', $paymentDate);
+                $this->redirect($back);
+                return;
+            }
+            if ($month > date('Y-m') && empty($data['advance'])) {
+                Session::flash('error', 'شهر ' . month_label($month) . ' لم يحن بعد (الشهر الحالي ' . month_label(date('Y-m')) . '). إن كان المقصود دفعة مقدّمة فعّل خيار «سداد مقدّم».');
                 $this->redirect($back);
                 return;
             }
@@ -370,6 +369,11 @@ class SubscriptionsController extends Controller
 
             $payType = $data['pay_type'] ?? 'full';
             $paymentDate = !empty($data['payment_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['payment_date']) ? $data['payment_date'] : date('Y-m-d');
+            if ($paymentDate > date('Y-m-d')) {
+                Session::flash('error', 'تاريخ السداد لا يمكن أن يكون في المستقبل.');
+                $this->redirect($back);
+                return;
+            }
 
             if ($payType === 'full') {
                 $payAmount = $remaining;
@@ -411,6 +415,40 @@ class SubscriptionsController extends Controller
         }
 
         $this->redirect($back);
+    }
+
+    /**
+     * The month a payment is for and the day it was received are two different things.
+     * $monthRaw is "YYYY-MM" (empty: the current month, or -- for older forms -- the month of the date); $dateRaw is
+     * "YYYY-MM-DD" (empty: today). Returns [month, paymentDate], or [null, error message].
+     */
+    private function monthAndPaymentDate($monthRaw, $dateRaw): array
+    {
+        $monthRaw = trim((string) $monthRaw);
+        $dateRaw = trim((string) $dateRaw);
+        $paymentDate = date('Y-m-d');
+        $month = date('Y-m');
+
+        if ($dateRaw !== '') {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateRaw) && strtotime($dateRaw) !== false) {
+                $paymentDate = $dateRaw;
+                $month = substr($dateRaw, 0, 7);        // older forms: the one date also named the month
+            } elseif (preg_match('/^\d{4}-\d{2}$/', $dateRaw)) {
+                $month = $dateRaw;
+            } else {
+                return [null, 'صيغة تاريخ السداد غير صحيحة.'];
+            }
+        }
+        if ($monthRaw !== '') {
+            if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $monthRaw)) {
+                return [null, 'صيغة الشهر غير صحيحة.'];
+            }
+            $month = $monthRaw;
+        }
+        if ($paymentDate > date('Y-m-d')) {
+            return [null, 'تاريخ السداد لا يمكن أن يكون في المستقبل؛ سجّل تاريخ استلام المبلغ فعلياً (اليوم أو قبله). لسداد شهر قادم استخدم حقل «الشهر» مع خيار «سداد مقدّم».'];
+        }
+        return [$month, $paymentDate];
     }
 
     public function updateLotDate(string $memberId, string $lotId): void
@@ -542,6 +580,10 @@ class SubscriptionsController extends Controller
 
         $newPaid = round((float) $data['amount_paid'], 2);
         $due = (float) $sub['amount_due'];
+        if (!empty($data['payment_date']) && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['payment_date']) || $data['payment_date'] > date('Y-m-d'))) {
+            Session::flash('error', 'تاريخ السداد غير صحيح أو في المستقبل؛ لا يمكن أن يتجاوز تاريخ اليوم.');
+            $this->redirect('admin/subscriptions/' . $memberId);
+        }
         if ($newPaid > $due) {
             Session::flash('error', 'المبلغ المسدد لا يمكن أن يتجاوز المستحق (' . money($due) . ').');
             $this->redirect('admin/subscriptions/' . $memberId);

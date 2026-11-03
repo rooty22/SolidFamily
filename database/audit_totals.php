@@ -154,6 +154,13 @@ report('ERROR', 'subscription status does not match paid / due',
         OR (status = 'partial' AND (amount_paid <= 0.009 OR amount_paid >= amount_due - 0.009))
         OR (status = 'unpaid' AND amount_paid > 0.009)"),
     fn($r) => "member #{$r['member_id']} {$r['month']}: due {$r['amount_due']} paid {$r['amount_paid']} status {$r['status']}");
+report('WARN', 'ledger entries dated in the FUTURE (a payment cannot be received tomorrow: correct the date from the payment\'s Edit button)',
+    q("SELECT t.id, t.member_id, t.category, t.amount, t.transaction_date, t.notes FROM transactions t WHERE t.transaction_date > CURDATE() ORDER BY t.transaction_date DESC"),
+    fn($r) => "ledger #{$r['id']} member #{$r['member_id']} {$r['category']} {$r['amount']} dated {$r['transaction_date']} ({$r['notes']})");
+$adv = q("SELECT COUNT(*) AS n, COALESCE(SUM(amount_paid),0) AS s FROM monthly_subscriptions WHERE month > DATE_FORMAT(CURDATE(), '%Y-%m') AND amount_paid > 0")[0];
+if ((int) $adv['n'] > 0) {
+    echo "  [INFO] advance subscription payments for months that have not started: {$adv['n']} row(s), {$adv['s']}\n";
+}
 $sub = q("SELECT COALESCE(SUM(amount_paid),0) AS rows_paid FROM monthly_subscriptions")[0]['rows_paid'];
 $subTx = one("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE category = 'subscription'");
 echo "  [INFO] subscriptions paid per rows: {$sub}  |  per ledger: {$subTx}" . (abs($sub - $subTx) > 0.009 ? "  (differ by " . round($sub - $subTx, 2) . ": normal when rows were merged/closed/entered before the ledger existed)\n" : "\n");
