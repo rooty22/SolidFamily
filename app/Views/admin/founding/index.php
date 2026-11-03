@@ -34,13 +34,13 @@
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($rows as $r): [$l, $v] = status_badge((float) $r['total_required'] > 0 ? $r['status'] : 'no_shares'); $remaining = $r['total_required'] - $r['amount_paid']; ?>
+        <?php foreach ($rows as $r): [$l, $v] = status_badge((float) $r['total_required'] > 0 ? $r['status'] : 'no_shares'); $remaining = max(0, round($r['total_required'] - $r['amount_paid'], 2)); $surplus = max(0, round($r['amount_paid'] - $r['total_required'], 2)); ?>
             <tr>
-                <td class="fw-bold"><?= member_serial_chip($r['member']) ?> <?= e($r['member']['name']) ?></td>
+                <td><?= member_cell((string) $r['member']['name'], $r['member']['serial_no'] ?? null, url('admin/founding/' . $r['member']['id'])) ?></td>
                 <td class="font-numeric"><?= number_format($r['shares_count_linked']) ?></td>
                 <td class="font-numeric"><?= money($r['total_required']) ?></td>
                 <td class="font-numeric text-emerald-600 font-bold"><?= money($r['amount_paid']) ?></td>
-                <td class="font-numeric text-rose-500 font-bold"><?= money($remaining) ?></td>
+                <td class="font-numeric text-rose-500 font-bold"><?= money($remaining) ?><?= $surplus > 0 ? '<div class="text-[11px] text-sky-600 font-bold">' . e(is_rtl() ? 'زيادة ' . money($surplus) : 'surplus ' . money($surplus)) . '</div>' : '' ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-xs font-numeric">
                     <?php $lotsTotal = count($r['lots'] ?? []); $lotsMet = count(array_filter($r['lots'] ?? [], fn($b) => $b['met'])); ?>
@@ -56,10 +56,9 @@
                     <?php endif; ?>
                 </td>
                 <td class="text-end">
-                    <a href="<?= url('admin/founding/' . $r['member']['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1.5">
-                        <i class="bi bi-eye"></i>
-                        <span><?= is_rtl() ? 'التفاصيل' : 'Details' ?></span>
-                    </a>
+                    <div class="row-actions">
+                        <a href="<?= url('admin/founding/' . $r['member']['id']) ?>" class="row-btn row-btn-view row-btn-text"><i class="bi bi-eye"></i> <?= is_rtl() ? 'التفاصيل' : 'Details' ?></a>
+                    </div>
                 </td>
             </tr>
         <?php endforeach; ?>

@@ -26,7 +26,7 @@
         <tbody>
         <?php foreach ($requests as $r): [$l, $v] = status_badge($r['status']); ?>
             <tr>
-                <td class="fw-bold"><?= e($r['member_name']) ?></td>
+                <td><?= member_cell((string) $r['member_name'], $r['member_serial'] ?? null, url('admin/members/' . $r['member_id'])) ?></td>
                 <td><?= $typeLabels[$r['type']] ?? $r['type'] ?></td>
                 <td class="font-numeric">
                     <?php if (!empty($r['shares_count'])): ?>
@@ -40,10 +40,9 @@
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($r['created_at']) ?></bdi></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">
-                    <a href="<?= url('admin/share-requests/' . $r['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1">
-                        <i class="bi bi-eye"></i>
-                        <span><?= is_rtl() ? 'مراجعة' : 'Review' ?></span>
-                    </a>
+                    <div class="row-actions">
+                        <a href="<?= url('admin/share-requests/' . $r['id']) ?>" class="row-btn row-btn-edit row-btn-text"><i class="bi bi-clipboard-check"></i> <?= is_rtl() ? 'مراجعة' : 'Review' ?></a>
+                    </div>
                 </td>
             </tr>
         <?php endforeach; ?>

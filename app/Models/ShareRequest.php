@@ -13,7 +13,7 @@ class ShareRequest extends Model
         self::repairMissingMergeCounts();
 
         [$whereSql, $params] = self::buildWhereForJoin($conditions);
-        $sql = 'SELECT share_requests.*, members.name as member_name, members.mobile as member_mobile, members.shares_count as member_shares
+        $sql = 'SELECT share_requests.*, members.name as member_name, members.mobile as member_mobile, members.serial_no as member_serial, members.shares_count as member_shares
                 FROM share_requests JOIN members ON members.id = share_requests.member_id'
                 . ($whereSql ? " WHERE $whereSql" : '') . ' ORDER BY ' . $orderBy;
         return self::raw($sql, $params);

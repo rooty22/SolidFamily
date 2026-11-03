@@ -1,4 +1,4 @@
-<?php [$label, $variant] = status_badge($founding['status']); $remaining = round($founding['total_required'] - $founding['amount_paid'], 2); $payInFull = \App\Models\FoundingAmount::mustPayInFull($founding); $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid'] / $founding['total_required'] * 100)) : 0; ?>
+<?php [$label, $variant] = status_badge($founding['status']); $remaining = max(0, round($founding['total_required'] - $founding['amount_paid'], 2)); $payInFull = \App\Models\FoundingAmount::mustPayInFull($founding); $pct = $founding['total_required'] > 0 ? min(100, round($founding['amount_paid'] / $founding['total_required'] * 100)) : 0; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><?= member_serial_chip($member) ?> <?= e($member['name']) ?></h5>
     <a href="<?= url('admin/members/' . $member['id']) ?>" class="btn btn-sm btn-soft">ملف المشترك</a>

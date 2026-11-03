@@ -27,17 +27,16 @@
         <tbody>
         <?php foreach ($requests as $r): [$l, $v] = status_badge($r['status']); ?>
             <tr>
-                <td class="fw-bold text-slate-900"><?= e($r['member_name']) ?></td>
+                <td><?= member_cell((string) $r['member_name'], $r['member_serial'] ?? null, url('admin/members/' . $r['member_id'])) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($r['amount_requested']) ?></td>
                 <td><span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold"><?= $reasonLabels[$r['reason']] ?? $r['reason'] ?></span></td>
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($r['created_at']) ?></bdi></td>
                 <td class="font-numeric font-bold"><?php if ($r['status'] === 'pending'): ?>#<?= array_search($r['id'], array_column($pendingOrder, 'id')) + 1 ?><?php else: ?>-<?php endif; ?></td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">
-                    <a href="<?= url('admin/loan-requests/' . $r['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1 font-bold">
-                        <i class="bi bi-eye"></i>
-                        <span><?= __('review') ?></span>
-                    </a>
+                    <div class="row-actions">
+                        <a href="<?= url('admin/loan-requests/' . $r['id']) ?>" class="row-btn row-btn-edit row-btn-text"><i class="bi bi-clipboard-check"></i> <?= __('review') ?></a>
+                    </div>
                 </td>
             </tr>
         <?php endforeach; ?>

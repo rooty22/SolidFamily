@@ -17,8 +17,8 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
         <h1 class="text-xl font-bold text-slate-900"><?= __('members_directory_title') ?></h1>
         <p class="text-xs text-slate-500 mt-0.5"><?= __('members_directory_desc') ?></p>
     </div>
-    <div class="flex items-center gap-3">
-        <form method="get" action="<?= url('admin/members') ?>" class="search-box" style="min-width:280px;">
+    <div class="flex items-center gap-3 flex-wrap">
+        <form method="get" action="<?= url('admin/members') ?>" class="search-box" style="min-width:min(280px,100%);">
             <i class="bi bi-search"></i>
             <input type="text" name="q" class="form-control" placeholder="<?= __('search_members_full') ?>" value="<?= e($q) ?>">
             <?php if ($paymentStatus !== ''): ?>
@@ -102,14 +102,12 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
     <table class="table-modern">
         <thead>
             <tr>
-                <th style="width:70px" title="<?= is_rtl() ? 'الرقم التسلسلي الثابت (حسب ترتيب التسجيل)' : 'Fixed serial number (registration order)' ?>"><?= is_rtl() ? 'الرقم التسلسلي' : 'Serial' ?></th>
-                <th><?= __('name') ?></th>
-                <th>User ID</th>
-                <th><?= __('mobile') ?></th>
-                <th><?= __('national_id') ?></th>
+                <th style="width:70px" title="<?= is_rtl() ? 'الرقم التسلسلي الثابت (حسب ترتيب التسجيل)' : 'Fixed serial number (registration order)' ?>"><?= is_rtl() ? 'التسلسلي' : 'Serial' ?></th>
+                <th><?= is_rtl() ? 'المشترك' : 'Member' ?></th>
+                <th><?= is_rtl() ? 'الجوال / الهوية' : 'Mobile / ID' ?></th>
                 <th><?= __('shares') ?></th>
                 <th><?= is_rtl() ? 'حالة الحساب' : 'Account Status' ?></th>
-                <th><?= is_rtl() ? 'حالة السداد / نوع التأخير' : 'Payment Status / Delay Type' ?></th>
+                <th><?= is_rtl() ? 'حالة السداد / نوع التأخير' : 'Payment / Delay' ?></th>
                 <th><?= __('registered_at') ?></th>
                 <th class="text-end"><?= __('actions') ?></th>
             </tr>
@@ -117,21 +115,24 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
         <tbody>
             <?php foreach ($members as $m): [$label, $variant] = status_badge($m['status']); ?>
             <tr>
-                <td class="font-numeric text-slate-700 fw-bold"><?= !empty($m['serial_no']) ? (int) $m['serial_no'] : '<span class="text-slate-300">-</span>' ?></td>
-                <td class="fw-bold text-slate-900">
-                    <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
-                        <?= e($m['name']) ?>
-                    </a>
-                    <?php if (!empty($m['is_admin'])): ?>
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold ms-1" title="<?= is_rtl() ? 'حساب إداري' : 'Admin Account' ?>">
-                            <i class="bi bi-shield-check"></i>
-                            <span><?= is_rtl() ? 'إدارة' : 'Admin' ?></span>
-                        </span>
-                    <?php endif; ?>
+                <td><?= !empty($m['serial_no']) ? '<span class="serial-pill font-numeric">' . (int) $m['serial_no'] . '</span>' : '<span class="text-slate-300">-</span>' ?></td>
+                <td>
+                    <?= member_cell(
+                        (string) $m['name'],
+                        $m['serial_no'] ?? null,
+                        url('admin/members/' . $m['id']),
+                        '<i class="bi bi-person-badge"></i> <bdi dir="ltr" class="font-numeric">' . e($m['uid'] ?? '-') . '</bdi>',
+                        !empty($m['is_admin'])
+                            ? ' <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold ms-1" title="' . e(is_rtl() ? 'حساب إداري' : 'Admin Account') . '"><i class="bi bi-shield-check"></i><span>' . e(is_rtl() ? 'إدارة' : 'Admin') . '</span></span>'
+                            : ''
+                    ) ?>
                 </td>
-                <td class="font-numeric text-xs text-slate-500" dir="ltr"><?= e($m['uid'] ?? '-') ?></td>
-                <td class="font-numeric" dir="ltr"><?= e($m['mobile']) ?></td>
-                <td class="font-numeric" dir="ltr"><?= e($m['national_id']) ?></td>
+                <td>
+                    <div class="cell-stack">
+                        <b class="font-numeric"><bdi dir="ltr"><?= e($m['mobile']) ?></bdi></b>
+                        <small class="font-numeric"><bdi dir="ltr"><?= e($m['national_id']) ?></bdi></small>
+                    </div>
+                </td>
                 <td class="font-numeric font-bold text-slate-800"><?= number_format($m['shares_count']) ?></td>
                 <td><span class="badge-status badge-<?= $variant ?>"><?= $label ?></span></td>
                 <td>
@@ -159,41 +160,41 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                 </td>
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($m['created_at']) ?></bdi></td>
                 <td class="text-end">
-                    <a href="<?= url('admin/members/' . $m['id']) ?>" class="btn btn-sm btn-soft" title="<?= __('view') ?>"><i class="bi bi-eye"></i></a>
-                    <a href="<?= url('admin/members/' . $m['id'] . '/edit') ?>" class="btn btn-sm btn-soft" title="<?= __('edit') ?>"><i class="bi bi-pencil"></i></a>
-                    <?php if (in_array($m['status'], ['pending', 'rejected'], true)): ?>
-                        <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/approve') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'الموافقة على تسجيل "' . $m['name'] . '" والسماح له بالدخول؟' : 'Approve this registration and let the member log in?') ?>">
-                            <?= csrf_field() ?>
-                            <button class="btn btn-sm btn-soft text-emerald-600 font-bold" title="<?= is_rtl() ? 'موافقة' : 'Approve' ?>"><i class="bi bi-check-circle"></i> <?= is_rtl() ? 'موافقة' : 'Approve' ?></button>
-                        </form>
-                        <?php if ($m['status'] === 'pending'): ?>
-                        <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/reject') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'رفض طلب تسجيل "' . $m['name'] . '"؟' : 'Reject this registration?') ?>">
-                            <?= csrf_field() ?>
-                            <button class="btn btn-sm btn-soft text-rose-600 font-bold" title="<?= is_rtl() ? 'رفض' : 'Reject' ?>"><i class="bi bi-x-circle"></i> <?= is_rtl() ? 'رفض' : 'Reject' ?></button>
-                        </form>
+                    <div class="row-actions">
+                        <a href="<?= url('admin/members/' . $m['id']) ?>" class="row-btn row-btn-view" title="<?= __('view') ?>"><i class="bi bi-eye"></i></a>
+                        <a href="<?= url('admin/members/' . $m['id'] . '/edit') ?>" class="row-btn row-btn-edit" title="<?= __('edit') ?>"><i class="bi bi-pencil"></i></a>
+                        <?php if (in_array($m['status'], ['pending', 'rejected'], true)): ?>
+                            <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/approve') ?>" data-confirm="<?= e(is_rtl() ? 'الموافقة على تسجيل "' . $m['name'] . '" والسماح له بالدخول؟' : 'Approve this registration and let the member log in?') ?>">
+                                <?= csrf_field() ?>
+                                <button class="row-btn row-btn-ok" title="<?= is_rtl() ? 'موافقة على التسجيل' : 'Approve' ?>"><i class="bi bi-check-lg"></i></button>
+                            </form>
+                            <?php if ($m['status'] === 'pending'): ?>
+                            <form method="post" action="<?= url('admin/members/' . $m['id'] . '/registration/reject') ?>" data-confirm="<?= e(is_rtl() ? 'رفض طلب تسجيل "' . $m['name'] . '"؟' : 'Reject this registration?') ?>">
+                                <?= csrf_field() ?>
+                                <button class="row-btn row-btn-no" title="<?= is_rtl() ? 'رفض التسجيل' : 'Reject' ?>"><i class="bi bi-x-lg"></i></button>
+                            </form>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <form method="post" action="<?= url('admin/members/' . $m['id'] . '/toggle-status') ?>" data-confirm="<?= __('are_you_sure') ?>">
+                                <?= csrf_field() ?>
+                                <button class="row-btn row-btn-warn" title="<?= $m['status'] === 'active' ? __('deactivate') : __('activate') ?>">
+                                    <i class="bi bi-<?= $m['status'] === 'active' ? 'pause-circle' : 'play-circle' ?>"></i>
+                                </button>
+                            </form>
                         <?php endif; ?>
-                    <?php else: ?>
-                    <form method="post" action="<?= url('admin/members/' . $m['id'] . '/toggle-status') ?>" class="d-inline" data-confirm="<?= __('are_you_sure') ?>">
-                        <?= csrf_field() ?>
-                        <button class="btn btn-sm btn-soft" title="<?= $m['status'] === 'active' ? __('deactivate') : __('activate') ?>">
-                            <i class="bi bi-<?= $m['status'] === 'active' ? 'pause-circle' : 'play-circle' ?>"></i>
-                        </button>
-                    </form>
-                    <?php endif; ?>
-                    <?php if (empty($m['is_admin'])): ?>
-                    <form method="post" action="<?= url('admin/members/' . $m['id'] . '/delete') ?>" class="d-inline" data-confirm="<?= e(is_rtl() ? 'سيتم حذف المشترك "' . $m['name'] . '" نهائياً مع جميع اشتراكاته ومعاملاته وأسهمه، ولا يمكن التراجع. هل أنت متأكد؟' : 'Member "' . $m['name'] . '" will be permanently deleted with all subscriptions, transactions and shares. This cannot be undone. Are you sure?') ?>">
-                        <?= csrf_field() ?>
-                        <button class="btn btn-sm btn-soft text-rose-600" title="<?= is_rtl() ? 'حذف' : 'Delete' ?>">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
-                    <?php endif; ?>
+                        <?php if (empty($m['is_admin'])): ?>
+                            <form method="post" action="<?= url('admin/members/' . $m['id'] . '/delete') ?>" data-confirm="<?= e(is_rtl() ? 'سيتم حذف المشترك "' . $m['name'] . '" نهائياً مع جميع اشتراكاته ومعاملاته وأسهمه، ولا يمكن التراجع. هل أنت متأكد؟' : 'Member "' . $m['name'] . '" will be permanently deleted with all subscriptions, transactions and shares. This cannot be undone. Are you sure?') ?>">
+                                <?= csrf_field() ?>
+                                <button class="row-btn row-btn-danger" title="<?= is_rtl() ? 'حذف' : 'Delete' ?>"><i class="bi bi-trash"></i></button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>
             <?php if (empty($members)): ?>
             <tr>
-                <td colspan="11" class="p-0">
+                <td colspan="8" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-people text-3xl text-slate-400 mb-2"></i>
                         <span><?= __('no_members_recorded') ?></span>

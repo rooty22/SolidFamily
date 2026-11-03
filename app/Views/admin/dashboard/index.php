@@ -60,7 +60,7 @@
                 <div class="stat-label"><?= is_rtl() ? 'القروض القائمة (المتبقي)' : 'Loans outstanding' ?></div>
                 <div class="stat-value font-num text-amber-700"><?= money($stats['loansRemaining']) ?></div>
                 <div class="stat-sub text-amber-600 font-bold">
-                    <?= is_rtl() ? number_format((int) $stats['loanRow']['running_count']) . ' قرض قائم من ' . number_format((int) $stats['loanRow']['total_loans']) . ' · الإجمالي المصروف ' . money($stats['totalLoansAmount']) : number_format((int) $stats['loanRow']['running_count']) . ' running of ' . number_format((int) $stats['loanRow']['total_loans']) . ' · disbursed ' . money($stats['totalLoansAmount']) ?>
+                    <?= is_rtl() ? number_format((int) $stats['loanRow']['running_count']) . ' قرض قائم · مصروف ' . money($stats['totalLoansAmount']) : number_format((int) $stats['loanRow']['running_count']) . ' running · disbursed ' . money($stats['totalLoansAmount']) ?>
                 </div>
             </div>
         </a>

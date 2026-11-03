@@ -395,6 +395,27 @@ function member_serial_chip(?array $member): string
 }
 
 /**
+ * The member cell used by every admin list: coloured avatar with the initial, the name (a link when $url is given),
+ * and a small line under it (default: the fixed serial number). $extraHtml goes right after the name (e.g. a badge).
+ */
+function member_cell(string $name, $serial = null, ?string $url = null, ?string $sub = null, string $extraHtml = ''): string
+{
+    $name = trim($name) !== '' ? trim($name) : '-';
+    $initial = mb_substr($name, 0, 1);
+    $tone = abs(!empty($serial) ? (int) $serial : crc32($name)) % 5;
+    $label = e($name);
+    $nameHtml = $url
+        ? '<a href="' . e($url) . '" class="cell-member-name">' . $label . '</a>'
+        : '<span class="cell-member-name">' . $label . '</span>';
+    if ($sub === null && !empty($serial)) {
+        $sub = '#' . (int) $serial;
+    }
+    return '<div class="cell-member"><span class="cell-avatar av-' . $tone . '">' . e($initial) . '</span>'
+        . '<div class="cell-member-text"><span>' . $nameHtml . $extraHtml . '</span>'
+        . ($sub !== null && $sub !== '' ? '<small>' . $sub . '</small>' : '') . '</div></div>';
+}
+
+/**
  * "Founding amount of this share" badge from ShareLot::eligibilityDetails(): paid / partial / unpaid for THIS share only,
  * e.g. "مسدد 250 من 500 ريال".
  */

@@ -149,6 +149,7 @@ return [
     'manage_loan_requests' => 'طلبات القروض',
     'manage_payments' => 'عمليات السداد',
     'manage_transactions' => 'المعاملات المالية',
+    'transactions' => 'المعاملات المالية',
     'manage_notifications' => 'إرسال الإشعارات والتعاميم',
     'manage_messages' => 'رسائل الدعم والتواصل',
     'manage_content' => 'محتوى صفحات النظام',

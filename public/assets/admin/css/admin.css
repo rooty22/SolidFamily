@@ -1459,3 +1459,128 @@ html[dir="ltr"] .form-control-icon-both {
 .scroll-fab { transition: opacity .22s ease, transform .22s ease; }
 .scroll-fab.is-away { opacity: 0; pointer-events: none; transform: translateX(-16px); }
 html[dir="ltr"] .scroll-fab.is-away { transform: translateX(16px); }
+
+/* ==========================================================================
+   Data tables, redesigned (applies to every list in the admin panel)
+   - page-level lists (.table-panel) get a dark navy header with an emerald rule, like the sidebar
+   - tables inside cards keep a light header
+   - rows are airy, numbers are tabular, the hovered row gets an emerald edge
+   - action buttons never wrap or get cut off; member names get an avatar
+   ========================================================================== */
+.table-panel {
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 28px -18px rgba(15, 23, 42, 0.18);
+}
+.table-panel.border-0 { border: 0; border-radius: 0; box-shadow: none; }
+
+.table-modern { min-width: 0 !important; width: 100%; font-variant-numeric: tabular-nums; }
+.table-modern.table-kv { min-width: 0 !important; }
+
+.table-modern thead th {
+    padding: 13px 12px !important;
+    font-size: 12px !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    white-space: nowrap;
+}
+.table-modern tbody td {
+    padding: 13px 12px !important;
+    font-size: 13.5px !important;
+    line-height: 1.55;
+    transition: background-color .15s ease;
+}
+
+/* Dark header for the page-level lists */
+.table-panel:not(.border-0) > .table-modern > thead > tr > th {
+    background: linear-gradient(180deg, #10304f 0%, #0a2038 100%) !important;
+    color: #cfe0ee !important;
+    font-weight: 800 !important;
+    border-bottom: 3px solid #10b981 !important;
+}
+.table-panel:not(.border-0) > .table-modern > thead > tr > th:first-child { border-top-right-radius: 0; }
+
+/* Light header for tables inside cards */
+.card-panel .table-modern thead th,
+.table-panel.border-0 > .table-modern thead th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    font-weight: 800 !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+}
+
+/* Rows: soft dividers, emerald edge on hover */
+.table-modern tbody td { border-bottom: 1px solid #eef2f6 !important; }
+.table-modern tbody tr { transition: background-color .15s ease; }
+.table-modern tbody tr:hover > td { background-color: #f3fbf8 !important; }
+html[dir="rtl"] .table-panel:not(.border-0) > .table-modern tbody tr:hover > td:first-child { box-shadow: inset -3px 0 0 #10b981; }
+html[dir="ltr"] .table-panel:not(.border-0) > .table-modern tbody tr:hover > td:first-child { box-shadow: inset 3px 0 0 #10b981; }
+.table-modern tbody tr:last-child td { border-bottom: 0 !important; }
+.table-modern .text-muted, .table-modern small { color: #94a3b8; }
+
+/* Compact badges inside tables */
+.table-modern .badge-status { padding: 4px 10px; font-size: 11.5px; }
+
+/* Action columns: one line, never cut off */
+.table-modern th.text-end, .table-modern td.text-end { white-space: nowrap; width: 1%; }
+.table-modern td.text-end > form, .table-modern td.text-end .row-actions > form { display: inline-flex !important; margin: 0; vertical-align: middle; }
+.table-modern td.text-end .btn.btn-sm { padding: 6px 10px !important; border-radius: 10px !important; font-size: 13px !important; }
+
+.row-actions { display: inline-flex; align-items: center; gap: 5px; flex-wrap: nowrap; white-space: nowrap; }
+.row-btn {
+    min-width: 32px; height: 32px; padding: 0 !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 5px;
+    border-radius: 10px !important; border: 1px solid #e2e8f0 !important; background: #ffffff !important; color: #475569 !important;
+    font-size: 15px !important; font-weight: 700 !important; line-height: 1; text-decoration: none !important; cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.row-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.35); }
+.row-btn-view:hover { background: #e0f2fe !important; border-color: #7dd3fc !important; color: #0369a1 !important; }
+.row-btn-edit:hover { background: #ecfdf5 !important; border-color: #6ee7b7 !important; color: #047857 !important; }
+.row-btn-warn:hover { background: #fffbeb !important; border-color: #fcd34d !important; color: #b45309 !important; }
+.row-btn-danger:hover { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #b91c1c !important; }
+.row-btn-ok { background: #ecfdf5 !important; border-color: #6ee7b7 !important; color: #047857 !important; }
+.row-btn-ok:hover { background: #d1fae5 !important; }
+.row-btn-no { background: #fef2f2 !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.row-btn-no:hover { background: #fee2e2 !important; }
+.row-btn-text { padding: 0 11px !important; font-size: 12.5px !important; }
+
+/* Two-line cells and the member cell (avatar + name + small line) */
+.cell-stack { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; min-width: 0; }
+.cell-stack b { font-weight: 800; color: #0f172a; }
+.cell-stack small { font-size: 11.5px; font-weight: 600; color: #94a3b8; }
+.cell-member { display: flex; align-items: center; gap: 11px; min-width: 184px; }
+.cell-avatar {
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+    color: #ffffff; font-weight: 900; font-size: 16px; box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.45);
+}
+.av-0 { background: linear-gradient(135deg, #10b981, #047857); }
+.av-1 { background: linear-gradient(135deg, #0ea5e9, #0369a1); }
+.av-2 { background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
+.av-3 { background: linear-gradient(135deg, #f59e0b, #b45309); }
+.av-4 { background: linear-gradient(135deg, #f43f5e, #be123c); }
+.cell-member-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.cell-member-name { font-weight: 800; color: #0f172a; text-decoration: none; overflow-wrap: anywhere; }
+a.cell-member-name:hover { color: #047857; }
+.cell-member-text small { font-size: 11.5px; font-weight: 600; color: #94a3b8; display: inline-flex; align-items: center; gap: 4px; }
+.serial-pill {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 26px; padding: 0 9px; border-radius: 9px;
+    background: #f1f5f9; color: #334155; font-weight: 800; font-size: 12.5px; border: 1px solid #e2e8f0;
+}
+
+/* Thin progress bar for repayment inside a table cell */
+.mini-bar { height: 6px; border-radius: 99px; background: #e2e8f0; overflow: hidden; min-width: 90px; }
+.mini-bar > span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #10b981, #059669); }
+.mini-bar.is-late > span { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+/* Phones: let wide tables scroll inside their panel instead of squeezing the page */
+@media (max-width: 767.98px) {
+    .table-panel > .table-modern { min-width: 760px !important; }
+    .cell-member { min-width: 170px; }
+}
+
+/* Tables inside (narrow) cards: tighter cells so amounts do not wrap; stat cards of one row share one height */
+.card-panel .table-modern:not(.table-kv) thead th,
+.card-panel .table-modern:not(.table-kv) tbody td { padding: 11px 9px !important; }
+.row > [class*="col-"] > .stat-card,
+.row > [class*="col-"] > a.stat-card { height: 100%; }

@@ -149,6 +149,7 @@ return [
     'manage_loan_requests' => 'Loan Applications',
     'manage_payments' => 'Payments Log',
     'manage_transactions' => 'Financial Ledger',
+    'transactions' => 'Financial Transactions',
     'manage_notifications' => 'Send Announcements',
     'manage_messages' => 'Support Messages',
     'manage_content' => 'System Content Pages',

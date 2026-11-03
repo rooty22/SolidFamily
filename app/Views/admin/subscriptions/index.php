@@ -86,11 +86,7 @@ $hasSubFilters = ($status !== '' || $q !== '');
         <tbody>
         <?php foreach ($rows as $row): [$l, $v] = status_badge($row['current_status']); ?>
             <tr>
-                <td class="fw-bold text-slate-900">
-                    <a href="<?= url('admin/subscriptions/' . $row['member']['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
-                        <?= member_serial_chip($row['member']) ?> <?= e($row['member']['name']) ?>
-                    </a>
-                </td>
+                <td><?= member_cell((string) $row['member']['name'], $row['member']['serial_no'] ?? null, url('admin/subscriptions/' . $row['member']['id'])) ?></td>
                 <td class="font-numeric"><?= number_format($row['member']['shares_count']) ?></td>
                 <td class="font-numeric"><?= money($row['share_value']) ?></td>
                 <td class="font-numeric font-bold text-slate-900"><?= money($row['amount']) ?></td>
@@ -98,10 +94,9 @@ $hasSubFilters = ($status !== '' || $q !== '');
                 <td class="font-numeric text-emerald-600 font-bold"><?= (int) $row['paid_months'] ?></td>
                 <td class="font-numeric <?= $row['late_months'] > 0 ? 'text-rose-500 font-bold' : 'text-slate-400' ?>"><?= (int) $row['late_months'] ?></td>
                 <td class="text-end">
-                    <a href="<?= url('admin/subscriptions/' . $row['member']['id']) ?>" class="btn btn-sm btn-soft inline-flex items-center gap-1.5 font-bold">
-                        <i class="bi bi-eye"></i>
-                        <span><?= __('details_and_pay') ?></span>
-                    </a>
+                    <div class="row-actions">
+                        <a href="<?= url('admin/subscriptions/' . $row['member']['id']) ?>" class="row-btn row-btn-edit row-btn-text"><i class="bi bi-wallet2"></i> <?= __('details_and_pay') ?></a>
+                    </div>
                 </td>
             </tr>
         <?php endforeach; ?>

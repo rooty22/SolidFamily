@@ -69,29 +69,25 @@
                 $mLots = $lotsByMember[$m['id']] ?? [];
             ?>
             <tr>
-                <td class="fw-bold">
-                    <?= member_serial_chip($m) ?>
-                    <a href="<?= url('admin/members/' . $m['id']) ?>" class="text-slate-900 hover:text-sky-600 text-decoration-none">
-                        <?= e($m['name']) ?>
-                    </a>
-                    <?php if (count($mLots) > 1): ?>
-                        <span class="badge bg-purple-100 text-purple-700 text-[10px] ms-1"><?= count($mLots) ?> حصص</span>
-                    <?php endif; ?>
-                </td>
+                <td><?= member_cell(
+                    (string) $m['name'],
+                    $m['serial_no'] ?? null,
+                    url('admin/members/' . $m['id']),
+                    null,
+                    count($mLots) > 1 ? ' <span class="badge bg-purple-100 text-purple-700 text-[10px] ms-1">' . count($mLots) . ' ' . e(is_rtl() ? 'حصص' : 'lots') . '</span>' : ''
+                ) ?></td>
                 <td class="font-numeric">
                     <span class="fw-bold"><?= number_format($m['shares_count']) ?></span>
                 </td>
                 <td class="font-numeric"><?= money($shareValue) ?></td>
                 <td class="font-numeric"><?= money($m['shares_count'] * $shareValue) ?></td>
                 <td class="text-end">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="btn btn-sm btn-soft-primary inline-flex items-center gap-1" data-bs-toggle="modal" data-bs-target="#manageLots<?= $m['id'] ?>" title="<?= is_rtl() ? 'إدارة حصص الأسهم (دمج / إلغاء / إضافة)' : 'Manage Lots' ?>">
-                            <i class="bi bi-stack"></i>
-                            <span><?= is_rtl() ? 'إدارة الحصص' : 'Lots' ?></span>
+                    <div class="row-actions">
+                        <button type="button" class="row-btn row-btn-edit row-btn-text" data-bs-toggle="modal" data-bs-target="#manageLots<?= $m['id'] ?>" title="<?= is_rtl() ? 'إدارة حصص الأسهم (دمج / إلغاء / إضافة)' : 'Manage Lots' ?>">
+                            <i class="bi bi-stack"></i> <?= is_rtl() ? 'إدارة الحصص' : 'Lots' ?>
                         </button>
-                        <button type="button" class="btn btn-sm btn-soft inline-flex items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#editShares<?= $m['id'] ?>">
-                            <i class="bi bi-pencil"></i>
-                            <span><?= is_rtl() ? 'تعديل الإجمالي' : 'Edit' ?></span>
+                        <button type="button" class="row-btn row-btn-view row-btn-text" data-bs-toggle="modal" data-bs-target="#editShares<?= $m['id'] ?>">
+                            <i class="bi bi-pencil"></i> <?= is_rtl() ? 'تعديل الإجمالي' : 'Edit' ?>
                         </button>
                     </div>
                 </td>
