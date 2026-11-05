@@ -40,6 +40,15 @@ class LoanRequestsController extends Controller
 
         $pager = paginate(array_reverse($requests));
 
+        // Approved requests whose loan was not issued yet: their number in the waiting list, and whether the share still
+        // has a loan being repaid (then the request keeps its number and waits for that loan to be settled).
+        $waiting = LoanRequest::waitingPositions();
+        foreach ($pager['items'] as &$item) {
+            $item['waiting_position'] = $waiting[(int) $item['id']] ?? null;
+            $item['blocking_loan'] = $item['waiting_position'] !== null ? LoanRequest::blockingLoan($item) : null;
+        }
+        unset($item);
+
         $this->view('admin/loan_requests/index', [
             'pageTitle' => __('loan_requests'),
             'requests' => $pager['items'],
@@ -58,7 +67,9 @@ class LoanRequestsController extends Controller
             $this->redirect('admin/loan-requests');
         }
         $member = Member::find($request['member_id']);
-        $queuePosition = $request['status'] === 'pending' ? LoanRequest::queuePosition((int) $id) : null;
+        $queuePosition = in_array($request['status'], ['pending', 'approved'], true) ? LoanRequest::queuePosition((int) $id) : null;
+        $issuedLoan = $request['status'] === 'approved' ? Loan::first(['loan_request_id' => (int) $id]) : null;
+        $blockingLoan = ($request['status'] === 'approved' && !$issuedLoan) ? LoanRequest::blockingLoan($request) : null;
 
         $shareValue = (float) (Setting::get('share_value', 1000) ?? 1000);
         $memberShares = (int) ($member['shares_count'] ?? 1);
@@ -77,7 +88,9 @@ class LoanRequestsController extends Controller
             'pageTitle' => __('loan_request_details', ['id' => $request['id']]),
             'request' => $request,
             'member' => $member,
-            'queuePosition' => $queuePosition,
+            'queuePosition' => $queuePosition ?: null,
+            'issuedLoan' => $issuedLoan,
+            'blockingLoan' => $blockingLoan,
             'reasonLabels' => $this->reasonLabels,
             'memberShares' => $memberShares,
             'memberCapital' => $memberCapital,
@@ -103,7 +116,19 @@ class LoanRequestsController extends Controller
             'reviewed_at' => date('Y-m-d H:i:s'),
         ]);
 
-        Notification::systemNotify($request['member_id'], 'تحديث طلب القرض', 'تمت الموافقة على طلب القرض الخاص بك، جاري تجهيز بيانات القرض.');
+        // The request joins the waiting list at the next free number. If the share still has a loan being repaid (for
+        // example a first request of the same share was already issued) there is nothing to prepare now: the request
+        // keeps its number and the loan can be issued once the current one is settled.
+        $position = LoanRequest::queuePosition((int) $id);
+        $blocking = LoanRequest::blockingLoan($request);
+        if ($blocking) {
+            Notification::systemNotify($request['member_id'], 'تحديث طلب القرض', 'تمت الموافقة على طلب القرض الخاص بك وترتيبك في قائمة الانتظار رقم #' . $position . '، وسيُصدر القرض بعد سداد قرضك الحالي رقم ' . $blocking['id'] . ' على نفس السهم.');
+            Session::flash('success', 'تمت الموافقة على الطلب وسُجّل في قائمة الانتظار برقم #' . $position . '. لا يمكن إصدار قرض ثانٍ على نفس السهم قبل سداد القرض القائم رقم ' . $blocking['id'] . '؛ يمكنك إصدار هذا القرض من صفحة الطلب بعد سداده.');
+            $this->redirect('admin/loan-requests/' . $id);
+            return;
+        }
+
+        Notification::systemNotify($request['member_id'], 'تحديث طلب القرض', 'تمت الموافقة على طلب القرض الخاص بك وترتيبك في قائمة الانتظار رقم #' . $position . '، جاري تجهيز بيانات القرض.');
 
         $this->redirect('admin/loans/create?request_id=' . $id);
     }

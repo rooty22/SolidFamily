@@ -48,6 +48,15 @@
                     <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;"><?= money($summary['grand_total']) ?></div>
                     <div class="text-sky-100/80 text-xs font-bold mt-1"><?= is_rtl() ? 'من ' . (int) $summary['grand_count'] . ' معاملة' : 'from ' . (int) $summary['grand_count'] . ' transactions' ?></div>
                 </div>
+                <!-- The real bank balance = everything received - loans paid out (the same figure as the dashboard card) -->
+                <div>
+                    <div class="flex items-center gap-2 text-emerald-200 text-xs font-bold mb-1">
+                        <i class="bi bi-wallet2"></i>
+                        <span><?= is_rtl() ? 'الرصيد الفعلي بالبنك' : 'Actual bank balance' ?></span>
+                    </div>
+                    <div class="font-numeric font-black" style="font-size: 2.1rem; line-height: 1.15;" dir="ltr"><?= money($summary['bank_balance']) ?></div>
+                    <div class="text-sky-100/80 text-xs font-bold mt-1"><?= is_rtl() ? 'الوارد − المصروف (كل المعاملات)' : 'Incoming − disbursed (all transactions)' ?></div>
+                </div>
                 <?php if (!empty($summary['filtered'])): ?>
                 <!-- Total of the filtered result, shown next to the overall one -->
                 <div>

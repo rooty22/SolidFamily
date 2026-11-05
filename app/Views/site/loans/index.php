@@ -110,6 +110,7 @@
                         <?php endif; ?>
                     </span>
                     <?php if ($r['queue_position']): ?><span class="d-block text-warning fw-bold"><i class="bi bi-people-fill"></i> <?= __('loan_queue_position', ['position' => (int) $r['queue_position']]) ?></span><?php endif; ?>
+                    <?php if (!empty($r['blocking_loan'])): ?><span class="d-block text-muted" style="font-size:12px;"><i class="bi bi-hourglass-split"></i> <?= is_rtl() ? 'تمت الموافقة على طلبك؛ سيُصدر القرض بعد سداد قرضك الحالي رقم ' . (int) $r['blocking_loan']['id'] . ' على نفس السهم.' : 'Your request is approved; the loan will be issued once your current loan #' . (int) $r['blocking_loan']['id'] . ' on the same share is repaid.' ?></span><?php endif; ?>
                 </div>
                 <span class="badge-status badge-<?= $v ?>"><?= $l ?></span>
             </div>

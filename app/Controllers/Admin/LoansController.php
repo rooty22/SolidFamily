@@ -104,10 +104,16 @@ class LoansController extends Controller
         $members = Member::withoutRegistrations(Member::all('name ASC'));
         $feePercent = (float) Setting::get('loan_admin_fee_percent', 0);
 
+        // An approved request whose share still has a loan being repaid cannot be issued yet: it waits in the list.
+        $blockingLoan = ($loanRequest && $loanRequest['status'] === 'approved' && !Loan::first(['loan_request_id' => (int) $loanRequest['id']]))
+            ? LoanRequest::blockingLoan($loanRequest) : null;
+
         $this->view('admin/loans/create', [
             'pageTitle' => __('add_loan'),
             'members' => $members,
             'loanRequest' => $loanRequest,
+            'blockingLoan' => $blockingLoan,
+            'queuePosition' => $loanRequest ? LoanRequest::queuePosition((int) $loanRequest['id']) : 0,
             'feePercent' => $feePercent,
             'reasonLabels' => $this->reasonLabels,
         ], 'admin/layout');
@@ -219,6 +225,14 @@ class LoansController extends Controller
 
         // The 6 months are counted up to the loan date (a back-dated entry is judged on that day, a future one on today).
         $elig = ShareLot::eligibilityDetails($lot, $targetMember, null, min($loanDate, date('Y-m-d')));
+        if (!$elig['is_eligible'] && $request && $elig['blockers'] === ['open_loan']) {
+            // Only the share's running loan stands in the way: the approved request is not refused, it waits (with its
+            // number in the waiting list) until that loan is settled.
+            $pos = LoanRequest::queuePosition((int) $request['id']);
+            Session::flash('error', 'الطلب رقم ' . $request['id'] . ' موافَق عليه ومسجّل في قائمة الانتظار' . ($pos ? ' برقم #' . $pos : '') . ': على ' . ShareLot::label($memberId, $lotId) . ' قرض قائم رقم ' . $elig['open_loan']['id'] . ' لم يُسدد بعد، ولا يمكن إصدار قرض ثانٍ على نفس السهم قبل سداده. يُصدر هذا القرض من صفحة الطلب بعد السداد.');
+            $this->redirect('admin/loan-requests/' . $request['id']);
+            return;
+        }
         if (!$elig['is_eligible']) {
             $messages = ShareLot::blockerMessages($elig, ShareLot::label($memberId, $lotId));
             Session::flash('error', 'لا يمكن إنشاء القرض على هذا السهم لعدم استيفاء الشروط: ' . implode(' ', $messages));

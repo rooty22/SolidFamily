@@ -92,6 +92,14 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
             <div class="card-panel bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
                 <form method="post" action="<?= url('admin/loans') ?>">
                     <?= csrf_field() ?>
+                    <?php if (!empty($blockingLoan)): ?>
+                        <div class="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs leading-relaxed">
+                            <div class="font-black mb-1"><i class="bi bi-hourglass-split"></i> <?= $isEn ? 'This request is waiting in the list' . (!empty($queuePosition) ? ' as #' . (int) $queuePosition : '') : 'هذا الطلب ينتظر في القائمة' . (!empty($queuePosition) ? ' برقم #' . (int) $queuePosition : '') ?></div>
+                            <?= $isEn
+                                ? 'This share still has a running loan (#' . (int) $blockingLoan['id'] . '). A second loan cannot be issued on the same share before it is repaid; the request keeps its number.'
+                                : 'على هذا السهم قرض قائم (رقم ' . (int) $blockingLoan['id'] . ') لم يُسدد بعد، ولا يمكن إصدار قرض ثانٍ على نفس السهم قبل سداده. يحتفظ الطلب برقمه ويمكن إصداره بعد السداد.' ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($loanRequest): ?>
                         <input type="hidden" name="loan_request_id" value="<?= $loanRequest['id'] ?>">
                         <?php if (!empty($loanRequest['lot_id'])): ?>
@@ -223,7 +231,7 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
                     </div>
 
                     <div class="pt-4 border-t border-slate-100 flex items-center gap-3">
-                        <button type="submit" class="btn btn-primary px-5 py-2.5 font-bold shadow-sm inline-flex items-center gap-2" <?= $requestLotId ? '' : ':disabled="memberId && !loadingLots && !(currentLot && currentLot.eligible)"' ?>>
+                        <button type="submit" class="btn btn-primary px-5 py-2.5 font-bold shadow-sm inline-flex items-center gap-2" <?= !empty($blockingLoan) ? 'disabled' : ($requestLotId ? '' : ':disabled="memberId && !loadingLots && !(currentLot && currentLot.eligible)"') ?>>
                             <i class="bi bi-check2-circle text-lg"></i>
                             <span><?= $isEn ? 'Approve & Generate Installments' : 'اعتماد القرض وجدولة الأقساط' ?></span>
                         </button>

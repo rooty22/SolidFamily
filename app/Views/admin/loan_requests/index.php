@@ -41,10 +41,26 @@
                 <td class="font-numeric font-bold text-slate-900"><?= money($r['amount_requested']) ?></td>
                 <td><span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold"><?= $reasonLabels[$r['reason']] ?? $r['reason'] ?></span></td>
                 <td class="text-xs text-slate-500 font-numeric"><bdi dir="ltr"><?= date_ar($r['created_at']) ?></bdi></td>
-                <td class="font-numeric font-bold"><?php if ($r['status'] === 'pending'): ?>#<?= array_search($r['id'], array_column($pendingOrder, 'id')) + 1 ?><?php else: ?>-<?php endif; ?></td>
+                <td class="font-numeric font-bold">
+                    <?php if ($r['status'] === 'pending'): ?>
+                        #<?= array_search($r['id'], array_column($pendingOrder, 'id')) + 1 ?>
+                    <?php elseif (($r['waiting_position'] ?? null) !== null): ?>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs" title="<?= is_rtl() ? 'ترتيبه في قائمة انتظار إصدار القرض' : 'Position in the loan disbursement waiting list' ?>"><i class="bi bi-hourglass-split"></i> #<?= (int) $r['waiting_position'] ?></span>
+                        <?php if (!empty($r['blocking_loan'])): ?>
+                            <span class="d-block text-[11px] text-slate-500 fw-normal mt-1"><?= is_rtl() ? 'بانتظار سداد القرض رقم ' . (int) $r['blocking_loan']['id'] : 'Waiting for loan #' . (int) $r['blocking_loan']['id'] . ' to be repaid' ?></span>
+                        <?php else: ?>
+                            <span class="d-block text-[11px] text-emerald-700 fw-normal mt-1"><?= is_rtl() ? 'جاهز لإصدار القرض' : 'Ready to issue' ?></span>
+                        <?php endif; ?>
+                    <?php elseif (!empty($r['loan_id'])): ?>
+                        <a href="<?= url('admin/loans/' . (int) $r['loan_id']) ?>" class="text-xs fw-bold text-decoration-none"><i class="bi bi-cash-coin"></i> <?= is_rtl() ? 'قرض #' . (int) $r['loan_id'] : 'Loan #' . (int) $r['loan_id'] ?></a>
+                    <?php else: ?>-<?php endif; ?>
+                </td>
                 <td><span class="badge-status badge-<?= $v ?>"><?= $l ?></span></td>
                 <td class="text-end">
                     <div class="row-actions">
+                        <?php if (($r['waiting_position'] ?? null) !== null && empty($r['blocking_loan'])): ?>
+                            <a href="<?= url('admin/loans/create?request_id=' . (int) $r['id']) ?>" class="row-btn row-btn-text" style="color:#047857;border-color:#a7f3d0;background:#ecfdf5;"><i class="bi bi-cash-coin"></i> <?= is_rtl() ? 'إصدار القرض' : 'Issue loan' ?></a>
+                        <?php endif; ?>
                         <a href="<?= url('admin/loan-requests/' . $r['id']) ?>" class="row-btn row-btn-edit row-btn-text"><i class="bi bi-clipboard-check"></i> <?= __('review') ?></a>
                     </div>
                 </td>

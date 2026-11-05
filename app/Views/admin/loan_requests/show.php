@@ -41,6 +41,31 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <!-- Left Column (Financing Details & Decision) -->
         <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+            <!-- Approved: the loan is issued from here (or waits in the list while the share's current loan is repaid) -->
+            <?php if ($request['status'] === 'approved'): ?>
+                <div class="card-panel space-y-3">
+                    <?php if (!empty($issuedLoan)): ?>
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <div class="text-sm font-bold text-emerald-800"><i class="bi bi-check-circle-fill text-emerald-600"></i> <?= is_rtl() ? 'تم إصدار القرض من هذا الطلب' : 'The loan was issued from this request' ?></div>
+                            <a href="<?= url('admin/loans/' . (int) $issuedLoan['id']) ?>" class="btn btn-soft font-bold text-xs"><i class="bi bi-cash-coin"></i> <?= is_rtl() ? 'فتح القرض #' . (int) $issuedLoan['id'] : 'Open loan #' . (int) $issuedLoan['id'] ?></a>
+                        </div>
+                    <?php elseif (!empty($blockingLoan)): ?>
+                        <div class="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs leading-relaxed">
+                            <div class="font-black mb-1"><i class="bi bi-hourglass-split"></i> <?= is_rtl() ? 'الطلب موافَق عليه وينتظر في القائمة' . ($queuePosition ? ' برقم #' . (int) $queuePosition : '') : 'Approved and waiting in the list' . ($queuePosition ? ' as #' . (int) $queuePosition : '') ?></div>
+                            <?= is_rtl()
+                                ? 'على هذا السهم قرض قائم (رقم ' . (int) $blockingLoan['id'] . ') لم يُسدد بعد، ولا يمكن إصدار قرض ثانٍ على نفس السهم قبل سداده. سيحتفظ الطلب برقمه، ويظهر زر «إصدار القرض» هنا بمجرد سداد القرض القائم.'
+                                : 'This share has a running loan (#' . (int) $blockingLoan['id'] . ') that is not repaid yet, and a second loan cannot be issued on the same share before it is. The request keeps its number and the "Issue loan" button appears here as soon as that loan is repaid.' ?>
+                            <div class="mt-2"><a href="<?= url('admin/loans/' . (int) $blockingLoan['id']) ?>" class="btn btn-soft font-bold text-xs"><i class="bi bi-cash-coin"></i> <?= is_rtl() ? 'عرض القرض القائم #' . (int) $blockingLoan['id'] : 'View running loan #' . (int) $blockingLoan['id'] ?></a></div>
+                        </div>
+                    <?php else: ?>
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <div class="text-sm font-bold text-slate-800"><i class="bi bi-hourglass-split text-amber-600"></i> <?= is_rtl() ? 'الطلب موافَق عليه ولم يُصدر قرضه بعد' . ($queuePosition ? ' (رقمه في القائمة #' . (int) $queuePosition . ')' : '') : 'Approved, loan not issued yet' . ($queuePosition ? ' (#' . (int) $queuePosition . ' in the list)' : '') ?></div>
+                            <a href="<?= url('admin/loans/create?request_id=' . (int) $request['id']) ?>" class="btn btn-primary font-bold text-xs"><i class="bi bi-cash-coin"></i> <?= is_rtl() ? 'إصدار القرض' : 'Issue loan' ?></a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             
             <!-- Loan Request Details Card -->
             <div class="card-panel space-y-6">

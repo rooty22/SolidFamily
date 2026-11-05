@@ -47,8 +47,11 @@ class TransactionsController extends Controller
 
         // The whole site's ledger is always shown (to match against the bank statement); with a filter applied,
         // the filtered result's own total is shown next to it.
-        $grand = Transaction::rawOne('SELECT COUNT(*) AS c, COALESCE(SUM(transactions.amount), 0) AS s FROM transactions JOIN members ON members.id = transactions.member_id');
-        $summary = ['filtered' => $filtered, 'grand_total' => (float) $grand['s'], 'grand_count' => (int) $grand['c'], 'count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => [], 'shares' => 0, 'members' => 0];
+        $grand = Transaction::rawOne("SELECT COUNT(*) AS c, COALESCE(SUM(transactions.amount), 0) AS s,
+            COALESCE(SUM(CASE WHEN transactions.category = 'loan_disbursement' THEN 0 ELSE transactions.amount END), 0) AS money_in,
+            COALESCE(SUM(CASE WHEN transactions.category = 'loan_disbursement' THEN transactions.amount ELSE 0 END), 0) AS money_out
+            FROM transactions JOIN members ON members.id = transactions.member_id");
+        $summary = ['filtered' => $filtered, 'grand_total' => (float) $grand['s'], 'bank_balance' => round((float) $grand['money_in'] - (float) $grand['money_out'], 2), 'grand_count' => (int) $grand['c'], 'count' => count($transactions), 'total' => 0.0, 'incoming' => 0.0, 'disbursed' => 0.0, 'byCategory' => [], 'shares' => 0, 'members' => 0];
         $sharesByMember = [];
         foreach ($transactions as $t) {
             // Shares of the filtered result: each member appearing in it is counted once, with the shares they hold.

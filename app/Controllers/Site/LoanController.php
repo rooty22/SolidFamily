@@ -45,6 +45,8 @@ class LoanController extends Controller
         foreach ($requests as &$r) {
             // Do not display queue position to the client until admin approval
             $r['queue_position'] = $r['status'] === 'approved' ? LoanRequest::queuePosition($r['id']) : null;
+            // Approved but the share still has a loan being repaid: the request keeps its number and waits for it.
+            $r['blocking_loan'] = $r['queue_position'] ? LoanRequest::blockingLoan($r) : null;
         }
         unset($r);
         $loans = Loan::forMember($member['id']);
