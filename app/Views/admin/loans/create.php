@@ -19,20 +19,19 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
     today: '<?= date('Y-m-d') ?>',
     feePaidAt: '<?= date('Y-m-d') ?>',
     feeTouched: false,
-    // The commission can only have been received between the loan date and today. The date picker (flatpickr) reads its
-    // limits once, so whenever the loan date changes its minimum and its value are moved by hand -- otherwise a loan
-    // dated in the past could only ever be given a commission date of today.
+    // The commission date has no lower limit (it may be paid before or after the loan) and ends today. While the admin has
+    // not picked a day himself it follows the loan date; the picker (flatpickr) is updated by hand because it reads
+    // its settings only once.
     syncFeeDate() {
         const el = this.$refs.feePaidAt;
         const fp = el && el._flatpickr;
         if (!fp) { setTimeout(() => this.syncFeeDate(), 250); return; }
         if (this.loanDate > this.today) { this.feePaidNow = false; }
-        const min = this.loanDate && this.loanDate <= this.today ? this.loanDate : this.today;
-        fp.set('minDate', min);
         fp.set('maxDate', this.today);
-        if (!this.feeTouched || this.feePaidAt < min || this.feePaidAt > this.today) {
-            this.feePaidAt = min;
-            fp.setDate(min, false);
+        if (!this.feeTouched || this.feePaidAt > this.today) {
+            const d = this.loanDate && this.loanDate <= this.today ? this.loanDate : this.today;
+            this.feePaidAt = d;
+            fp.setDate(d, false);
         }
     },
     async loadLots() {

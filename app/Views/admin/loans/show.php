@@ -219,7 +219,7 @@ $isEn = is_en();
                         </div>
                         <div>
                             <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></label>
-                            <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                            <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
                         </div>
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
@@ -331,7 +331,7 @@ $isEn = is_en();
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ سداد العمولة' : 'Payment date' ?></label>
-                        <input type="date" name="fee_paid_at" class="form-control font-numeric font-bold" value="<?= e(\App\Models\Loan::feeIsPaid($loan) && !empty($loan['fee_paid_at']) ? $loan['fee_paid_at'] : date('Y-m-d')) ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="fee_paid_at" class="form-control font-numeric font-bold" value="<?= e(\App\Models\Loan::feeIsPaid($loan) && !empty($loan['fee_paid_at']) ? $loan['fee_paid_at'] : date('Y-m-d')) ?>" max="<?= date('Y-m-d') ?>" required>
                         <p class="text-[11px] text-muted mb-0 mt-1.5"><?= is_rtl() ? 'يوم استلام العمولة فعلياً (لا يمكن أن يكون في المستقبل). يُسجَّل قيدها في المعاملات المالية بهذا التاريخ.' : 'The day the commission was actually received (not in the future). It is booked in the ledger on this date.' ?></p>
                     </div>
                 </div>
@@ -367,7 +367,7 @@ $isEn = is_en();
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></label>
-                        <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= e(substr((string) ($i['paid_at'] ?: date('Y-m-d')), 0, 10)) ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= e(substr((string) ($i['paid_at'] ?: date('Y-m-d')), 0, 10)) ?>" max="<?= date('Y-m-d') ?>" required>
                     </div>
                     <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>

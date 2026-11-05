@@ -177,8 +177,8 @@ class LoansController extends Controller
         $feePaidAt = null;
         if (!empty($data['fee_paid_now']) && $feeAmount > 0) {
             $feePaidAt = $data['fee_paid_at'] !== '' ? $this->parseDate($data['fee_paid_at']) : $loanDate;
-            if ($feePaidAt === null || $feePaidAt > date('Y-m-d') || $feePaidAt < $loanDate) {
-                Session::flash('error', $feePaidAt === null ? 'تاريخ سداد العمولة غير صحيح.' : ($feePaidAt > date('Y-m-d') ? 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.' : 'تاريخ سداد العمولة لا يمكن أن يسبق تاريخ القرض (' . date_ar($loanDate) . ').'));
+            if ($feePaidAt === null || $feePaidAt > date('Y-m-d')) {
+                Session::flash('error', $feePaidAt === null ? 'تاريخ سداد العمولة غير صحيح.' : 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.');
                 $this->redirect($retry);
                 return;
             }
@@ -371,10 +371,6 @@ class LoansController extends Controller
             }
             if ($paidAt > date('Y-m-d')) {
                 Session::flash('error', 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.');
-                $this->redirect($back);
-            }
-            if ($paidAt < $loan['loan_date']) {
-                Session::flash('error', 'تاريخ سداد العمولة لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
                 $this->redirect($back);
             }
         }
@@ -571,10 +567,6 @@ class LoansController extends Controller
                 }
             }
         }
-        if ($paymentDate < $loan['loan_date']) {
-            Session::flash('error', 'تاريخ السداد لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
-            $this->redirect($back);
-        }
 
         $installmentId = (int) $data['installment_id'];
         $amount = round((float) $data['amount'], 2);
@@ -769,7 +761,7 @@ class LoansController extends Controller
             $this->redirect('admin/loans/' . $id);
         }
 
-        // The day the money was really paid: chosen here, between the loan date and today. Left empty, the day already
+        // The day the money was really paid: chosen here (any day up to today, even one before the loan date). Left empty, the day already
         // recorded is kept (editing an amount never moves a payment to today).
         $existingTx = Transaction::first([
             'member_id' => (int) $loan['member_id'],
@@ -785,10 +777,6 @@ class LoansController extends Controller
             }
             if ($payDate > date('Y-m-d')) {
                 Session::flash('error', 'تاريخ السداد لا يمكن أن يكون في المستقبل.');
-                $this->redirect('admin/loans/' . $id);
-            }
-            if ($payDate < $loan['loan_date']) {
-                Session::flash('error', 'تاريخ السداد لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
                 $this->redirect('admin/loans/' . $id);
             }
         } else {
