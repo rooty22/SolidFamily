@@ -366,6 +366,10 @@ $isEn = is_en();
                         <span class="font-numeric font-extrabold text-slate-900"><?= money($i['amount']) ?></span>
                     </div>
                     <div>
+                        <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'تاريخ السداد' : 'Payment Date' ?></label>
+                        <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= e(substr((string) ($i['paid_at'] ?: date('Y-m-d')), 0, 10)) ?>" min="<?= e($loan['loan_date']) ?>" max="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div>
                         <label class="form-label text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'المبلغ المسدد الفعلي' : 'Actual Paid Amount' ?></label>
                         <input type="number" step="0.01" min="0" max="<?= (float) $i['amount'] ?>" name="amount_paid" class="form-control text-sm font-numeric font-bold" value="<?= (float) $i['amount_paid'] ?>" required>
                         <p class="text-[11px] text-muted mb-0 mt-1.5">

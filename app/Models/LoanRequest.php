@@ -11,7 +11,7 @@ class LoanRequest extends Model
     public static function withMember(array $conditions = []): array
     {
         [$whereSql, $params] = self::joinWhere($conditions);
-        $sql = 'SELECT loan_requests.*, members.name as member_name, members.mobile as member_mobile, members.serial_no as member_serial
+        $sql = 'SELECT loan_requests.*, members.name as member_name, members.mobile as member_mobile, members.serial_no as member_serial, members.uid as member_uid
                 FROM loan_requests JOIN members ON members.id = loan_requests.member_id'
                 . ($whereSql ? " WHERE $whereSql" : '') . ' ORDER BY loan_requests.created_at ASC';
         return self::raw($sql, $params);

@@ -229,9 +229,27 @@ class LoansController extends Controller
         $pdo = Database::connection();
         $pdo->beginTransaction();
         try {
+            // A loan the admin opens himself needs no review: it is recorded in the requests list as already approved
+            // (a member's own request stays "pending" until the admin approves it).
+            $requestId = $data['loan_request_id'] !== '' ? (int) $data['loan_request_id'] : null;
+            if ($requestId === null) {
+                $requestId = (int) LoanRequest::create([
+                    'member_id' => $memberId,
+                    'lot_id' => $lotId,
+                    'amount_requested' => $amount,
+                    'reason' => $data['reason'],
+                    'reason_other_text' => $data['reason'] === 'other' ? $data['reason_other_text'] : null,
+                    'installments_months' => $installmentsCount,
+                    'agreed_terms' => 1,
+                    'status' => 'approved',
+                    'admin_note' => 'قرض أضافه المشرف مباشرة',
+                    'reviewed_by' => current_admin_id(),
+                    'reviewed_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
             $loanId = Loan::create([
                 'member_id' => $memberId,
-                'loan_request_id' => $data['loan_request_id'] !== '' ? (int) $data['loan_request_id'] : null,
+                'loan_request_id' => $requestId,
                 'lot_id' => $lotId,
                 'amount' => $amount,
                 'reason' => $data['reason'],
@@ -751,6 +769,32 @@ class LoansController extends Controller
             $this->redirect('admin/loans/' . $id);
         }
 
+        // The day the money was really paid: chosen here, between the loan date and today. Left empty, the day already
+        // recorded is kept (editing an amount never moves a payment to today).
+        $existingTx = Transaction::first([
+            'member_id' => (int) $loan['member_id'],
+            'category' => 'loan_installment',
+            'related_id' => (int) $installmentId,
+        ]);
+        $raw = trim((string) ($data['payment_date'] ?? ''));
+        if ($raw !== '') {
+            $payDate = $this->parseDate($raw);
+            if ($payDate === null) {
+                Session::flash('error', 'تاريخ السداد غير صحيح.');
+                $this->redirect('admin/loans/' . $id);
+            }
+            if ($payDate > date('Y-m-d')) {
+                Session::flash('error', 'تاريخ السداد لا يمكن أن يكون في المستقبل.');
+                $this->redirect('admin/loans/' . $id);
+            }
+            if ($payDate < $loan['loan_date']) {
+                Session::flash('error', 'تاريخ السداد لا يمكن أن يسبق تاريخ القرض (' . date_ar($loan['loan_date']) . ').');
+                $this->redirect('admin/loans/' . $id);
+            }
+        } else {
+            $payDate = substr((string) ($existingTx['transaction_date'] ?? $installment['paid_at'] ?? ''), 0, 10) ?: date('Y-m-d');
+        }
+
         $pdo = Database::connection();
         $pdo->beginTransaction();
         try {
@@ -770,17 +814,12 @@ class LoansController extends Controller
                 LoanInstallment::update((int) $installmentId, [
                     'amount_paid' => $newPaid,
                     'status' => $status,
-                    'paid_at' => $status === 'paid' ? ($installment['paid_at'] ?: date('Y-m-d H:i:s')) : null,
+                    'paid_at' => $payDate . ' 00:00:00',
                 ]);
-                $tx = Transaction::first([
-                    'member_id' => (int) $loan['member_id'],
-                    'category' => 'loan_installment',
-                    'related_id' => (int) $installmentId,
-                ]);
-                if ($tx) {
-                    Transaction::update($tx['id'], ['amount' => $newPaid]);
+                if ($existingTx) {
+                    Transaction::update($existingTx['id'], ['amount' => $newPaid, 'transaction_date' => $payDate]);
                 } else {
-                    Transaction::record((int) $loan['member_id'], 'loan_installment', (int) $installmentId, $newPaid, current_admin_id(), 'سداد قسط رقم ' . $installment['installment_number']);
+                    Transaction::record((int) $loan['member_id'], 'loan_installment', (int) $installmentId, $newPaid, current_admin_id(), 'سداد قسط رقم ' . $installment['installment_number'], $payDate);
                 }
             }
 

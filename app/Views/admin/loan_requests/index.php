@@ -3,11 +3,21 @@
         <h1 class="text-xl font-bold text-slate-900"><?= __('loan_requests_title') ?></h1>
         <p class="text-xs text-slate-500 mt-0.5"><?= __('loan_requests_desc') ?></p>
     </div>
-    <div class="btn-group">
-        <a href="<?= url('admin/loan-requests') ?>" class="btn <?= $status === '' ? 'btn-primary' : 'btn-soft' ?>"><?= __('all') ?></a>
-        <a href="<?= url('admin/loan-requests?status=pending') ?>" class="btn <?= $status === 'pending' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_pending') ?></a>
-        <a href="<?= url('admin/loan-requests?status=approved') ?>" class="btn <?= $status === 'approved' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_approved') ?></a>
-        <a href="<?= url('admin/loan-requests?status=rejected') ?>" class="btn <?= $status === 'rejected' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_rejected') ?></a>
+    <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+        <form method="get" action="<?= url('admin/loan-requests') ?>" class="flex items-center gap-2">
+            <div class="search-box" style="min-width:260px;">
+                <i class="bi bi-search"></i>
+                <input type="text" name="q" class="form-control" placeholder="<?= __('search_by_member_loan') ?>" value="<?= e($q ?? '') ?>">
+            </div>
+            <?php if ($status !== ''): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>
+        </form>
+        <?php $qs = ($q ?? '') !== '' ? 'q=' . urlencode($q) : ''; ?>
+        <div class="btn-group">
+            <a href="<?= url('admin/loan-requests' . ($qs ? '?' . $qs : '')) ?>" class="btn <?= $status === '' ? 'btn-primary' : 'btn-soft' ?>"><?= __('all') ?></a>
+            <a href="<?= url('admin/loan-requests?status=pending' . ($qs ? '&' . $qs : '')) ?>" class="btn <?= $status === 'pending' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_pending') ?></a>
+            <a href="<?= url('admin/loan-requests?status=approved' . ($qs ? '&' . $qs : '')) ?>" class="btn <?= $status === 'approved' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_approved') ?></a>
+            <a href="<?= url('admin/loan-requests?status=rejected' . ($qs ? '&' . $qs : '')) ?>" class="btn <?= $status === 'rejected' ? 'btn-primary' : 'btn-soft' ?>"><?= __('status_rejected') ?></a>
+        </div>
     </div>
 </div>
 

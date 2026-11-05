@@ -26,7 +26,17 @@ class LoanRequestsController extends Controller
         $conditions = $status ? ['loan_requests.status' => $status] : [];
         $requests = LoanRequest::withMember($conditions);
 
+        // The queue position is counted over ALL pending requests, so it stays correct while a search narrows the list.
         $pendingOrder = array_values(array_filter($requests, fn($r) => $r['status'] === 'pending'));
+
+        $q = trim((string) $this->input('q', ''));
+        if ($q !== '') {
+            $code = ltrim($q, '#');
+            $requests = array_values(array_filter($requests, fn($r) => mb_stripos((string) $r['member_name'], $q) !== false
+                || str_contains((string) $r['member_mobile'], $q)
+                || (ctype_digit($code) && (string) ($r['member_serial'] ?? '') === $code)
+                || strcasecmp((string) ($r['member_uid'] ?? ''), $q) === 0));
+        }
 
         $pager = paginate(array_reverse($requests));
 
@@ -36,6 +46,7 @@ class LoanRequestsController extends Controller
             'pager' => $pager,
             'pendingOrder' => $pendingOrder,
             'status' => $status,
+            'q' => $q,
             'reasonLabels' => $this->reasonLabels,
         ], 'admin/layout');
     }
