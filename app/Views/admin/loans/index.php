@@ -113,7 +113,7 @@
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="fee_status" value="paid">
                                         <input type="hidden" name="redirect_to" value="<?= e('admin/loans' . ($_SERVER['QUERY_STRING'] ?? '' ? '?' . $_SERVER['QUERY_STRING'] : '')) ?>">
-                                        <input type="date" name="fee_paid_at" class="form-control form-control-sm font-numeric" style="width:135px" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+                                        <input type="date" name="fee_paid_at" class="form-control form-control-sm font-numeric" style="width:135px" value="<?= date('Y-m-d') ?>" required>
                                         <button type="submit" class="btn btn-sm btn-success py-0 px-2 font-bold"><?= is_rtl() ? 'تأكيد' : 'OK' ?></button>
                                     </form>
                                 </div>

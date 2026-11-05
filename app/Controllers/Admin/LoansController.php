@@ -177,8 +177,8 @@ class LoansController extends Controller
         $feePaidAt = null;
         if (!empty($data['fee_paid_now']) && $feeAmount > 0) {
             $feePaidAt = $data['fee_paid_at'] !== '' ? $this->parseDate($data['fee_paid_at']) : $loanDate;
-            if ($feePaidAt === null || $feePaidAt > date('Y-m-d')) {
-                Session::flash('error', $feePaidAt === null ? 'تاريخ سداد العمولة غير صحيح.' : 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.');
+            if ($feePaidAt === null || $feePaidAt > date('Y-m-d', strtotime('+5 years'))) {
+                Session::flash('error', $feePaidAt === null ? 'تاريخ سداد العمولة غير صحيح.' : 'تاريخ سداد العمولة بعيد جداً في المستقبل.');
                 $this->redirect($retry);
                 return;
             }
@@ -369,8 +369,8 @@ class LoansController extends Controller
                     $this->redirect($back);
                 }
             }
-            if ($paidAt > date('Y-m-d')) {
-                Session::flash('error', 'تاريخ سداد العمولة لا يمكن أن يكون في المستقبل.');
+            if ($paidAt > date('Y-m-d', strtotime('+5 years'))) {
+                Session::flash('error', 'تاريخ سداد العمولة بعيد جداً في المستقبل.');
                 $this->redirect($back);
             }
         }
@@ -546,7 +546,7 @@ class LoansController extends Controller
         $validator = Validator::make($data)
             ->required('installment_id', 'القسط')->integer('installment_id', 'القسط', 1)
             ->required('amount', 'المبلغ')->decimal('amount', 'المبلغ', 0.01, 10000000)
-            ->date('payment_date', 'السداد');
+            ->date('payment_date', 'السداد', 1825);
         if ($validator->fails()) {
             Session::flash('error', $validator->firstError());
             $this->redirect($back);
@@ -761,7 +761,7 @@ class LoansController extends Controller
             $this->redirect('admin/loans/' . $id);
         }
 
-        // The day the money was really paid: chosen here (any day up to today, even one before the loan date). Left empty, the day already
+        // The day the money was really paid: chosen here (any day: before the loan date, today or a coming date). Left empty, the day already
         // recorded is kept (editing an amount never moves a payment to today).
         $existingTx = Transaction::first([
             'member_id' => (int) $loan['member_id'],
@@ -775,8 +775,8 @@ class LoansController extends Controller
                 Session::flash('error', 'تاريخ السداد غير صحيح.');
                 $this->redirect('admin/loans/' . $id);
             }
-            if ($payDate > date('Y-m-d')) {
-                Session::flash('error', 'تاريخ السداد لا يمكن أن يكون في المستقبل.');
+            if ($payDate > date('Y-m-d', strtotime('+5 years'))) {
+                Session::flash('error', 'تاريخ السداد بعيد جداً في المستقبل.');
                 $this->redirect('admin/loans/' . $id);
             }
         } else {

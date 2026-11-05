@@ -19,19 +19,15 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
     today: '<?= date('Y-m-d') ?>',
     feePaidAt: '<?= date('Y-m-d') ?>',
     feeTouched: false,
-    // The commission date has no lower limit (it may be paid before or after the loan) and ends today. While the admin has
-    // not picked a day himself it follows the loan date; the picker (flatpickr) is updated by hand because it reads
-    // its settings only once.
+    // The commission date is free (before / after the loan, today or a coming day). While the admin has not picked a
+    // day himself it follows the loan date; the picker (flatpickr) is updated by hand because it reads its settings once.
     syncFeeDate() {
         const el = this.$refs.feePaidAt;
         const fp = el && el._flatpickr;
         if (!fp) { setTimeout(() => this.syncFeeDate(), 250); return; }
-        if (this.loanDate > this.today) { this.feePaidNow = false; }
-        fp.set('maxDate', this.today);
-        if (!this.feeTouched || this.feePaidAt > this.today) {
-            const d = this.loanDate && this.loanDate <= this.today ? this.loanDate : this.today;
-            this.feePaidAt = d;
-            fp.setDate(d, false);
+        if (!this.feeTouched) {
+            this.feePaidAt = this.loanDate || this.today;
+            fp.setDate(this.feePaidAt, false);
         }
     },
     async loadLots() {
@@ -205,7 +201,7 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
                             </div>
 
                             <!-- The commission is NOT assumed received: tick this only if it was already paid, with the day it was received -->
-                            <div class="col-12" x-show="parseFloat(adminFeeAmount) > 0 && loanDate <= today" x-cloak>
+                            <div class="col-12" x-show="parseFloat(adminFeeAmount) > 0" x-cloak>
                                 <div class="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
                                     <div class="form-check mb-0">
                                         <input class="form-check-input" type="checkbox" name="fee_paid_now" value="1" id="feePaidNow" x-model="feePaidNow">
@@ -216,7 +212,7 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
                                     </div>
                                     <div class="mt-2" x-show="feePaidNow" x-cloak>
                                         <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Commission payment date' : 'تاريخ استلام العمولة' ?></label>
-                                        <input type="date" name="fee_paid_at" x-ref="feePaidAt" class="form-control text-sm font-numeric" x-model="feePaidAt" @change="feeTouched = true" max="<?= date('Y-m-d') ?>" :required="feePaidNow">
+                                        <input type="date" name="fee_paid_at" x-ref="feePaidAt" class="form-control text-sm font-numeric" x-model="feePaidAt" @change="feeTouched = true" :required="feePaidNow">
                                     </div>
                                     <div class="text-[11px] text-slate-500 mt-1.5">
                                         <?= $isEn ? 'Leave unticked if it has not been paid yet; you can record the payment and its date later from the loan page.' : 'اتركها بدون تأشير إن لم تُسدَّد بعد؛ يمكنك تسجيل السداد وتاريخه لاحقاً من صفحة القرض أو من قائمة القروض.' ?>
