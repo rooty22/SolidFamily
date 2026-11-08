@@ -174,6 +174,8 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/loan-requests/{id}', [LoanRequestsController::class, 'show']);
     $router->post('/loan-requests/{id}/approve', [LoanRequestsController::class, 'approve']);
     $router->post('/loan-requests/{id}/reject', [LoanRequestsController::class, 'reject']);
+    $router->post('/loan-requests/bulk-delete', [LoanRequestsController::class, 'bulkDelete']);
+    $router->post('/loan-requests/{id}/delete', [LoanRequestsController::class, 'destroy']);
 
     $router->get('/loans', [LoansController::class, 'index']);
     $router->get('/loans/create', [LoansController::class, 'create']);

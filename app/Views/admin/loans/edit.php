@@ -52,6 +52,19 @@ $isLocked = ((float) $loan['amount_paid'] > 0);
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Loan Start Date' : 'تاريخ بدء القرض' ?> <span class="text-rose-500">*</span></label>
+                    <input type="date" name="loan_date" class="form-control font-numeric text-base font-bold <?= $isLocked ? 'bg-slate-100' : '' ?>" value="<?= e($loan['loan_date']) ?>" <?= $isLocked ? 'readonly' : '' ?> required>
+                    <span class="text-[11px] text-slate-400 mt-1 block">
+                        <?php if ($isLocked): ?>
+                            <?= $isEn ? 'Locked due to active payment records' : 'مقفل لوجود دفعات مسددة' ?>
+                        <?php else: ?>
+                            <?= $isEn ? 'Changing it rebuilds the installment schedule from the new date.' : 'تغييره يعيد بناء جدول الأقساط من التاريخ الجديد.' ?>
+                        <?php endif; ?>
+                        · <?= $isEn ? 'Actually recorded on' : 'سُجّل فعلياً في' ?> <bdi dir="ltr"><?= date_ar($loan['created_at'], 'd/m/Y H:i') ?></bdi>
+                    </span>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Installments Count (Months)' : 'عدد الأقساط' ?> <span class="text-rose-500">*</span></label>
                     <input type="number" name="installments_count" class="form-control font-numeric text-base font-bold <?= $isLocked ? 'bg-slate-100' : '' ?>" value="<?= $loan['installments_count'] ?>" <?= $isLocked ? 'readonly' : '' ?> min="1" max="60" required>
                     <?php if ($isLocked): ?>

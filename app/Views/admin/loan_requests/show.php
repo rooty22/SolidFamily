@@ -34,6 +34,10 @@ $monthlyEstimate = (float) $request['amount_requested'] / $months;
                 <i class="bi bi-person-badge text-sky-600"></i>
                 <span><?= __('full_member_profile') ?></span>
             </a>
+            <form method="post" action="<?= url('admin/loan-requests/' . (int) $request['id'] . '/delete') ?>" class="m-0" data-confirm="<?= e(is_rtl() ? 'حذف طلب القرض رقم ' . (int) $request['id'] . ' نهائياً؟' . (!empty($issuedLoan) ? ' القرض الذي صدر منه يبقى كما هو.' : '') : 'Delete loan request #' . (int) $request['id'] . ' permanently?') ?>">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-sm btn-soft inline-flex items-center gap-1.5 font-bold" style="color:#b91c1c;"><i class="bi bi-trash3"></i> <span><?= is_rtl() ? 'حذف الطلب' : 'Delete' ?></span></button>
+            </form>
         </div>
     </div>
 

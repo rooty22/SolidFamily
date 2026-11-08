@@ -247,6 +247,19 @@ class LoansController extends Controller
             // (a member's own request stays "pending" until the admin approves it).
             $requestId = $data['loan_request_id'] !== '' ? (int) $data['loan_request_id'] : null;
             if ($requestId === null) {
+                // If this member already has an approved request for this share that is still waiting for its loan, the
+                // loan completes THAT request (otherwise the old request would stay in the waiting list forever).
+                $waiting = LoanRequest::raw(
+                    "SELECT lr.id FROM loan_requests lr LEFT JOIN loans l ON l.loan_request_id = lr.id
+                     WHERE lr.member_id = ? AND (lr.lot_id = ? OR lr.lot_id IS NULL) AND lr.status = 'approved' AND l.id IS NULL
+                     ORDER BY COALESCE(lr.reviewed_at, lr.created_at) ASC, lr.id ASC LIMIT 1",
+                    [$memberId, $lotId]
+                );
+                if ($waiting) {
+                    $requestId = (int) $waiting[0]['id'];
+                }
+            }
+            if ($requestId === null) {
                 $requestId = (int) LoanRequest::create([
                     'member_id' => $memberId,
                     'lot_id' => $lotId,
@@ -472,6 +485,7 @@ class LoansController extends Controller
         $validator = $this->reasonValidator($data);
         if ($editable) {
             $validator
+                ->date('loan_date', 'بدء القرض', 366)
                 ->required('amount', 'قيمة القرض')->decimal('amount', 'قيمة القرض', 1, 10000000)
                 ->required('installments_count', 'عدد الأقساط')->integer('installments_count', 'عدد الأقساط', 1, 60);
         }
@@ -489,6 +503,15 @@ class LoansController extends Controller
         $pdo->beginTransaction();
         try {
             if ($editable) {
+                // The start date can be corrected while nothing has been paid: the whole installment schedule is rebuilt
+                // from it and the disbursement entry of the ledger moves to it. The day the loan was REALLY recorded
+                // (created_at) is never touched.
+                $newDate = trim((string) ($data['loan_date'] ?? '')) !== '' ? $this->parseDate(trim((string) $data['loan_date'])) : null;
+                $loanDate = $newDate ?? $loan['loan_date'];
+                if ($loanDate !== $loan['loan_date']) {
+                    $update['loan_date'] = $loanDate;
+                    Transaction::updateWhere(['related_id' => (int) $id, 'category' => 'loan_disbursement'], ['transaction_date' => $loanDate]);
+                }
                 $amount = round((float) $data['amount'], 2);
                 $installmentsCount = (int) $data['installments_count'];
                 $installmentValue = round($amount / $installmentsCount, 2);
@@ -523,7 +546,7 @@ class LoansController extends Controller
                     LoanInstallment::create([
                         'loan_id' => $id,
                         'installment_number' => $i,
-                        'due_date' => add_months($loan['loan_date'], $i),
+                        'due_date' => add_months($loanDate, $i),
                         'amount' => $value,
                         'amount_paid' => 0,
                         'status' => 'unpaid',

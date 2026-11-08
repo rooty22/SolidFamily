@@ -165,6 +165,9 @@ $isEn = is_en();
                     <i class="bi bi-calendar-check text-sky-600"></i>
                     <span><?= __('loan_date') ?>:</span>
                     <strong class="font-numeric text-slate-700"><?= date_ar($loan['loan_date']) ?></strong>
+                    <?php if (!empty($loan['created_at']) && substr((string) $loan['created_at'], 0, 10) !== (string) $loan['loan_date']): ?>
+                        <span class="text-[11px] text-slate-400" title="<?= is_rtl() ? 'اليوم الذي سُجّل فيه القرض فعلياً في النظام' : 'The day the loan was actually recorded in the system' ?>">· <?= is_rtl() ? 'سُجّل فعلياً' : 'recorded' ?> <bdi dir="ltr"><?= date_ar($loan['created_at']) ?></bdi></span>
+                    <?php endif; ?>
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
                     <i class="bi bi-layers-half text-emerald-600"></i>

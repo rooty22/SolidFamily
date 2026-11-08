@@ -10,6 +10,36 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
     months: <?= $defaultMonths ?>,
     feePercent: <?= $defaultFee ?>,
     memberId: '<?= $loanRequest ? (int) $loanRequest['member_id'] : '' ?>',
+    memberSearch: '',
+    loanRequestMode: <?= $loanRequest ? 'true' : 'false' ?>,
+    allMembers: <?= e(json_encode(array_map(fn($m) => [
+        'id' => (int) $m['id'],
+        'label' => (!empty($m['serial_no']) ? '#' . (int) $m['serial_no'] . ' - ' : '') . $m['name'] . ' (' . $m['mobile'] . ') - ' . ($m['national_id'] ?? ''),
+        'q' => ($m['name'] ?? '') . ' ' . ($m['mobile'] ?? '') . ' ' . ($m['national_id'] ?? '') . ' ' . ($m['uid'] ?? '') . ' #' . ($m['serial_no'] ?? ''),
+    ], $members), JSON_UNESCAPED_UNICODE)) ?>,
+    // Arabic-friendly comparison: ignores diacritics and the common alef / ya / ta-marbuta spelling variants.
+    norm(t) {
+        return String(t || '').toLowerCase()
+            .replace(/[ً-ْـ]/g, '')
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/\s+/g, ' ').trim();
+    },
+    get filteredMembers() {
+        const q = this.norm(this.memberSearch);
+        if (!q) { return this.allMembers; }
+        const words = q.split(' ');
+        return this.allMembers.filter(m => String(m.id) === String(this.memberId) || words.every(w => this.norm(m.q).includes(w)));
+    },
+    syncMemberSelect() {
+        this.$nextTick(() => { const s = this.$refs.memberSelect; if (s) { s.value = String(this.memberId); } });
+    },
+    pickFirstMatch() {
+        const q = this.norm(this.memberSearch);
+        const hit = this.allMembers.find(m => this.norm(m.q).includes(q));
+        if (q && hit) { this.memberId = String(hit.id); this.syncMemberSelect(); this.loadLots(); }
+    },
     loanDate: '<?= date('Y-m-d') ?>',
     requestLotId: <?= $requestLotId ?>,
     lots: [],
@@ -64,7 +94,7 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
         let fee = parseFloat(this.adminFeeAmount) || 0;
         return (a + fee).toFixed(2);
     }
-}" x-init="if (memberId) { loadLots(); } $watch('loanDate', () => syncFeeDate()); setTimeout(() => syncFeeDate(), 300);">
+}" x-init="syncMemberSelect(); if (memberId) { loadLots(); } $watch('loanDate', () => syncFeeDate()); setTimeout(() => syncFeeDate(), 300);">
     <!-- Header Banner -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
@@ -129,14 +159,21 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
                             <?php endif; ?>
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Family Member' : 'المشترك المستفيد' ?> <span class="text-rose-500">*</span></label>
-                                <select name="member_id" class="form-select text-sm" x-model="memberId" @change="loadLots()" required <?= $loanRequest ? 'disabled' : '' ?>>
+                                <?php if (!$loanRequest): ?>
+                                <div class="search-box mb-2" style="width:100%;">
+                                    <i class="bi bi-search"></i>
+                                    <input type="text" x-model="memberSearch" @input="syncMemberSelect(); if (filteredMembers.filter(m => String(m.id) !== String(memberId)).length === 1 && !memberId) { pickFirstMatch(); }" @keydown.enter.prevent="pickFirstMatch()"
+                                           class="form-control text-sm" autocomplete="off"
+                                           placeholder="<?= $isEn ? 'Search by name, serial, mobile or ID...' : 'ابحث بالاسم أو الرقم التسلسلي أو الجوال أو الهوية...' ?>">
+                                </div>
+                                <?php endif; ?>
+                                <select name="member_id" x-ref="memberSelect" class="form-select text-sm" x-model="memberId" @change="loadLots()" required <?= $loanRequest ? 'disabled' : '' ?>>
                                     <option value=""><?= $isEn ? '-- Select Member --' : '-- اختر المشترك المستفيد --' ?></option>
-                                    <?php foreach ($members as $m): ?>
-                                        <option value="<?= $m['id'] ?>" <?= ($loanRequest && $loanRequest['member_id'] == $m['id']) ? 'selected' : '' ?>>
-                                            <?= !empty($m['serial_no']) ? '#' . (int) $m['serial_no'] . ' - ' : '' ?><?= e($m['name']) ?> (<?= e($m['mobile']) ?>) - <?= e($m['national_id'] ?? '') ?>
-                                        </option>
-                                    <?php endforeach; ?>
+                                    <template x-for="m in filteredMembers" :key="m.id">
+                                        <option :value="String(m.id)" x-text="m.label"></option>
+                                    </template>
                                 </select>
+                                <div class="text-[11px] text-slate-500 mt-1" x-show="memberSearch && !loanRequestMode"><span x-text="filteredMembers.length"></span> <?= $isEn ? 'matching members' : 'مشترك مطابق' ?></div>
                                 <?php if ($loanRequest): ?>
                                     <input type="hidden" name="member_id" value="<?= $loanRequest['member_id'] ?>">
                                 <?php endif; ?>

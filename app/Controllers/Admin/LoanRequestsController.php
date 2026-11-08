@@ -22,12 +22,27 @@ class LoanRequestsController extends Controller
 
     public function index(): void
     {
-        $status = $this->input('status', '');
-        $conditions = $status ? ['loan_requests.status' => $status] : [];
-        $requests = LoanRequest::withMember($conditions);
+        $status = (string) $this->input('status', '');
+        // "waiting" = approved but the loan was not issued yet (the waiting list for disbursement).
+        $conditions = ($status && $status !== 'waiting') ? ['loan_requests.status' => $status] : [];
+        $requests = LoanRequest::withMember($status === 'waiting' ? ['loan_requests.status' => 'approved'] : $conditions);
+        $allRequests = $status === 'waiting' ? LoanRequest::withMember([]) : $requests;
+        if ($status === 'waiting') {
+            $requests = array_values(array_filter($requests, fn($r) => empty($r['loan_id'])));
+        }
 
         // The queue position is counted over ALL pending requests, so it stays correct while a search narrows the list.
-        $pendingOrder = array_values(array_filter($requests, fn($r) => $r['status'] === 'pending'));
+        $pendingOrder = array_values(array_filter($allRequests, fn($r) => $r['status'] === 'pending'));
+
+        // Several still-open requests (pending, or approved without a loan) of the same member on the same share are
+        // probably duplicates: they get a hint so the admin can delete the extra ones.
+        $openByShare = [];
+        foreach (LoanRequest::withMember([]) as $r) {
+            if ($r['status'] === 'pending' || ($r['status'] === 'approved' && empty($r['loan_id']))) {
+                $k = (int) $r['member_id'] . ':' . (int) ($r['lot_id'] ?? 0);
+                $openByShare[$k] = ($openByShare[$k] ?? 0) + 1;
+            }
+        }
 
         $q = trim((string) $this->input('q', ''));
         if ($q !== '') {
@@ -44,6 +59,8 @@ class LoanRequestsController extends Controller
         // has a loan being repaid (then the request keeps its number and waits for that loan to be settled).
         $waiting = LoanRequest::waitingPositions();
         foreach ($pager['items'] as &$item) {
+            $isOpen = $item['status'] === 'pending' || ($item['status'] === 'approved' && empty($item['loan_id']));
+            $item['duplicate_hint'] = $isOpen && ($openByShare[(int) $item['member_id'] . ':' . (int) ($item['lot_id'] ?? 0)] ?? 0) > 1;
             $item['waiting_position'] = $waiting[(int) $item['id']] ?? null;
             $item['blocking_loan'] = $item['waiting_position'] !== null ? LoanRequest::blockingLoan($item) : null;
         }
@@ -56,8 +73,57 @@ class LoanRequestsController extends Controller
             'pendingOrder' => $pendingOrder,
             'status' => $status,
             'q' => $q,
+            'waitingCount' => count($waiting),
             'reasonLabels' => $this->reasonLabels,
         ], 'admin/layout');
+    }
+
+    /** Deletes one request. A loan that was issued from it stays as it is (only its link to the request is removed). */
+    private function deleteRequest(int $id): ?array
+    {
+        $request = LoanRequest::find($id);
+        if (!$request) {
+            return null;
+        }
+        $pdo = \App\Core\Database::connection();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE loans SET loan_request_id = NULL WHERE loan_request_id = ?')->execute([$id]);
+            $pdo->prepare('DELETE FROM loan_requests WHERE id = ?')->execute([$id]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        return $request;
+    }
+
+    private function backToList(): string
+    {
+        $to = ltrim(trim((string) $this->input('redirect_to', '')), '/');
+        return ($to === 'admin/loan-requests' || str_starts_with($to, 'admin/loan-requests?')) ? $to : 'admin/loan-requests';
+    }
+
+    public function destroy(string $id): void
+    {
+        $this->verifyCsrf();
+        $request = $this->deleteRequest((int) $id);
+        Session::flash($request ? 'success' : 'error', $request ? 'تم حذف طلب القرض رقم ' . $id . '.' : 'طلب القرض غير موجود.');
+        $this->redirect($this->backToList());
+    }
+
+    public function bulkDelete(): void
+    {
+        $this->verifyCsrf();
+        $ids = array_values(array_unique(array_filter(array_map('intval', is_array($_POST['ids'] ?? null) ? $_POST['ids'] : []))));
+        $deleted = 0;
+        foreach ($ids as $id) {
+            if ($this->deleteRequest($id)) {
+                $deleted++;
+            }
+        }
+        Session::flash($deleted ? 'success' : 'error', $deleted ? 'تم حذف ' . $deleted . ' طلب قرض.' : 'لم يتم تحديد أي طلب.');
+        $this->redirect($this->backToList());
     }
 
     public function show(string $id): void
