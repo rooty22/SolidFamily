@@ -38,6 +38,12 @@ class SubscriptionsController extends Controller
             $counts[(int) $c['member_id']] = $c;
         }
 
+        // Members who have any subscription row at all (a member with neither shares nor rows has nothing to show here yet).
+        $withRows = array_flip(array_map('intval', array_column(
+            MonthlySubscription::raw('SELECT DISTINCT member_id FROM monthly_subscriptions'),
+            'member_id'
+        )));
+
         $rows = [];
         $statusCounts = [
             'all' => count($members),
@@ -77,12 +83,20 @@ class SubscriptionsController extends Controller
                 'current_status' => $currentStatus,
                 'paid_months' => (int) ($counts[(int) $m['id']]['paid_months'] ?? 0),
                 'late_months' => $late,
+                'has_data' => (int) $m['shares_count'] > 0 || isset($withRows[(int) $m['id']]),
             ];
         }
 
         $status = trim((string) $this->input('status', ''));
         if ($status === '') {
             $status = trim((string) $this->input('payment_status', ''));
+        }
+
+        // The plain list (no search, no filter) shows only members with something to show; the "no shares" filter and the
+        // search still reach everyone.
+        if ($q === '' && ($status === '' || $status === 'all')) {
+            $rows = array_values(array_filter($rows, fn($r) => $r['has_data']));
+            $statusCounts['all'] = count($rows);
         }
 
         if ($status !== '' && $status !== 'all') {
@@ -192,7 +206,7 @@ class SubscriptionsController extends Controller
      */
     private function resolveLotSubscription(int $memberId, string $month, string $lotIdInput): ?array
     {
-        $rows = MonthlySubscription::ensureMonthExistsForMember($memberId, $month, false);
+        $rows = MonthlySubscription::ensureMonthExistsForMember($memberId, $month, false, true);
 
         if ($lotIdInput !== '') {
             $lotId = (int) $lotIdInput;

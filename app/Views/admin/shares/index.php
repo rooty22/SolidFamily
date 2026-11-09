@@ -52,6 +52,13 @@
     <?php endif; ?>
 </form>
 
+<?php if (($q ?? '') === '' && (int) ($noSharesCount ?? 0) > 0): ?>
+    <div class="text-xs text-slate-500 font-bold mb-2 inline-flex items-center gap-1.5">
+        <i class="bi bi-info-circle"></i>
+        <?= is_rtl() ? number_format((int) $noSharesCount) . ' مشترك بدون أسهم غير معروضين هنا — ابحث باسم المشترك لعرضه وإضافة أسهم له.' : number_format((int) $noSharesCount) . ' member(s) without shares are not listed — search by name to show one and add shares.' ?>
+    </div>
+<?php endif; ?>
+
 <div class="table-panel">
     <table class="table-modern">
         <thead>
@@ -307,7 +314,7 @@
                 <td colspan="5" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-search text-3xl text-slate-400 mb-2"></i>
-                        <span><?= is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.' ?></span>
+                        <span><?= ($q ?? '') !== '' ? (is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.') : (is_rtl() ? 'لا توجد أسهم مسجلة بعد.' : 'No shares recorded yet.') ?></span>
                     </div>
                 </td>
             </tr>

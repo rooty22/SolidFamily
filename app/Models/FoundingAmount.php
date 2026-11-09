@@ -13,7 +13,15 @@ class FoundingAmount extends Model
         return self::findBy('member_id', $memberId);
     }
 
-    public static function ensureForMember(int $memberId): array
+    /**
+     * The member's founding amount row, created / brought up to date with the shares on the way.
+     *
+     * A member without shares owes nothing and has paid nothing, so NOTHING is stored for them: opening a page or logging in
+     * must not leave a row of zeros in the table. A blank (unsaved) row with the same fields comes back instead, and the row
+     * is really created the first time the member has shares. $persist = true forces the row to be stored (the paths that
+     * write to it).
+     */
+    public static function ensureForMember(int $memberId, bool $persist = false): array
     {
         $member = Member::find($memberId);
         $sharesCount = (int) ($member['shares_count'] ?? 0);
@@ -22,6 +30,9 @@ class FoundingAmount extends Model
         if ($existing) {
             // The founding amount is tied to the shares: whenever they changed since the row was last computed, recompute it.
             return (int) $existing['shares_count_linked'] === $sharesCount ? $existing : self::syncWithShares($existing, $sharesCount);
+        }
+        if ($sharesCount === 0 && !$persist) {
+            return self::blank($memberId);
         }
 
         $feePerShare = (float) Setting::get('founding_fee_per_share', 0);
@@ -39,6 +50,25 @@ class FoundingAmount extends Model
         ]);
 
         return self::find($id);
+    }
+
+    /** What a member with no shares owes and has paid, as a row that is not in the table (same fields, id = null). */
+    private static function blank(int $memberId): array
+    {
+        return [
+            'id' => null,
+            'member_id' => $memberId,
+            'shares_count_linked' => 0,
+            'total_required' => '0.00',
+            'amount_paid' => '0.00',
+            'status' => 'paid',
+            'due_day' => null,
+            'plan_months' => 1,
+            'plan_start' => null,
+            'plan_schedule' => null,
+            'created_at' => null,
+            'updated_at' => null,
+        ];
     }
 
     private static function syncWithShares(array $row, int $sharesCount): array
@@ -80,7 +110,7 @@ class FoundingAmount extends Model
     public static function setPlan(int $memberId, int $months): array
     {
         $member = Member::find($memberId);
-        $founding = self::ensureForMember($memberId);
+        $founding = self::ensureForMember($memberId, true);
 
         // A plan already exists: the member is re-splitting it (e.g. into more/fewer installments), not starting a
         // fresh one -- the start month stays put so an installment already paid keeps the due date it was paid

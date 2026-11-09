@@ -18,7 +18,15 @@ class SharesController extends Controller
         if ($q !== '') {
             usort($all, fn($a, $b) => (int) $b['shares_count'] <=> (int) $a['shares_count']);
         }
-        $pager = paginate(Member::withoutRegistrations($all));
+        $registered = Member::withoutRegistrations($all);
+        // Without a search only the members who actually hold shares are listed; one who has none (just registered, or
+        // after a reset) has nothing to show here yet. The search still finds anyone, to give them their first shares.
+        $noSharesCount = 0;
+        if ($q === '') {
+            $noSharesCount = count(array_filter($registered, fn($m) => (int) $m['shares_count'] <= 0));
+            $registered = array_values(array_filter($registered, fn($m) => (int) $m['shares_count'] > 0));
+        }
+        $pager = paginate($registered);
         $members = $pager['items'];
         $shareValue = (float) Setting::get('share_value', 0);
         $lotsByMember = [];
@@ -33,6 +41,7 @@ class SharesController extends Controller
             'pager' => $pager,
             'shareValue' => $shareValue,
             'lotsByMember' => $lotsByMember,
+            'noSharesCount' => $noSharesCount,
         ], 'admin/layout');
     }
 

@@ -18,6 +18,13 @@
     <?php endif; ?>
 </form>
 
+<?php if (($q ?? '') === '' && (int) ($noFoundingCount ?? 0) > 0): ?>
+    <div class="text-xs text-slate-500 font-bold mb-2 inline-flex items-center gap-1.5">
+        <i class="bi bi-info-circle"></i>
+        <?= is_rtl() ? number_format((int) $noFoundingCount) . ' مشترك بدون أسهم (لا مبلغ تأسيس عليهم) غير معروضين هنا — ابحث باسم المشترك لعرضه.' : number_format((int) $noFoundingCount) . ' member(s) without shares (no founding amount) are not listed — search by name to show one.' ?>
+    </div>
+<?php endif; ?>
+
 <div class="table-panel">
     <table class="table-modern">
         <thead>
@@ -67,7 +74,7 @@
                 <td colspan="9" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-bank2"></i>
-                        <span><?= ($q ?? '') !== '' ? (is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.') : (is_rtl() ? 'لا توجد سجلات تأسيسية مسجلة' : 'No founding capital records found.') ?></span>
+                        <span><?= ($q ?? '') !== '' ? (is_rtl() ? 'لا يوجد مشترك مطابق للبحث.' : 'No member matches your search.') : (is_rtl() ? 'لا توجد مبالغ تأسيس مسجلة بعد.' : 'No founding amounts recorded yet.') ?></span>
                     </div>
                 </td>
             </tr>

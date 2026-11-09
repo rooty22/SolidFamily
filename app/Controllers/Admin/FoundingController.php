@@ -24,7 +24,20 @@ class FoundingController extends Controller
         if ($q !== '') {
             usort($all, fn($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
         }
-        $pager = paginate(Member::withoutRegistrations($all));
+        $registered = Member::withoutRegistrations($all);
+        // Without a search only the members with a founding amount to show are listed (shares, or something owed / paid);
+        // the search still finds anyone.
+        $noFoundingCount = 0;
+        if ($q === '') {
+            $withData = array_flip(array_map('intval', array_column(
+                FoundingAmount::raw('SELECT member_id FROM founding_amounts WHERE total_required > 0 OR amount_paid > 0'),
+                'member_id'
+            )));
+            $visible = array_values(array_filter($registered, fn($m) => (int) $m['shares_count'] > 0 || isset($withData[(int) $m['id']])));
+            $noFoundingCount = count($registered) - count($visible);
+            $registered = $visible;
+        }
+        $pager = paginate($registered);
         $members = $pager['items'];
         $rows = [];
         foreach ($members as $m) {
@@ -38,6 +51,7 @@ class FoundingController extends Controller
             'rows' => $rows,
             'q' => $q,
             'pager' => $pager,
+            'noFoundingCount' => $noFoundingCount,
         ], 'admin/layout');
     }
 
@@ -93,7 +107,7 @@ class FoundingController extends Controller
             $this->redirect('admin/founding/' . $memberId);
         }
 
-        $founding = FoundingAmount::ensureForMember((int) $memberId);
+        $founding = FoundingAmount::ensureForMember((int) $memberId, true);
         $amount = round((float) $data['amount'], 2);
         $date = $data['payment_date'];
 

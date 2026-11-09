@@ -418,13 +418,15 @@ class MonthlySubscription extends Model
      * @param bool $applyGracePeriod Kept for existing callers and ignored: the grace of a lot's first month is derived
      *     from the lot's own start date (see ensureLotMonth()), so it no longer depends on when the row is created.
      */
-    public static function ensureMonthExistsForMember(int $memberId, string $month, bool $applyGracePeriod = true): array
+    public static function ensureMonthExistsForMember(int $memberId, string $month, bool $applyGracePeriod = true, bool $storeBlank = false): array
     {
         $member = Member::find($memberId);
         $lots = ShareLot::activeFor($memberId);
 
         if (empty($lots)) {
-            return [self::ensureLotMonth($member, null, 0, null, $month, null)];
+            // A member without shares owes nothing, so merely looking at a page must not leave a row of zeros behind:
+            // the lot-less trivial row is stored only for a caller that works with that row ($storeBlank).
+            return $storeBlank ? [self::ensureLotMonth($member, null, 0, null, $month, null)] : [];
         }
 
         // A lot owes nothing for months before it existed, so it gets no row for them (otherwise an admin
