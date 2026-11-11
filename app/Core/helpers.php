@@ -923,6 +923,23 @@ function month_due_date(string $month, int $dueDay): string
     return $first->format('Y-m') . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
 }
 
+/** The monthly due day of loan installments from the financial settings (1-28); 0 = none (same day as the loan itself). */
+function loan_due_day(): int
+{
+    return max(0, min(28, (int) \App\Models\Setting::get('loan_due_day', 0)));
+}
+
+/**
+ * Due date of the n-th monthly installment of a loan that started on $loanDate. With a due day every installment falls on
+ * that day of its month, the first one in the month AFTER the loan month; without one (0) it falls on the same day of the
+ * month as the loan itself, n months later.
+ */
+function loan_installment_due(string $loanDate, int $n, int $dueDay = 0): string
+{
+    $due = add_months($loanDate, $n);
+    return $dueDay > 0 ? month_due_date(substr($due, 0, 7), $dueDay) : $due;
+}
+
 /**
  * Redirect to the page the user came from, but ONLY when the Referer is on this very host.
  * The redirect target is rebuilt as a same-origin path, so it can never point to another site.

@@ -573,6 +573,21 @@ foreach (site_social_links_raw() as $i => $link) {
                     </div>
 
                     <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'يوم استحقاق أقساط القروض الشهري' : 'Monthly Loan Installment Due Day' ?></label>
+                        <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs transition-all">
+                            <input type="number" min="0" max="28" name="loan_due_day" value="<?= e($settings['loan_due_day'] ?? '0') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
+                            <span class="inline-flex items-center px-3 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">
+                                <?= is_rtl() ? 'من كل شهر' : 'of Month' ?>
+                            </span>
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">
+                            <?= is_rtl()
+                                ? 'اليوم الذي تستحق فيه أقساط القروض كل شهر (من 1 إلى 28). يقع القسط الأول في الشهر التالي لشهر بدء القرض. اكتب 0 لتبقى الأقساط في نفس يوم بدء القرض. يسري على القروض الجديدة وعلى القروض التي يُعاد بناء أقساطها عند تعديل تاريخ بدئها (قبل أي سداد)، ولا يغيّر أقساط القروض القائمة.'
+                                : 'The day of the month loan installments fall due (1-28). The first one falls in the month after the loan month. Enter 0 to keep installments on the same day of the month as the loan start. It applies to new loans and to loans whose schedule is rebuilt when their start date is edited (before any payment); existing schedules are not changed.' ?>
+                        </span>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'فترة السماح بعد يوم الاستحقاق' : 'Grace Period After Due Day' ?></label>
                         <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs transition-all">
                             <input type="number" min="0" max="60" name="subscription_grace_days" value="<?= e($settings['subscription_grace_days'] ?? '7') ?>" required class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">

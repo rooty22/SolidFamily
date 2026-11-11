@@ -294,6 +294,8 @@ class LoansController extends Controller
                 'status' => 'active',
             ]);
 
+            // Installments fall due on the loan due day of the financial settings (0 = the same day as the loan itself).
+            $dueDay = loan_due_day();
             $remainingTotal = $amount;
             for ($i = 1; $i <= $installmentsCount; $i++) {
                 $value = $i === $installmentsCount ? round($remainingTotal, 2) : $installmentValue;
@@ -301,7 +303,7 @@ class LoansController extends Controller
                 LoanInstallment::create([
                     'loan_id' => $loanId,
                     'installment_number' => $i,
-                    'due_date' => add_months($loanDate, $i),
+                    'due_date' => loan_installment_due($loanDate, $i, $dueDay),
                     'amount' => $value,
                     'amount_paid' => 0,
                     'status' => 'unpaid',
@@ -539,6 +541,7 @@ class LoansController extends Controller
                 }
 
                 LoanInstallment::deleteWhere(['loan_id' => $id]);
+                $dueDay = loan_due_day();
                 $remainingTotal = $amount;
                 for ($i = 1; $i <= $installmentsCount; $i++) {
                     $value = $i === $installmentsCount ? round($remainingTotal, 2) : $installmentValue;
@@ -546,7 +549,7 @@ class LoansController extends Controller
                     LoanInstallment::create([
                         'loan_id' => $id,
                         'installment_number' => $i,
-                        'due_date' => add_months($loanDate, $i),
+                        'due_date' => loan_installment_due($loanDate, $i, $dueDay),
                         'amount' => $value,
                         'amount_paid' => 0,
                         'status' => 'unpaid',

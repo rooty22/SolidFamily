@@ -59,6 +59,9 @@ $isLocked = ((float) $loan['amount_paid'] > 0);
                             <?= $isEn ? 'Locked due to active payment records' : 'مقفل لوجود دفعات مسددة' ?>
                         <?php else: ?>
                             <?= $isEn ? 'Changing it rebuilds the installment schedule from the new date.' : 'تغييره يعيد بناء جدول الأقساط من التاريخ الجديد.' ?>
+                            <?php $dueDay = loan_due_day(); if ($dueDay > 0): ?>
+                                <?= $isEn ? '(due day ' . $dueDay . ' of each month, from the Financial settings)' : '(يوم الاستحقاق ' . $dueDay . ' من كل شهر حسب الإعدادات المالية)' ?>
+                            <?php endif; ?>
                         <?php endif; ?>
                         · <?= $isEn ? 'Actually recorded on' : 'سُجّل فعلياً في' ?> <bdi dir="ltr"><?= date_ar($loan['created_at'], 'd/m/Y H:i') ?></bdi>
                     </span>

@@ -127,6 +127,7 @@ $defaultSettings = [
     'loan_admin_fee_percent' => '2',
     'max_loan_ratio' => '10',
     'subscription_due_day' => '10',
+    'loan_due_day' => '0', // monthly due day of loan installments (1-28); 0 = same day of the month as the loan start
 ];
 
 $stmt = $pdo->prepare('INSERT INTO settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = IF(value IS NULL OR value = "", VALUES(value), value)');

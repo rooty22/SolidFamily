@@ -182,6 +182,14 @@ $requestLotId = !empty($loanRequest['lot_id']) ? (int) $loanRequest['lot_id'] : 
                             <div class="col-md-6">
                                 <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Loan Issue Date' : 'تاريخ بدء القرض' ?> <span class="text-rose-500">*</span></label>
                                 <input type="date" name="loan_date" class="form-control text-sm" x-model="loanDate" @change="loadLots()" required>
+                                <?php $dueDay = loan_due_day(); ?>
+                                <span class="text-[11px] text-slate-500 mt-1 block">
+                                    <?php if ($dueDay > 0): ?>
+                                        <?= $isEn ? 'Installments fall due on day ' . $dueDay . ' of each month (Financial settings); the first one in the month after the start date.' : 'تستحق الأقساط يوم ' . $dueDay . ' من كل شهر (من الإعدادات المالية)، والقسط الأول في الشهر التالي لتاريخ البدء.' ?>
+                                    <?php else: ?>
+                                        <?= $isEn ? 'Installments fall due on the same day of the month as the start date.' : 'تستحق الأقساط في نفس يوم بدء القرض من كل شهر (لم يُحدَّد يوم استحقاق في الإعدادات المالية).' ?>
+                                    <?php endif; ?>
+                                </span>
                             </div>
 
                             <!-- The share the loan is issued against: only ITS conditions are checked, never the member's other shares -->
