@@ -85,7 +85,8 @@
     </div>
 
     <!-- 5. Approved Members -->
-    <div class="col-xl-4 col-md-6">
+    <?php $cardCol = $stats['expenses'] !== null ? 'col-xl-3' : 'col-xl-4'; // the main admin gets a 4th card (expenses) in this row ?>
+    <div class="<?= $cardCol ?> col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-blue">
                 <i class="bi bi-people-fill"></i>
@@ -102,7 +103,7 @@
     </div>
 
     <!-- 6. Total Shares -->
-    <div class="col-xl-4 col-md-6">
+    <div class="<?= $cardCol ?> col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-purple">
                 <i class="bi bi-pie-chart-fill"></i>
@@ -116,7 +117,7 @@
     </div>
 
     <!-- 7. Overdue Members (Clickable with delay type breakdown) -->
-    <div class="col-xl-4 col-md-6">
+    <div class="<?= $cardCol ?> col-md-6">
         <a href="<?= url('admin/members?payment_status=late') ?>" class="stat-card text-decoration-none block transition-all hover:scale-[1.02] hover:shadow-lg hover:border-rose-400 group cursor-pointer" title="<?= is_rtl() ? 'انتقال إلى قائمة المشتركين المتأخرين' : 'View overdue members' ?>">
             <div class="d-flex items-center justify-between mb-2">
                 <div class="stat-icon bg-grad-red group-hover:scale-110 transition-transform">
@@ -144,6 +145,24 @@
             </div>
         </a>
     </div>
+
+    <?php if ($stats['expenses'] !== null): ?>
+    <!-- 8. Administrative & bank expenses (main admin only) -->
+    <div class="<?= $cardCol ?> col-md-6">
+        <a href="<?= url('admin/expenses') ?>" class="stat-card text-decoration-none block transition-all hover:scale-[1.02] hover:shadow-lg" data-testid="dash-expenses">
+            <div class="stat-icon bg-grad-red">
+                <i class="bi bi-receipt-cutoff"></i>
+            </div>
+            <div>
+                <div class="stat-label"><?= is_rtl() ? 'المصاريف الإدارية والبنكية' : 'Administrative & bank expenses' ?></div>
+                <div class="stat-value font-num text-rose-700"><?= money($stats['expenses']['total']) ?></div>
+                <div class="stat-sub text-slate-500 font-medium">
+                    <?= is_rtl() ? number_format($stats['expenses']['count']) . ' مصروف مسجل · سجل المصاريف' : number_format($stats['expenses']['count']) . ' recorded · Expenses log' ?>
+                </div>
+            </div>
+        </a>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Shares deducted by merges / given back by splits -->

@@ -13,6 +13,7 @@ use App\Controllers\Admin\LoanRequestsController;
 use App\Controllers\Admin\LoansController;
 use App\Controllers\Admin\PaymentsController;
 use App\Controllers\Admin\TransactionsController;
+use App\Controllers\Admin\ExpensesController;
 use App\Controllers\Admin\NotificationsController as AdminNotificationsController;
 use App\Controllers\Admin\MessagesController;
 use App\Controllers\Admin\ContentController;
@@ -198,6 +199,13 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/transactions', [TransactionsController::class, 'index']);
     $router->get('/transactions/export', [TransactionsController::class, 'export']);
     $router->get('/transactions/print', [TransactionsController::class, 'printReport']);
+
+    // Administrative and bank expenses log (main admins only: Admin::isSuperOnlyPath keeps sub-admins out)
+    $router->get('/expenses', [ExpensesController::class, 'index']);
+    $router->post('/expenses', [ExpensesController::class, 'store']);
+    $router->get('/expenses/{id}/edit', [ExpensesController::class, 'edit']);
+    $router->post('/expenses/{id}', [ExpensesController::class, 'update']);
+    $router->post('/expenses/{id}/delete', [ExpensesController::class, 'destroy']);
 
     $router->get('/notifications', [AdminNotificationsController::class, 'index']);
     $router->post('/notifications', [AdminNotificationsController::class, 'store']);

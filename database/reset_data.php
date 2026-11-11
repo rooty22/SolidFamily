@@ -10,7 +10,8 @@
  *   php database/reset_data.php --restore=<backup.json> --yes --confirm=<db name>    puts a wiped state back
  *
  * Deleted: monthly subscriptions, shares (share lots) and their requests / merge log, founding amounts + payments +
- * allocations, loans + installments + loan requests, every ledger transaction, notifications, contact messages.
+ * allocations, loans + installments + loan requests, every ledger transaction, notifications, contact messages and the
+ * administrative / bank expenses log.
  * Reset on every member: shares_count = 0 and the personal subscription due day.
  * Kept: members (and their serial / User ID), admins and sub-admins, settings, content pages, translations, OTP and
  * rate-limit tables.
@@ -58,7 +59,7 @@ $wipe = [
     'loan_installments', 'loans', 'loan_requests',
     'monthly_subscriptions',
     'share_merge_log', 'share_requests', 'share_lots',
-    'transactions', 'notifications', 'contact_messages',
+    'transactions', 'notifications', 'contact_messages', 'expenses',
 ];
 
 $existing = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);

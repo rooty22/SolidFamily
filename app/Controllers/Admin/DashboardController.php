@@ -177,6 +177,17 @@ class DashboardController extends Controller
         // Shares deducted by merges / given back by splits, with the monthly amount they were worth.
         $mergeSummary = \App\Models\ShareMergeLog::summary();
 
+        // The expenses log belongs to the main admin alone: nobody else gets its total (screen, CSV or print). A database
+        // that has not had the expenses migration yet must not break the dashboard.
+        $expenses = null;
+        if (\App\Core\Auth::adminIsSuper()) {
+            try {
+                $expenses = \App\Models\Expense::summary();
+            } catch (\Throwable $e) {
+                $expenses = null;
+            }
+        }
+
         $export = [
             'إجمالي عدد المشتركين المعتمدين' => $totalMembers,
             'طلبات التسجيل بانتظار الموافقة' => $pendingRegistrations,
@@ -218,13 +229,16 @@ class DashboardController extends Controller
             'المتأخرون في الاشتراكات الشهرية' => $lateSubsCount,
             'المتأخرون في أقساط القروض' => $lateLoansCount,
         ];
+        if ($expenses !== null) {
+            $export['إجمالي المصاريف الإدارية والبنكية'] = $expenses['total'];
+        }
 
         return compact(
             'totalMembers', 'activeMembers', 'suspendedMembers', 'pendingRegistrations', 'pendingMembersList', 'pendingSharesTotal', 'totalShares', 'subRow', 'foundRow', 'loanRow',
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'loanAdminFeesPending', 'loanAdminFeesTotal', 'foundingShares', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
-            'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'export'
+            'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'expenses', 'export'
         );
     }
 

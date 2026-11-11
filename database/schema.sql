@@ -284,6 +284,21 @@ CREATE TABLE notifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
+-- Administrative and bank expenses log (main admin only)
+-- =========================================================
+CREATE TABLE expenses (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    expense_date DATE NOT NULL,
+    created_by INT UNSIGNED NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_expenses_date (expense_date),
+    CONSTRAINT fk_expenses_admin FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================================================
 -- Contact / support messages
 -- =========================================================
 CREATE TABLE contact_messages (

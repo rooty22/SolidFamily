@@ -89,6 +89,12 @@ $newMessages = \App\Models\ContactMessage::count(['status' => 'new']);
             <span><?= __('manage_transactions') ?></span>
         </a>
         <?php endif; ?>
+        <?php if (\App\Core\Auth::adminIsSuper()): ?>
+        <a href="<?= url('admin/expenses') ?>" class="sidebar-link <?= is_active('/admin/expenses') ?>">
+            <i class="bi bi-receipt-cutoff"></i>
+            <span><?= is_rtl() ? 'سجل المصاريف' : 'Expenses log' ?></span>
+        </a>
+        <?php endif; ?>
 
         <?php if ($can('notifications') || $can('messages') || $can('content') || $can('live_translate')): ?>
         <div class="sidebar-section-title"><?= is_rtl() ? 'التواصل والمحتوى' : 'Communications & Content' ?></div>

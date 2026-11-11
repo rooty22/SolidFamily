@@ -68,10 +68,10 @@ class Admin extends Model
         return self::LEVEL_VIEW;
     }
 
-    /** True for the pages only a main admin may open (managing the sub-admins). */
+    /** True for the pages only a main admin may open: managing the sub-admins and the administrative / bank expenses log. */
     public static function isSuperOnlyPath(string $path): bool
     {
-        return (bool) preg_match('#^/admin/admins(/|$)#', $path);
+        return (bool) preg_match('#^/admin/(admins|expenses)(/|$)#', $path);
     }
 
     /**
