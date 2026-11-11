@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Models\Expense;
+use App\Models\Member;
 
 /**
  * The administrative and bank expenses log. Main admin only: Admin::isSuperOnlyPath() keeps every /admin/expenses page
@@ -24,6 +25,7 @@ class ExpensesController extends Controller
             'expenses' => $pager['items'],
             'pager' => $pager,
             'q' => $q,
+            'pickerMembers' => Expense::memberOptions(),
             'summary' => Expense::summary(),
             // what the current search adds up to (the same as the summary when nothing is searched)
             'foundTotal' => round(array_sum(array_map(fn($e) => (float) $e['amount'], $all)), 2),
@@ -55,6 +57,7 @@ class ExpensesController extends Controller
         $this->view('admin/expenses/edit', [
             'pageTitle' => is_rtl() ? 'تعديل مصروف' : 'Edit expense',
             'expense' => $expense,
+            'pickerMembers' => Expense::memberOptions(),
         ], 'admin/layout');
     }
 
@@ -116,6 +119,17 @@ class ExpensesController extends Controller
             return [null, $validator->firstError()];
         }
 
+        // The member is optional: empty = a general expense of the fund; otherwise it must be a registered member.
+        $memberId = null;
+        $memberRaw = trim((string) $this->input('member_id', ''));
+        if ($memberRaw !== '') {
+            $member = ctype_digit($memberRaw) ? Member::find((int) $memberRaw) : null;
+            if (!$member || in_array($member['status'], ['pending', 'rejected'], true)) {
+                return [null, 'المشترك المحدد غير موجود.'];
+            }
+            $memberId = (int) $member['id'];
+        }
+
         $date = null;
         foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $fmt) {
             $parsed = \DateTime::createFromFormat('!' . $fmt, $in['expense_date']);
@@ -125,6 +139,6 @@ class ExpensesController extends Controller
             }
         }
 
-        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'expense_date' => $date ?? date('Y-m-d')], null];
+        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'expense_date' => $date ?? date('Y-m-d'), 'member_id' => $memberId], null];
     }
 }

@@ -20,7 +20,7 @@ $isEn = !is_rtl();
             <p class="text-xs text-slate-500 m-0 mt-0.5"><?= $isEn ? 'Write the name, the cost and the date: it joins the log and the total.' : 'اكتب اسم المصروف وتكلفته وتاريخه ليُضاف إلى السجل وإلى الإجمالي.' ?></p>
         </div>
     </div>
-    <?php \App\Core\View::partial('admin/expenses/_form', ['formAction' => url('admin/expenses'), 'expense' => null]); ?>
+    <?php \App\Core\View::partial('admin/expenses/_form', ['formAction' => url('admin/expenses'), 'expense' => null, 'members' => $pickerMembers]); ?>
     <div class="mt-3 text-[11.5px] text-slate-400 font-medium inline-flex items-center gap-1.5">
         <i class="bi bi-info-circle"></i>
         <?= $isEn ? 'An expense is recorded for review only: it does not change the actual bank balance.' : 'يُسجَّل المصروف للمراجعة فقط ولا يغيّر الرصيد الفعلي بالبنك.' ?>
@@ -30,7 +30,7 @@ $isEn = !is_rtl();
 <form method="get" action="<?= url('admin/expenses') ?>" class="flex flex-wrap items-center gap-2 mb-3">
     <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" class="form-control" placeholder="<?= $isEn ? 'Search by expense name...' : 'ابحث باسم المصروف...' ?>" value="<?= e($q) ?>">
+        <input type="text" name="q" class="form-control" placeholder="<?= $isEn ? 'Search by expense or member name...' : 'ابحث باسم المصروف أو المشترك...' ?>" value="<?= e($q) ?>">
     </div>
     <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= $isEn ? 'Search' : 'بحث' ?></button>
     <?php if ($q !== ''): ?>
@@ -45,6 +45,7 @@ $isEn = !is_rtl();
             <tr>
                 <th><?= $isEn ? 'Date' : 'التاريخ' ?></th>
                 <th><?= $isEn ? 'Expense name' : 'اسم المصروف' ?></th>
+                <th><?= $isEn ? 'Member' : 'المشترك' ?></th>
                 <th><?= $isEn ? 'Cost' : 'التكلفة' ?></th>
                 <th class="text-end"><?= $isEn ? 'Actions' : 'إجراءات' ?></th>
             </tr>
@@ -54,6 +55,13 @@ $isEn = !is_rtl();
             <tr>
                 <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($x['expense_date']) ?></bdi></td>
                 <td class="fw-bold"><?= e($x['name']) ?></td>
+                <td>
+                    <?php if (!empty($x['member_id']) && $x['member_name'] !== null): ?>
+                        <?= member_cell((string) $x['member_name'], $x['member_serial'] ?? null, url('admin/members/' . (int) $x['member_id'])) ?>
+                    <?php else: ?>
+                        <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5"><i class="bi bi-building"></i> <?= $isEn ? 'General' : 'عام' ?></span>
+                    <?php endif; ?>
+                </td>
                 <td class="font-numeric fw-bold text-rose-700"><?= money((float) $x['amount']) ?></td>
                 <td class="text-end">
                     <div class="inline-flex items-center gap-1.5">
@@ -68,7 +76,7 @@ $isEn = !is_rtl();
         <?php endforeach; ?>
         <?php if (empty($expenses)): ?>
             <tr>
-                <td colspan="4" class="p-0">
+                <td colspan="5" class="p-0">
                     <div class="empty-state">
                         <i class="bi bi-receipt"></i>
                         <span><?= $q !== '' ? ($isEn ? 'No expense matches your search.' : 'لا يوجد مصروف مطابق للبحث.') : ($isEn ? 'No expenses recorded yet.' : 'لا توجد مصاريف مسجلة بعد.') ?></span>

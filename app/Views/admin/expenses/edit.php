@@ -19,5 +19,5 @@ $isEn = !is_rtl();
             <p class="text-xs text-slate-500 m-0 mt-0.5"><?= $isEn ? 'Change what is needed and save.' : 'عدّل ما تريد ثم احفظ.' ?></p>
         </div>
     </div>
-    <?php \App\Core\View::partial('admin/expenses/_form', ['formAction' => url('admin/expenses/' . (int) $expense['id']), 'expense' => $expense]); ?>
+    <?php \App\Core\View::partial('admin/expenses/_form', ['formAction' => url('admin/expenses/' . (int) $expense['id']), 'expense' => $expense, 'members' => $pickerMembers]); ?>
 </div>
