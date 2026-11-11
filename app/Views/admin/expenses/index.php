@@ -30,7 +30,7 @@ $isEn = !is_rtl();
 <form method="get" action="<?= url('admin/expenses') ?>" class="flex flex-wrap items-center gap-2 mb-3">
     <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" class="form-control" placeholder="<?= $isEn ? 'Search by expense or member name...' : 'ابحث باسم المصروف أو المشترك...' ?>" value="<?= e($q) ?>">
+        <input type="text" name="q" class="form-control" placeholder="<?= $isEn ? 'Search by expense, member or notes...' : 'ابحث باسم المصروف أو المشترك أو الملاحظات...' ?>" value="<?= e($q) ?>">
     </div>
     <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= $isEn ? 'Search' : 'بحث' ?></button>
     <?php if ($q !== ''): ?>
@@ -54,7 +54,15 @@ $isEn = !is_rtl();
         <?php foreach ($expenses as $x): ?>
             <tr>
                 <td class="font-numeric text-xs text-slate-500"><bdi dir="ltr"><?= date_ar($x['expense_date']) ?></bdi></td>
-                <td class="fw-bold"><?= e($x['name']) ?></td>
+                <td class="fw-bold">
+                    <?= e($x['name']) ?>
+                    <?php if (trim((string) ($x['notes'] ?? '')) !== ''): $noteFlat = trim((string) preg_replace('/\s+/u', ' ', $x['notes'])); ?>
+                        <div class="text-[11.5px] text-slate-500 font-medium mt-0.5 flex items-start gap-1.5" style="max-width: 460px; font-weight: 500;" title="<?= e($x['notes']) ?>">
+                            <i class="bi bi-chat-left-text text-slate-400 mt-[2px]"></i>
+                            <span><?= e(mb_strimwidth($noteFlat, 0, 110, '…')) ?></span>
+                        </div>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php if (!empty($x['member_id']) && $x['member_name'] !== null): ?>
                         <?= member_cell((string) $x['member_name'], $x['member_serial'] ?? null, url('admin/members/' . (int) $x['member_id'])) ?>

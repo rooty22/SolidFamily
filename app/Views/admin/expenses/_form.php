@@ -1,6 +1,6 @@
 <?php
 /**
- * The name / cost / date / member fields of the expenses log, shared by the "add" card and the edit page.
+ * The name / cost / date / member / notes fields of the expenses log, shared by the "add" card and the edit page.
  *
  * @var string     $formAction where the form posts
  * @var array|null $expense    the expense being edited (null when adding)
@@ -17,7 +17,8 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
         .exp-form > .c-name { grid-column: span 6; }
         .exp-form > .c-cost { grid-column: span 3; }
         .exp-form > .c-date { grid-column: span 3; }
-        .exp-form > .c-member { grid-column: span 9; }
+        .exp-form > .c-member { grid-column: span 12; }
+        .exp-form > .c-notes { grid-column: span 9; }
         .exp-form > .c-submit { grid-column: span 3; }
     }
     .exp-form .form-label { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
@@ -37,6 +38,10 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     /* a cost is typed, not stepped: no spinner arrows */
     .exp-box input[type="number"]::-webkit-inner-spin-button, .exp-box input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .exp-box input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+    /* notes: a textarea in the same frame, icon at the top, counter in the label row */
+    .exp-box.is-area .exp-ico { top: 18px; transform: none; }
+    .exp-box textarea.form-control { height: auto !important; min-height: 96px; padding-top: 12px !important; padding-bottom: 12px !important; line-height: 1.7; resize: vertical; }
+    .exp-form .form-label .exp-count { margin-inline-start: auto; color: #94a3b8; font-weight: 600; font-size: 11px; font-variant-numeric: tabular-nums; }
     .exp-submit { height: 48px; padding-inline: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; white-space: nowrap; }
     @media (max-width: 991px) { .exp-submit { width: 100%; } }
 
@@ -169,6 +174,19 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
                     <li class="exp-empty" x-show="filtered.length === 0" style="display:none"><?= $isEn ? 'No member matches' : 'لا يوجد مشترك مطابق' ?></li>
                 </ul>
             </div>
+        </div>
+    </div>
+
+    <div class="c-notes" x-data="{ n: <?= (int) mb_strlen((string) ($expense['notes'] ?? '')) ?> }">
+        <label class="form-label font-bold text-xs text-slate-700">
+            <?= $isEn ? 'Notes' : 'ملاحظات' ?>
+            <span class="opt"><?= $isEn ? '(optional)' : '(اختياري)' ?></span>
+            <span class="exp-count" x-text="n + ' / 1000'"></span>
+        </label>
+        <div class="exp-box is-area">
+            <i class="bi bi-chat-left-text exp-ico"></i>
+            <textarea name="notes" rows="3" maxlength="1000" class="form-control" @input="n = $event.target.value.length"
+                      placeholder="<?= e($isEn ? 'Any details worth keeping about this expense (invoice number, reason...)' : 'أي تفاصيل تريد الاحتفاظ بها عن هذا المصروف (رقم الفاتورة، السبب...)') ?>"><?= e($expense['notes'] ?? '') ?></textarea>
         </div>
     </div>
 

@@ -96,7 +96,8 @@ class ExpensesController extends Controller
     }
 
     /**
-     * The posted name / cost / date, checked. The date is optional (today); it may be in the past or up to a year ahead.
+     * The posted name / cost / date / member / notes, checked. The date is optional (today); it may be in the past or up to
+     * a year ahead. The member and the notes (up to 1000 characters) are optional too.
      *
      * @return array{0: ?array, 1: ?string} [row data, null] or [null, the error to show]
      */
@@ -106,6 +107,7 @@ class ExpensesController extends Controller
             'name' => trim((string) $this->input('name', '')),
             'amount' => (string) $this->input('amount', ''),
             'expense_date' => trim((string) $this->input('expense_date', '')),
+            'notes' => str_replace([chr(13) . chr(10), chr(13)], chr(10), (string) $this->input('notes', '')), // a browser posts line breaks as CRLF: one character each
         ];
         if ($in['expense_date'] === '') {
             $in['expense_date'] = date('Y-m-d');
@@ -114,7 +116,8 @@ class ExpensesController extends Controller
         $validator = Validator::make($in)
             ->required('name', 'اسم المصروف')->max('name', 150, 'اسم المصروف')
             ->required('amount', 'تكلفة المصروف')->decimal('amount', 'تكلفة المصروف', 0.01, 1000000000)
-            ->date('expense_date', 'المصروف', 366);
+            ->date('expense_date', 'المصروف', 366)
+            ->max('notes', 1000, 'الملاحظات');
         if ($validator->fails()) {
             return [null, $validator->firstError()];
         }
@@ -139,6 +142,6 @@ class ExpensesController extends Controller
             }
         }
 
-        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'expense_date' => $date ?? date('Y-m-d'), 'member_id' => $memberId], null];
+        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'expense_date' => $date ?? date('Y-m-d'), 'member_id' => $memberId, 'notes' => $in['notes'] !== '' ? $in['notes'] : null], null];
     }
 }

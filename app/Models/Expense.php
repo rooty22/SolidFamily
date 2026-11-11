@@ -19,7 +19,7 @@ class Expense extends Model
         return ['count' => (int) ($row['c'] ?? 0), 'total' => round((float) ($row['s'] ?? 0), 2)];
     }
 
-    /** The expenses with the member each belongs to (if any), newest first; $q matches part of the expense or the member name. */
+    /** The expenses with the member each belongs to (if any), newest first; $q matches part of the expense name, its notes or the member name. */
     public static function search(string $q = ''): array
     {
         $sql = 'SELECT e.*, m.name AS member_name, m.serial_no AS member_serial
@@ -27,8 +27,8 @@ class Expense extends Model
         $params = [];
         if ($q !== '') {
             $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
-            $sql .= ' WHERE e.name LIKE ? OR m.name LIKE ?';
-            $params = [$like, $like];
+            $sql .= ' WHERE e.name LIKE ? OR e.notes LIKE ? OR m.name LIKE ?';
+            $params = [$like, $like, $like];
         }
         return self::raw($sql . ' ORDER BY e.expense_date DESC, e.id DESC', $params);
     }

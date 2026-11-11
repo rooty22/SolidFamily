@@ -292,6 +292,7 @@ CREATE TABLE expenses (
     amount DECIMAL(12,2) NOT NULL,
     expense_date DATE NOT NULL,
     member_id INT UNSIGNED NULL COMMENT 'optional: the member this expense belongs to',
+    notes TEXT NULL COMMENT 'optional: free notes on this expense',
     created_by INT UNSIGNED NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
