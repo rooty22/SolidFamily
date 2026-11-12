@@ -14,9 +14,13 @@
  *
  * What counts as his activity: monthly subscriptions, founding amount + payments (+ their share allocations), loans with
  * their installments, loan requests, share requests and the merge log, every ledger transaction (subscriptions,
- * founding, loans, installments, commissions), notifications sent to him, his contact messages.
+ * founding, loans, installments, commissions), notifications sent to him, his contact messages, and the expenses of the
+ * administrative / bank expenses log that were recorded FOR him (general expenses and other members' expenses stay).
  * Deleting the ledger rows removes his money from the bank balance and from every dashboard total, because all totals
- * are computed from the rows. Run database/audit_totals.php afterwards to confirm the totals still agree.
+ * are computed from the rows; deleting his expenses lowers the total of the expenses log the same way. Run
+ * database/audit_totals.php afterwards to confirm the totals still agree.
+ * With --delete-account the leftovers that point at the account are cleaned too: his verification codes (otp_codes) and a
+ * link from an administrator account (admins.member_id).
  *
  * Options:
  *   --yes                 really delete (without it nothing is changed)
@@ -110,6 +114,7 @@ $scope = [
     'share_merge_log' => ['member_id = :m', true],
     'notifications' => ['target_member_id = :m', true],
     'contact_messages' => ['member_id = :m', true],
+    'expenses' => ['member_id = :m', true],
     'share_lots' => ['member_id = :m', $withShares],
     'members' => ['id = :m', $deleteAccount],
 ];
@@ -145,6 +150,19 @@ if ($has('transactions')) {
     }
 }
 $openLoans = $has('loans') ? (int) $pdo->query("SELECT COUNT(*) FROM loans WHERE member_id = $mid AND status IN ('active','partial')")->fetchColumn() : 0;
+$expenseTotal = $has('expenses') ? (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE member_id = $mid")->fetchColumn() : 0.0;
+
+// What only a full account deletion has to clean: his verification codes (they are keyed by mobile) and an administrator
+// account linked to him. Foreign-key actions (SET NULL) do not run while the checks are off below, so it is done by hand.
+$accountExtras = [];
+if ($deleteAccount) {
+    if ($has('otp_codes')) {
+        $accountExtras['otp_codes'] = ['DELETE FROM otp_codes WHERE identifier IN (:a, :b, :c)', 'SELECT COUNT(*) FROM otp_codes WHERE identifier IN (:a, :b, :c)', ['a' => (string) $member['mobile'], 'b' => (string) $member['email'], 'c' => (string) $member['national_id']]];
+    }
+    if ($has('admins') && in_array('member_id', $pdo->query('SHOW COLUMNS FROM admins')->fetchAll(PDO::FETCH_COLUMN), true)) {
+        $accountExtras['admins (link to him cleared)'] = ['UPDATE admins SET member_id = NULL WHERE member_id = :m', 'SELECT COUNT(*) FROM admins WHERE member_id = :m', ['m' => $mid]];
+    }
+}
 
 echo "Database: {$db['database']} @ {$db['host']}\n";
 echo sprintf("Member:   id:%d  #%s  %s  (national ID %s)\n", $mid, $member['serial_no'] ?? '-', $member['name'], $member['national_id']);
@@ -153,9 +171,18 @@ echo str_repeat('-', 58) . "\n";
 foreach ($plan as $table => $p) {
     printf("%-30s %6d  %s\n", $table, $p['count'], $p['delete'] ? ($p['count'] ? '-> will be deleted' : '') : '(kept)');
 }
+foreach ($accountExtras as $label => [$write, $countSql, $params]) {
+    $st = $pdo->prepare($countSql);
+    $st->execute($params);
+    $n = (int) $st->fetchColumn();
+    printf("%-30s %6d  %s\n", $label, $n, $n ? '-> will be cleaned' : '');
+}
 echo str_repeat('-', 58) . "\n";
 printf("Ledger effect: money in %s, money out %s  => bank balance changes by %s\n",
     number_format($money['in'], 2), number_format($money['out'], 2), number_format($money['out'] - $money['in'], 2));
+if (($plan['expenses']['count'] ?? 0) > 0) {
+    printf("Expenses log:  %d expense(s) recorded for him, %s in total, leave the log (the bank balance is not affected)\n", $plan['expenses']['count'], number_format($expenseTotal, 2));
+}
 if ($openLoans > 0) {
     echo "NOTE: he has $openLoans open loan(s); they disappear together with their installments.\n";
 }
@@ -181,11 +208,26 @@ if (!isset($opts['no-backup'])) {
         exit(1);
     }
     $file = $dir . '/member_' . $mid . '_' . date('Ymd_His') . '.json';
-    if (file_put_contents($file, json_encode($dump, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)) === false) {
-        fwrite(STDERR, "Cannot write the backup file; nothing was changed.\n");
+    try {
+        $json = json_encode($dump, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+    } catch (Throwable $e) {
+        fwrite(STDERR, 'Cannot encode the backup (' . $e->getMessage() . "); nothing was changed.\n");
         exit(1);
     }
-    echo "Backup of the rows saved: $file\n";
+    if (file_put_contents($file, $json) !== strlen($json)) {
+        fwrite(STDERR, "Cannot write the backup file completely; nothing was changed.\n");
+        exit(1);
+    }
+    // read it back and compare the row counts with what is about to be deleted
+    $check = json_decode((string) file_get_contents($file), true);
+    foreach ($dump['tables'] as $table => $rows) {
+        if (!is_array($check) || count($check['tables'][$table] ?? []) !== count($rows) || count($rows) !== $plan[$table]['count']) {
+            @unlink($file);
+            fwrite(STDERR, "The backup file does not match table $table; nothing was changed.\n");
+            exit(1);
+        }
+    }
+    echo "Backup of the rows saved and verified: $file\n";
 }
 
 // ---- delete (single transaction) -------------------------------------------------------------------------------------
@@ -200,6 +242,9 @@ try {
     }
     if ($withShares && !$deleteAccount) {
         $pdo->exec("UPDATE members SET shares_count = 0, subscription_due_day = NULL WHERE id = $mid");
+    }
+    foreach ($accountExtras as [$write, $countSql, $params]) {
+        $pdo->prepare($write)->execute($params);
     }
     $pdo->commit();
 } catch (Throwable $e) {

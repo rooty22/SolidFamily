@@ -319,7 +319,28 @@ class MembersController extends Controller
             $this->redirect('admin/members');
         }
 
-        Member::delete((int) $id);
+        // The database cascade removes his shares, subscriptions, founding payments, loans, requests, ledger entries and
+        // notifications. Two kinds of rows only lose their link to him (ON DELETE SET NULL) and would stay behind as
+        // orphans -- his support messages and the expenses recorded FOR him in the expenses log (which would still count in
+        // its total) -- so they are removed with him, together with his verification codes.
+        $pdo = \App\Core\Database::connection();
+        $pdo->beginTransaction();
+        try {
+            \App\Models\ContactMessage::deleteWhere(['member_id' => (int) $id]);
+            \App\Models\OtpCode::deleteWhere(['identifier' => (string) $member['mobile']]);
+            try {
+                \App\Models\Expense::deleteWhere(['member_id' => (int) $id]);
+            } catch (\Throwable $e) {
+                // the expenses table does not exist yet (its migration has not run): nothing to remove
+            }
+            Member::delete((int) $id);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
         Session::flash('success', 'تم حذف المشترك "' . $member['name'] . '" وجميع بياناته.');
         $this->redirect('admin/members');
     }
