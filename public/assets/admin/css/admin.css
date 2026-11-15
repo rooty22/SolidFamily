@@ -1585,3 +1585,20 @@ a.cell-member-name:hover { color: #047857; }
 .card-panel .table-modern:not(.table-kv) tbody td { padding: 11px 9px !important; }
 .row > [class*="col-"] > .stat-card,
 .row > [class*="col-"] > a.stat-card { height: 100%; }
+
+/* ==========================================================================
+   Printing an admin page (the browser's "Save as PDF"): only the content, never the shell, the filters, the buttons
+   or the summary cards. Mark what must not print with .no-print; .print-only shows a small heading on paper only.
+   ========================================================================== */
+.print-only { display: none; }
+@media print {
+    .sidebar, .topbar, .no-print, .scroll-fab { display: none !important; }
+    .print-only { display: block !important; }
+    html, body, .app-shell { background: #fff !important; }
+    .app-shell { display: block !important; min-height: 0 !important; }
+    html[dir="rtl"] .main-area, html[dir="ltr"] .main-area { margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
+    .main-area .page-content, .page-content { padding: 0 !important; }
+    .table-panel, .card-panel { box-shadow: none !important; border-color: #cbd5e1 !important; }
+    .table-modern thead { display: table-header-group; }
+    .table-modern tr { page-break-inside: avoid; }
+}

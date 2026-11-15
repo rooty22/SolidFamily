@@ -1,4 +1,4 @@
-<div class="card-panel mb-4">
+<div class="card-panel mb-4 no-print">
     <form method="get" action="<?= url('admin/transactions') ?>" class="row g-3 align-items-end">
         <div class="col-md-2">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('search_by_member_name') ?></label>
@@ -35,7 +35,7 @@
 </div>
 
 <?php if (!empty($summary)): ?>
-<div class="rounded-2xl p-4 p-md-5 mb-4 text-white shadow-lg" style="background: linear-gradient(135deg, #0f172a 0%, #0c4a6e 55%, #0284c7 100%);">
+<div class="rounded-2xl p-4 p-md-5 mb-4 text-white shadow-lg no-print" style="background: linear-gradient(135deg, #0f172a 0%, #0c4a6e 55%, #0284c7 100%);">
     <div class="row g-4 align-items-center">
         <div class="col-lg-6">
             <div class="flex flex-wrap items-start gap-x-6 gap-y-3">
@@ -110,7 +110,7 @@
 </div>
 <?php endif; ?>
 
-<div class="d-flex justify-content-end gap-2 mb-3">
+<div class="d-flex justify-content-end gap-2 mb-3 no-print">
     <a href="<?= url('admin/transactions/export') ?>?<?= http_build_query($filters) ?>" class="btn-soft-primary text-xs">
         <i class="bi bi-file-earmark-spreadsheet"></i>
         <span><?= __('export_csv') ?></span>
@@ -119,6 +119,23 @@
         <i class="bi bi-printer"></i>
         <span><?= __('export_pdf') ?></span>
     </a>
+</div>
+
+<?php
+// Paper only: the title, the date and what was filtered -- never the totals (those stay on the screen).
+$printFilters = [];
+if (trim((string) ($filters['search'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'بحث: ' : 'Search: ') . $filters['search']; }
+if (trim((string) ($filters['category'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'النوع: ' : 'Type: ') . ($categoryLabels[$filters['category']] ?? $filters['category']); }
+if (trim((string) ($filters['month'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'الشهر: ' : 'Month: ') . $filters['month']; }
+if (trim((string) ($filters['from'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'من: ' : 'From: ') . date_ar($filters['from']); }
+if (trim((string) ($filters['to'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'إلى: ' : 'To: ') . date_ar($filters['to']); }
+?>
+<div class="print-only" style="margin-bottom: 12px;">
+    <div style="font-size: 20px; font-weight: 800; color: #0f172a;"><?= e(site_name()) ?> - <?= e(__('transactions')) ?></div>
+    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+        <?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <bdi dir="ltr"><?= date('d/m/Y H:i') ?></bdi>
+        <?php if ($printFilters): ?> · <?= e(implode(' · ', $printFilters)) ?><?php endif; ?>
+    </div>
 </div>
 
 <div class="table-panel">
@@ -164,4 +181,4 @@
     </table>
 </div>
 
-<?= pagination_links($pager ?? []) ?>
+<div class="no-print"><?= pagination_links($pager ?? []) ?></div>
