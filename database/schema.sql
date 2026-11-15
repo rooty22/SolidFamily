@@ -37,6 +37,7 @@ CREATE TABLE members (
     password VARCHAR(255) NOT NULL,
     shares_count INT UNSIGNED NOT NULL DEFAULT 0,
     subscription_due_day TINYINT UNSIGNED NULL COMMENT 'per-member override of the global subscription due day (1-28), NULL falls back to the site setting',
+    is_admin TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 = the member account of an administrator: no loans, treated as an exempt administrative account',
     status ENUM('active','inactive','pending','rejected') NOT NULL DEFAULT 'active' COMMENT 'pending/rejected: a self-registration waiting for / refused by an admin; neither can log in',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -327,7 +328,12 @@ CREATE TABLE content_pages (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     slug VARCHAR(50) NOT NULL UNIQUE,
     title VARCHAR(200) NOT NULL,
+    title_en VARCHAR(200) NULL,
     content LONGTEXT NOT NULL,
+    content_en LONGTEXT NULL,
+    sections_json LONGTEXT NULL,
+    form_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    form_config_json LONGTEXT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -337,7 +343,7 @@ CREATE TABLE content_pages (
 CREATE TABLE settings (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `key` VARCHAR(100) NOT NULL UNIQUE,
-    value TEXT NULL
+    value LONGTEXT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================================================
