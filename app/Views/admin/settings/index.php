@@ -513,7 +513,7 @@ foreach (site_social_links_raw() as $i => $link) {
             <div x-show="tab === 'financial'" class="p-6 space-y-6">
                 <div>
                     <h3 class="text-base font-bold text-slate-900 mb-1">الضوابط والسياسات المالية للصندوق</h3>
-                    <p class="text-xs text-slate-500">المحددات الحسابية لأسهم الصندوق وسقف القروض والمواعيد الشهرية.</p>
+                    <p class="text-xs text-slate-500">المحددات الحسابية لأسهم الصندوق والقروض والمواعيد الشهرية.</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -543,16 +543,6 @@ foreach (site_social_links_raw() as $i => $link) {
                             <input type="number" step="0.01" min="0" max="100" name="loan_admin_fee_percent" value="<?= e($settings['loan_admin_fee_percent'] ?? '2') ?>" class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
                             <span class="inline-flex items-center px-3.5 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">
                                 %
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5"><?= is_rtl() ? 'مضاعف سقف التمويل الأقصى' : 'Max Loan Ceiling Multiplier' ?></label>
-                        <div class="flex rounded-xl overflow-hidden border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white shadow-xs transition-all">
-                            <input type="number" step="0.5" min="1" max="50" name="max_loan_ratio" value="<?= e($settings['max_loan_ratio'] ?? '10') ?>" class="flex-1 min-w-0 text-xs py-2.5 px-3.5 border-0 focus:outline-none font-numeric font-bold text-slate-900 bg-transparent">
-                            <span class="inline-flex items-center px-3 bg-slate-100 text-slate-600 text-xs font-bold border-s border-slate-200 shrink-0 select-none">
-                                <?= is_rtl() ? 'ضعف الأسهم' : 'x Shares' ?>
                             </span>
                         </div>
                     </div>

@@ -26,6 +26,8 @@ class PageController extends Controller
         try {
             $shareValue = (float) Setting::get('share_value', 0);
             $foundingFee = (float) Setting::get('founding_fee_per_share', 0);
+            // Only feeds the "maximum loan" figure of the home-page simulator (monthly subscription x ratio); it is not enforced
+            // anywhere (a loan request has no fixed ceiling) and has no admin field any more: the value stored before, or 10.
             $maxLoanRatio = (float) Setting::get('max_loan_ratio', 10);
 
             $totalMembers = (int) Member::count(['status' => 'active']);

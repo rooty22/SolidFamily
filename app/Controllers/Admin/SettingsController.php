@@ -36,7 +36,7 @@ class SettingsController extends Controller
         // Language Controls
         'site_language_mode', 'site_default_language',
         // Financial Rules
-        'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day',
+        'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'subscription_due_day',
         'loan_due_day', 'subscription_grace_days',
         // OTP & SMS Gateway Integration
         'otp_mode', 'otp_resend_seconds', 'otp_length', 'otp_expiry_minutes',
@@ -50,7 +50,7 @@ class SettingsController extends Controller
     ];
 
     /** Financial settings drive every calculation in the system: they can never be blank once submitted. */
-    private const FINANCIAL_FIELDS = ['share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio', 'subscription_due_day', 'loan_due_day', 'subscription_grace_days'];
+    private const FINANCIAL_FIELDS = ['share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'subscription_due_day', 'loan_due_day', 'subscription_grace_days'];
 
     public function update(): void
     {
@@ -82,7 +82,6 @@ class SettingsController extends Controller
             ->decimal('share_value', 'قيمة السهم', 1, 1000000)
             ->decimal('founding_fee_per_share', 'رسوم التأسيس لكل سهم', 0, 1000000)
             ->decimal('loan_admin_fee_percent', 'نسبة المصاريف الإدارية', 0, 100)
-            ->decimal('max_loan_ratio', 'أقصى نسبة للقرض', 1, 100)
             ->integer('subscription_due_day', 'يوم استحقاق الاشتراك', 1, 28)
             ->integer('loan_due_day', 'يوم استحقاق أقساط القروض', 0, 28)
             ->integer('subscription_grace_days', 'مهلة السداد بعد إضافة السهم', 0, 60)

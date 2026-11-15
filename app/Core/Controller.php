@@ -27,7 +27,7 @@ abstract class Controller
     private const DIGIT_FIELDS = [
         'mobile', 'phone', 'national_id', 'code', 'iban', 'bank_account_number', 'amount', 'amount_requested',
         'partial_amount', 'shares_count', 'installments_count', 'installments_months', 'months_count',
-        'admin_fee_percent', 'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent', 'max_loan_ratio',
+        'admin_fee_percent', 'share_value', 'founding_fee_per_share', 'loan_admin_fee_percent',
         'subscription_due_day', 'loan_due_day', 'official_phone', 'official_whatsapp', 'start_month', 'partial_month',
         'loan_date', 'expense_date', 'payment_date', 'birth_date', 'member_id', 'installment_id', 'loan_request_id', 'fee_paid_at', 'lot_id', 'payment_id',
     ];
