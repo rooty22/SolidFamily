@@ -103,7 +103,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
     $html = '<div class="mb-2"><label class="form-label text-xs font-bold text-slate-700 mb-1">' . (is_rtl() ? 'الدفعة (لوحة الأسهم)' : 'Share Lot') . '</label><select name="lot_id" class="form-select text-xs font-bold" required>';
     foreach ($payableLots as $pLot) {
         $pIdx = array_search($pLot['id'], array_column($lots, 'id'));
-        $html .= '<option value="' . (int) $pLot['id'] . '">' . e($label($pIdx !== false ? $pIdx : 0, $pLot)) . '</option>';
+        $html .= '<option value="' . (int) $pLot['id'] . '" data-due-amount="' . (float) ($pLot['due_now_amount'] ?? 0) . '" data-due-months="' . (int) ($pLot['due_now_months'] ?? 0) . '">' . e($label($pIdx !== false ? $pIdx : 0, $pLot)) . '</option>';
     }
     $html .= '</select>' . ($allSettled ? '<div class="form-text text-[11px]">' . (is_rtl() ? 'كل الدفعات مسددة حالياً، يمكنك السداد مقدماً.' : 'All lots are settled, you can pay in advance.') . '</div>' : '') . '</div>';
     return $html;
@@ -125,11 +125,30 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 <input type="hidden" name="action" value="bulk_pay">
                 <?= $lotPicker() ?>
                 <div class="row g-2">
-                    <div class="col-7">
+                    <?php
+                    $canPayAll = (float) ($dueNow['amount'] ?? 0) > 0;
+                    $onlyLot = count($lots) === 1 ? $lots[0] : null;   // a single lot: its own numbers; several: the chosen lot's (script)
+                    $sumMonths = $onlyLot ? (int) $onlyLot['due_now_months'] : (int) ($dueNow['months'] ?? 0);
+                    $sumAmount = $onlyLot ? (float) $onlyLot['due_now_amount'] : (float) ($dueNow['amount'] ?? 0);
+                    ?>
+                    <div class="col-12">
+                        <label class="d-flex align-items-start gap-2 p-2 rounded-xl border <?= $canPayAll ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-slate-50' ?>" style="cursor: <?= $canPayAll ? 'pointer' : 'not-allowed' ?>;" data-testid="pay-all-option">
+                            <input class="form-check-input m-0 mt-1 js-pay-all" type="checkbox" id="payAllMonths" <?= $canPayAll ? '' : 'disabled' ?>>
+                            <span class="text-[11.5px] font-bold <?= $canPayAll ? 'text-emerald-900' : 'text-slate-500' ?>">
+                                <?= is_rtl() ? 'سداد كل الأشهر المستحقة بالكامل (بدون تحديد الأشهر)' : 'Pay every due month in full (no need to pick the months)' ?>
+                                <span id="payAllSummary" class="block font-medium mt-0.5 <?= $canPayAll ? 'text-emerald-700' : 'text-slate-400' ?>"
+                                      data-months="<?= $sumMonths ?>" data-amount="<?= $sumAmount ?>" data-currency="<?= e(__('currency')) ?>"
+                                      data-none="<?= e(is_rtl() ? 'لا توجد أشهر مستحقة غير مسددة' : 'Nothing due is unpaid') ?>" data-due="<?= e(is_rtl() ? 'شهر · مستحقة حتى الآن' : 'month(s) due so far') ?>">
+                                    <?php if ($canPayAll): ?><?= $sumMonths ?> <?= is_rtl() ? 'شهر · ' : 'month(s) · ' ?><?= money($sumAmount) ?> <?= is_rtl() ? 'مستحقة حتى الآن' : 'due so far' ?><?php else: ?><?= is_rtl() ? 'لا توجد أشهر مستحقة غير مسددة' : 'Nothing due is unpaid' ?><?php endif; ?>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="col-7 js-bulk-only">
                         <label class="form-label font-bold text-xs"><?= is_rtl() ? 'الشهر الأول المراد سداده' : 'First month to pay' ?></label>
                         <input type="month" name="start_month" class="form-control font-numeric font-bold js-pay-month" value="<?= date('Y-m') ?>" max="<?= date('Y-m') ?>" required>
                     </div>
-                    <div class="col-5">
+                    <div class="col-5 js-bulk-only">
                         <label class="form-label font-bold text-xs"><?= is_rtl() ? 'عدد الأشهر' : 'Months Count' ?></label>
                         <input type="number" name="months_count" class="form-control font-numeric font-bold" value="1" min="1" max="24">
                     </div>
@@ -137,7 +156,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                         <label class="form-label font-bold text-xs"><?= is_rtl() ? 'تاريخ استلام المبلغ (اليوم أو قبله)' : 'Date the money was received (today or earlier)' ?></label>
                         <input type="date" name="payment_date" class="form-control font-numeric font-bold" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 js-bulk-only">
                         <div class="form-check p-2 rounded-xl border border-amber-200 bg-amber-50/60 d-flex align-items-start gap-2">
                             <input class="form-check-input m-0 mt-1 js-advance-check" type="checkbox" name="advance" value="1" id="advanceFull">
                             <label class="form-check-label text-[11px] font-bold text-amber-900" for="advanceFull">
@@ -148,7 +167,7 @@ $lotPicker = function () use ($lots, $payableLots, $allSettled, $member): string
                 </div>
                 <button type="submit" class="btn btn-primary w-100 mt-3 font-bold py-2 rounded-xl">
                     <i class="bi bi-check-circle me-1"></i>
-                    <span><?= is_rtl() ? 'تسجيل السداد بالكامل' : 'Record Full Payment' ?></span>
+                    <span class="js-pay-label" data-bulk="<?= e(is_rtl() ? 'تسجيل السداد بالكامل' : 'Record Full Payment') ?>" data-all="<?= e(is_rtl() ? 'سداد كل المستحق بالكامل' : 'Pay everything due in full') ?>"><?= is_rtl() ? 'تسجيل السداد بالكامل' : 'Record Full Payment' ?></span>
                 </button>
             </form>
         </div>
@@ -675,6 +694,34 @@ document.querySelectorAll('.js-advance-check').forEach(function (box) {
     var max = month.getAttribute('max');
     box.addEventListener('change', function () { if (box.checked) { month.removeAttribute('max'); } else { month.setAttribute('max', max); if (month.value > max) { month.value = max; } } });
 });
+// "Pay every due month in full": hides the month fields and sends action=pay_all instead of bulk_pay.
+(function () {
+    var box = document.getElementById('payAllMonths');
+    if (!box) { return; }
+    var form = box.closest('form');
+    var action = form.querySelector('input[name=action]');
+    var sum = document.getElementById('payAllSummary');
+    var label = form.querySelector('.js-pay-label');
+    var fmt = function (n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }); };
+    var select = form.querySelector('select[name=lot_id]');
+    function summary() {
+        var opt = select && select.selectedOptions[0];
+        var months = opt ? opt.dataset.dueMonths : sum.dataset.months;
+        var amount = opt ? opt.dataset.dueAmount : sum.dataset.amount;
+        sum.textContent = Number(amount) > 0 ? (months + ' ' + sum.dataset.due.split(' · ')[0] + ' · ' + fmt(amount) + ' ' + sum.dataset.currency + ' ' + sum.dataset.due.split(' · ')[1]) : sum.dataset.none;
+    }
+    function apply() {
+        action.value = box.checked ? 'pay_all' : 'bulk_pay';
+        form.querySelectorAll('.js-bulk-only').forEach(function (el) {
+            el.style.display = box.checked ? 'none' : '';
+            el.querySelectorAll('input').forEach(function (i) { i.disabled = box.checked; });
+        });
+        if (label) { label.textContent = box.checked ? label.dataset.all : label.dataset.bulk; }
+    }
+    box.addEventListener('change', apply);
+    if (select) { select.addEventListener('change', summary); summary(); }
+    apply();
+})();
 function filterAdminLots(lotId, btn) {
     document.querySelectorAll('.btn-admin-lot-tab').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');

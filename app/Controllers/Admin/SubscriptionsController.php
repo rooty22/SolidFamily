@@ -154,15 +154,33 @@ class SubscriptionsController extends Controller
         // What each lot still owes across its rows. The payment forms only offer lots with something outstanding
         // (a fully paid lot has nothing to record); when every lot is settled they all stay, so a month can still be paid ahead.
         $owed = [];
+        // ... and what of it is already DUE (up to the current month): what the "pay everything due" option settles.
+        $dueNowByLot = [];
         foreach ($history as $h) {
             if ($h['lot_id']) {
-                $owed[(int) $h['lot_id']] = ($owed[(int) $h['lot_id']] ?? 0) + max(0, round((float) $h['amount_due'] - (float) $h['amount_paid'], 2));
+                $rem = max(0, round((float) $h['amount_due'] - (float) $h['amount_paid'], 2));
+                $owed[(int) $h['lot_id']] = ($owed[(int) $h['lot_id']] ?? 0) + $rem;
+                if ($rem > 0 && $h['month'] <= date('Y-m')) {
+                    $d = $dueNowByLot[(int) $h['lot_id']] ?? ['rows' => 0, 'months' => [], 'amount' => 0.0];
+                    $d['rows']++;
+                    $d['months'][$h['month']] = true;
+                    $d['amount'] = round($d['amount'] + $rem, 2);
+                    $dueNowByLot[(int) $h['lot_id']] = $d;
+                }
             }
         }
+        $dueNow = ['rows' => 0, 'months' => [], 'amount' => 0.0];
         foreach ($lots as &$lot) {
             $lot['outstanding'] = round($owed[(int) $lot['id']] ?? 0, 2);
+            $dn = $dueNowByLot[(int) $lot['id']] ?? ['rows' => 0, 'months' => [], 'amount' => 0.0];
+            $lot['due_now_months'] = count($dn['months']);
+            $lot['due_now_amount'] = $dn['amount'];
+            $dueNow['rows'] += $dn['rows'];
+            $dueNow['months'] += $dn['months'];
+            $dueNow['amount'] = round($dueNow['amount'] + $dn['amount'], 2);
         }
         unset($lot);
+        $dueNow['months'] = count($dueNow['months']);
         $payableLots = array_values(array_filter($lots, fn($l) => $l['outstanding'] > 0));
 
         $totalDue = round(array_sum(array_map('floatval', array_column($history, 'amount_due'))), 2);
@@ -189,6 +207,7 @@ class SubscriptionsController extends Controller
             'shareValue' => $shareValue,
             'lots' => $lots,
             'payableLots' => $payableLots ?: $lots,
+            'dueNow' => $dueNow,
             'allSettled' => !$payableLots,
             'founding' => \App\Models\FoundingAmount::ensureForMember((int) $memberId),
             'totalDue' => $totalDue,
@@ -313,6 +332,9 @@ class SubscriptionsController extends Controller
             } else {
                 Session::flash('error', 'الأشهر المحددة مسددة بالكامل مسبقاً.');
             }
+        } elseif ($action === 'pay_all') {
+            $this->payAllDue((int) $memberId, $lotIdInput, $data, $back);
+            return;
         } elseif ($action === 'partial_pay' || $action === 'partial') {
             [$month, $paymentDate] = $this->monthAndPaymentDate($data['partial_month'] ?? '', $data['partial_date'] ?? '');
             if ($month === null) {
@@ -428,6 +450,91 @@ class SubscriptionsController extends Controller
             Session::flash('error', 'نوع العملية غير صحيح.');
         }
 
+        $this->redirect($back);
+    }
+
+    /**
+     * "Pay everything due": every subscription of the member that is due up to the current month and not paid in full is
+     * paid in full in ONE go, without naming the months. The share lot is the one chosen on the form (with no lot given,
+     * all his active lots). Months that have not started yet are never touched (that is an advance payment, a separate
+     * option of the other form). All or nothing: one transaction.
+     */
+    private function payAllDue(int $memberId, string $lotIdInput, array $data, string $back): void
+    {
+        [$month, $paymentDate] = $this->monthAndPaymentDate('', $data['payment_date'] ?? '');
+        if ($month === null) {
+            Session::flash('error', $paymentDate);
+            $this->redirect($back);
+            return;
+        }
+
+        $lots = ShareLot::activeFor($memberId);
+        if (!$lots) {
+            Session::flash('error', 'لا توجد أسهم نشطة لهذا المشترك.');
+            $this->redirect($back);
+            return;
+        }
+        $lotIds = array_map(fn($l) => (int) $l['id'], $lots);
+        if ($lotIdInput !== '') {
+            if (!in_array((int) $lotIdInput, $lotIds, true)) {
+                Session::flash('error', 'الدفعة المحددة غير صحيحة.');
+                $this->redirect($back);
+                return;
+            }
+            $lotIds = [(int) $lotIdInput];
+        }
+
+        // Rows are created lazily: make sure every month up to now exists first, like the page does when it opens.
+        $earliest = $this->earliestPayableMonth($memberId, $lotIdInput);
+        if ($earliest !== null && $earliest <= date('Y-m')) {
+            $cur = strtotime($earliest . '-01');
+            $end = strtotime(date('Y-m-01'));
+            for ($safety = 0; $cur <= $end && $safety < 120; $safety++) {
+                MonthlySubscription::ensureMonthExistsForMember($memberId, date('Y-m', $cur));
+                $cur = strtotime('+1 month', $cur);
+            }
+        }
+
+        $rows = MonthlySubscription::raw(
+            'SELECT * FROM monthly_subscriptions WHERE member_id = ? AND lot_id IN (' . implode(',', $lotIds) . ')
+             AND month <= ? AND amount_due > amount_paid ORDER BY month ASC, lot_id ASC',
+            [$memberId, date('Y-m')]
+        );
+        if (!$rows) {
+            Session::flash('error', 'لا توجد أشهر مستحقة غير مسددة حتى الآن.');
+            $this->redirect($back);
+            return;
+        }
+
+        $lotIndex = array_column($lots, 'id');
+        $total = 0.0;
+        $months = [];
+        $pdo = \App\Core\Database::connection();
+        $pdo->beginTransaction();
+        try {
+            foreach ($rows as $row) {
+                $remaining = round((float) $row['amount_due'] - (float) $row['amount_paid'], 2);
+                if ($remaining <= 0) {
+                    continue;
+                }
+                $idx = array_search((int) $row['lot_id'], array_map('intval', $lotIndex), true);
+                $lotLabel = $idx !== false ? (' - السهم رقم ' . ($idx + 1)) : (' - السهم رقم ' . (ShareLot::numbersFor($memberId)[(int) $row['lot_id']] ?? ''));
+                MonthlySubscription::update($row['id'], ['amount_paid' => $row['amount_due'], 'status' => 'paid']);
+                Transaction::record($memberId, 'subscription', $row['id'], $remaining, current_admin_id(), 'سداد اشتراك شهر ' . $row['month'] . $lotLabel, $paymentDate);
+                $total += $remaining;
+                $months[$row['month']] = true;
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        $total = round($total, 2);
+        Notification::systemNotify($memberId, 'تسجيل سداد اشتراك', 'تم تسجيل سداد كل الأشهر المستحقة (' . count($months) . ' شهر) بإجمالي ' . money($total) . '.');
+        Session::flash('success', 'تم تسجيل سداد كل الأشهر المستحقة بالكامل: ' . count($months) . ' شهر/أشهر بإجمالي ' . money($total) . '.');
         $this->redirect($back);
     }
 
