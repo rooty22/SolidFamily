@@ -196,25 +196,11 @@ $isEn = is_en();
         </div>
     </div>
 
-    <!-- Section 4: Administrative Role & Loan Exemption -->
-    <div class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200/80">
-        <h4 class="text-xs font-black uppercase tracking-wider text-amber-900 mb-3 flex items-center gap-2">
-            <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">4</span>
-            <span><?= $isEn ? 'Administrative Role' : 'الصفة الإدارية' ?></span>
-        </h4>
-        <div class="p-3.5 bg-white rounded-xl border border-amber-200/70">
-            <div class="form-check form-switch mb-0">
-                <input type="hidden" name="is_admin" value="0">
-                <input class="form-check-input cursor-pointer" type="checkbox" role="switch" id="isAdminSwitch" name="is_admin" value="1" <?= !empty($m['is_admin']) ? 'checked' : '' ?>>
-                <label class="form-check-label font-bold text-xs text-slate-800 cursor-pointer me-2" for="isAdminSwitch">
-                    <?= $isEn ? 'Assign as Administrative Account' : 'تعيين كحساب إداري' ?>
-                </label>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-1.5 mb-0 ms-1">
-                <?= $isEn ? 'This only designates the account as an administrative one. It does not change loans or installments for this member.' : 'هذا التعيين صفة إدارية فقط، ولا يؤثر على القروض أو الأقساط الخاصة بالمشترك.' ?>
-            </p>
-        </div>
-</div>
+    <?php
+    // The "assign as an administrative account" switch is hidden from the admin panel. Its inputs are NOT rendered at all (not just
+    // hidden with CSS): MembersController::update() only touches members.is_admin when the field is posted, so editing a member
+    // never clears (or sets) the flag of an account that already has it, and a new member starts as an ordinary one.
+    ?>
 
 <script>
 (function() {
