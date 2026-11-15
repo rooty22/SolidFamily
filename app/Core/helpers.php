@@ -777,6 +777,21 @@ function site_logo(): ?string
     return (!empty($logo)) ? $logo : null;
 }
 
+/**
+ * Whether a file under public/ exists (e.g. "uploads/branding/logo.png"). Uploads are not part of the code, so after the
+ * site is moved to another server a setting can still name a file that was never copied there.
+ */
+function public_file_exists(string $relative): bool
+{
+    static $cache = [];
+    if (!isset($cache[$relative])) {
+        $clean = ltrim(str_replace('\\', '/', $relative), '/');
+        $cache[$relative] = $clean !== '' && !str_contains($clean, '..') && !str_contains($clean, chr(0))
+            && is_file(base_dir() . '/public/' . $clean);
+    }
+    return $cache[$relative];
+}
+
 function site_logo_url(): ?string
 {
     $logo = site_logo();
@@ -786,7 +801,8 @@ function site_logo_url(): ?string
     if (str_starts_with($logo, 'http://') || str_starts_with($logo, 'https://')) {
         return $logo;
     }
-    return url($logo);
+    // a logo whose file is missing on this server: show none (the layouts fall back to the site name) instead of a broken image
+    return public_file_exists($logo) ? url($logo) : null;
 }
 
 /** Favicon URL: external links pass through, uploads resolve like the logo (site root, not /assets). */
@@ -799,7 +815,55 @@ function site_favicon_url(): ?string
     if (str_starts_with($favicon, 'http://') || str_starts_with($favicon, 'https://')) {
         return $favicon;
     }
-    return url($favicon);
+    return public_file_exists($favicon) ? url($favicon) : null;
+}
+
+/**
+ * The real type of an uploaded file, read from its content (never from its name or what the browser claims).
+ * Uses PHP's fileinfo extension when the server has it. Many shared hosts do not ("Class finfo not found"), so it falls back
+ * to the file's own signature, which is enough for the image types the app accepts (png, jpg, webp, gif, ico, svg).
+ * Text that is not an SVG answers text/plain and any other binary application/octet-stream, so it can never pass for an image.
+ */
+function uploaded_file_mime(string $path): ?string
+{
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+    if (class_exists('finfo')) {
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        if (is_string($mime) && $mime !== '') {
+            return $mime;
+        }
+    }
+    if (function_exists('mime_content_type')) {
+        $mime = @mime_content_type($path);
+        if (is_string($mime) && $mime !== '') {
+            return $mime;
+        }
+    }
+
+    $head = (string) @file_get_contents($path, false, null, 0, 4096);
+    if (str_starts_with($head, "\x89PNG\r\n\x1a\n")) {
+        return 'image/png';
+    }
+    if (str_starts_with($head, "\xFF\xD8\xFF")) {
+        return 'image/jpeg';
+    }
+    if (str_starts_with($head, 'GIF87a') || str_starts_with($head, 'GIF89a')) {
+        return 'image/gif';
+    }
+    if (strlen($head) >= 12 && str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WEBP') {
+        return 'image/webp';
+    }
+    if (str_starts_with($head, "\x00\x00\x01\x00")) {
+        return 'image/x-icon';
+    }
+    $text = ltrim(preg_replace('/^\xEF\xBB\xBF/', '', $head));
+    if ($text !== '' && !str_contains($head, chr(0))) {
+        $startsLikeMarkup = $text[0] === '<';
+        return ($startsLikeMarkup && stripos($text, '<svg') !== false) ? 'image/svg+xml' : 'text/plain';
+    }
+    return 'application/octet-stream';
 }
 
 function site_favicon_mime(): string

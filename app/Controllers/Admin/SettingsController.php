@@ -297,7 +297,7 @@ class SettingsController extends Controller
             return 'صيغة ملف الشعار غير مقبولة (المسموح: png, jpg, webp, svg).';
         }
 
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        $mime = uploaded_file_mime($file['tmp_name']);
         if (!in_array($mime, $mimeByExt[$ext], true)) {
             return 'محتوى الملف لا يطابق صيغته، ملف الشعار مرفوض.';
         }
@@ -345,7 +345,7 @@ class SettingsController extends Controller
             return 'صيغة ملف الـ Favicon غير مقبولة (المسموح: ico, png, jpg, svg, webp).';
         }
 
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        $mime = uploaded_file_mime($file['tmp_name']);
         if (!in_array($mime, $mimeByExt[$ext], true)) {
             return 'محتوى ملف الـ Favicon لا يطابق صيغته، الملف مرفوض.';
         }

@@ -199,7 +199,7 @@ class AdminsController extends Controller
         if (!isset($mimeByExt[$ext])) {
             return 'صيغة الصورة غير مقبولة (المسموح: png, jpg, webp).';
         }
-        if ((new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) !== $mimeByExt[$ext] || @getimagesize($file['tmp_name']) === false) {
+        if (uploaded_file_mime($file['tmp_name']) !== $mimeByExt[$ext] || @getimagesize($file['tmp_name']) === false) {
             return 'محتوى الملف لا يطابق صيغته، الصورة مرفوضة.';
         }
         return null;

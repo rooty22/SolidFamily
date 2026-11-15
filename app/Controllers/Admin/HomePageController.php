@@ -93,7 +93,7 @@ class HomePageController extends Controller
         if (!isset($mimeByExt[$ext])) {
             return 'صيغة الصورة غير مقبولة (المسموح: png, jpg, webp, gif).';
         }
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        $mime = uploaded_file_mime($file['tmp_name']);
         if ($mime !== $mimeByExt[$ext] || @getimagesize($file['tmp_name']) === false) {
             return 'الملف ليس صورة صالحة أو لا يطابق صيغته.';
         }
