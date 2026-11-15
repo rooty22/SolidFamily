@@ -17,8 +17,8 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
         <h1 class="text-xl font-bold text-slate-900"><?= __('members_directory_title') ?></h1>
         <p class="text-xs text-slate-500 mt-0.5"><?= __('members_directory_desc') ?></p>
     </div>
-    <div class="flex items-center gap-3 flex-wrap">
-        <form method="get" action="<?= url('admin/members') ?>" class="search-box" style="min-width:min(280px,100%);">
+    <div class="members-actions">
+        <form method="get" action="<?= url('admin/members') ?>" class="search-box">
             <i class="bi bi-search"></i>
             <input type="text" name="q" class="form-control" placeholder="<?= __('search_members_full') ?>" value="<?= e($q) ?>">
             <?php if ($paymentStatus !== ''): ?>
@@ -28,6 +28,10 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
                 <input type="hidden" name="account_status" value="<?= e($accountStatus) ?>">
             <?php endif; ?>
         </form>
+        <a href="<?= e(preg_replace('#^' . preg_quote(url('admin/members'), '#') . '#', url('admin/members/export'), $buildFilterUrl())) ?>" class="btn btn-soft inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold" data-testid="members-export" title="<?= e(is_rtl() ? 'تصدير قائمة المشتركين (بنفس الفلاتر الحالية) إلى ملف Excel' : 'Export the members list (with the current filters) to Excel') ?>">
+            <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+            <span><?= is_rtl() ? 'تصدير Excel' : 'Export Excel' ?></span>
+        </a>
         <a href="<?= url('admin/members/create') ?>" class="btn btn-primary inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold shadow-xs">
             <i class="bi bi-person-plus-fill"></i>
             <span><?= __('add_member') ?></span>

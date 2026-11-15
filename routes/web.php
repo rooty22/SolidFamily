@@ -134,6 +134,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->get('/dashboard/print', [DashboardController::class, 'printReport']);
 
     $router->get('/members', [MembersController::class, 'index']);
+    $router->get('/members/export', [MembersController::class, 'export']);   // before /members/{id}
     $router->get('/members/create', [MembersController::class, 'create']);
     $router->post('/members', [MembersController::class, 'store']);
     $router->get('/members/{id}', [MembersController::class, 'show']);

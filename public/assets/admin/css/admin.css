@@ -1602,3 +1602,9 @@ a.cell-member-name:hover { color: #047857; }
     .table-modern thead { display: table-header-group; }
     .table-modern tr { page-break-inside: avoid; }
 }
+
+/* Members page header: search box + export + add share one row when the screen has room (the search box takes what is
+   left, never more than 360px); on narrower screens and phones they wrap instead of overflowing. */
+.members-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.members-actions .search-box { flex: 1 1 280px; min-width: min(200px, 100%); max-width: 360px; }
+@media (min-width: 1200px) { .members-actions { flex: 1 1 auto; max-width: 640px; flex-wrap: nowrap; } }

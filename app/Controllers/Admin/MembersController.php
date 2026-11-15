@@ -14,6 +14,32 @@ class MembersController extends Controller
 {
     public function index(): void
     {
+        [$decorated, $counts, $q, $paymentStatus, $accountStatus, $lateInfo] = $this->filteredMembers();
+
+        $pager = paginate($decorated);
+
+        $this->view('admin/members/index', [
+            'pageTitle' => __('members'),
+            'members' => $pager['items'],
+            'pager' => $pager,
+            'q' => $q,
+            'paymentStatus' => $paymentStatus,
+            'accountStatus' => $accountStatus,
+            'counts' => $counts,
+            'lateInfo' => $lateInfo,
+            'pendingCount' => Member::count(['status' => 'pending']),
+        ], 'admin/layout');
+    }
+
+    /**
+     * The members of the list with the filters of the page (search, payment status, account status), each with its payment
+     * status worked out, plus the counters of the filter buttons. Shared by the list and the Excel export, so both always
+     * show the same members.
+     *
+     * @return array{0: array, 1: array, 2: string, 3: string, 4: string, 5: array}
+     */
+    private function filteredMembers(): array
+    {
         $q = trim((string) $this->input('q', ''));
         $paymentStatus = trim((string) $this->input('payment_status', ''));
         $accountStatus = trim((string) $this->input('account_status', ''));
@@ -101,19 +127,150 @@ class MembersController extends Controller
             $decorated[] = $m;
         }
 
-        $pager = paginate($decorated);
+        return [$decorated, $counts, $q, $paymentStatus, $accountStatus, $lateInfo];
+    }
 
-        $this->view('admin/members/index', [
-            'pageTitle' => __('members'),
-            'members' => $pager['items'],
-            'pager' => $pager,
-            'q' => $q,
-            'paymentStatus' => $paymentStatus,
-            'accountStatus' => $accountStatus,
-            'counts' => $counts,
-            'lateInfo' => $lateInfo,
-            'pendingCount' => Member::count(['status' => 'pending']),
-        ], 'admin/layout');
+    /**
+     * The members of the list (same filters as the page) as a real Excel file: every field of the member, where he stands
+     * on the monthly subscription, his founding amount and his loans, in ordered columns with the right types (IDs and
+     * phone numbers stay text, amounts are numbers, dates are dates). ?format=csv gives a semicolon CSV instead, which is
+     * also what is sent when the server has no zip extension.
+     */
+    public function export(): void
+    {
+        [$members, , $q, $paymentStatus, $accountStatus] = $this->filteredMembers();
+        $ar = is_rtl();
+        $shareValue = (float) \App\Models\Setting::get('share_value', 0);
+
+        // what each member has paid / still owes, read for everybody at once
+        $founding = [];
+        foreach (FoundingAmount::raw('SELECT member_id, total_required, amount_paid FROM founding_amounts') as $f) {
+            $founding[(int) $f['member_id']] = $f;
+        }
+        $loans = [];
+        foreach (Loan::raw("SELECT member_id, COUNT(*) AS c, COALESCE(SUM(amount_remaining), 0) AS r FROM loans WHERE status IN ('active', 'partial') GROUP BY member_id") as $l) {
+            $loans[(int) $l['member_id']] = $l;
+        }
+
+        $accountLabels = $ar
+            ? ['active' => 'نشط', 'inactive' => 'موقوف', 'pending' => 'قيد المراجعة', 'rejected' => 'مرفوض']
+            : ['active' => 'Active', 'inactive' => 'Suspended', 'pending' => 'Pending approval', 'rejected' => 'Rejected'];
+        $payLabels = $ar
+            ? ['late_both' => 'متأخر (اشتراك وقرض)', 'late_subscription' => 'متأخر (اشتراك شهري)', 'late_loan' => 'متأخر (قسط قرض)', 'no_shares' => 'بدون أسهم', 'up_to_date' => 'منتظم']
+            : ['late_both' => 'Late (subscription & loan)', 'late_subscription' => 'Late (subscription)', 'late_loan' => 'Late (loan)', 'no_shares' => 'No shares', 'up_to_date' => 'Up to date'];
+        $monthLabels = $ar
+            ? ['paid' => 'مسدد', 'partial' => 'مسدد جزئياً', 'unpaid' => 'غير مسدد', 'late' => 'متأخر', 'no_shares' => 'بدون أسهم']
+            : ['paid' => 'Paid', 'partial' => 'Partly paid', 'unpaid' => 'Unpaid', 'late' => 'Late', 'no_shares' => 'No shares'];
+
+        // by registration number (a pending registration has none yet: last), then by name
+        usort($members, function ($a, $b) {
+            $sa = $a['serial_no'] === null ? PHP_INT_MAX : (int) $a['serial_no'];
+            $sb = $b['serial_no'] === null ? PHP_INT_MAX : (int) $b['serial_no'];
+            return $sa <=> $sb ?: strcmp((string) $a['name'], (string) $b['name']);
+        });
+
+        $columns = [
+            [$ar ? 'الرقم التسلسلي' : 'Serial', 12, \App\Core\XlsxWriter::INT],
+            ['User ID', 14, \App\Core\XlsxWriter::ID],
+            [$ar ? 'اسم المشترك' : 'Member name', 30, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'رقم الجوال' : 'Mobile', 17, \App\Core\XlsxWriter::ID],
+            [$ar ? 'البريد الإلكتروني' : 'E-mail', 30, \App\Core\XlsxWriter::ID],
+            [$ar ? 'رقم الهوية' : 'National ID', 16, \App\Core\XlsxWriter::ID],
+            [$ar ? 'تاريخ الميلاد' : 'Birth date', 14, \App\Core\XlsxWriter::DATE],
+            [$ar ? 'العنوان الوطني' : 'National address', 34, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'اسم البنك' : 'Bank', 20, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'رقم الآيبان (IBAN)' : 'IBAN', 28, \App\Core\XlsxWriter::ID],
+            [$ar ? 'رقم الحساب البنكي' : 'Bank account', 22, \App\Core\XlsxWriter::ID],
+            [$ar ? 'عدد الأسهم' : 'Shares', 11, \App\Core\XlsxWriter::INT],
+            [$ar ? 'الاشتراك الشهري (ريال)' : 'Monthly subscription (SAR)', 16, \App\Core\XlsxWriter::MONEY],
+            [$ar ? 'حالة الحساب' : 'Account status', 14, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'حالة السداد' : 'Payment status', 22, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'اشتراك الشهر الحالي' : 'This month', 16, \App\Core\XlsxWriter::TEXT],
+            [$ar ? 'مبلغ التأسيس المطلوب' : 'Founding required', 16, \App\Core\XlsxWriter::MONEY],
+            [$ar ? 'المسدد من التأسيس' : 'Founding paid', 16, \App\Core\XlsxWriter::MONEY],
+            [$ar ? 'المتبقي من التأسيس' : 'Founding remaining', 16, \App\Core\XlsxWriter::MONEY],
+            [$ar ? 'عدد القروض القائمة' : 'Open loans', 13, \App\Core\XlsxWriter::INT],
+            [$ar ? 'المتبقي من القروض (ريال)' : 'Loans remaining (SAR)', 16, \App\Core\XlsxWriter::MONEY],
+            [$ar ? 'تاريخ التسجيل' : 'Registered on', 14, \App\Core\XlsxWriter::DATE],
+        ];
+
+        $rows = [];
+        $currentMonth = date('Y-m');
+        foreach ($members as $m) {
+            $id = (int) $m['id'];
+            $shares = (int) $m['shares_count'];
+            $f = $founding[$id] ?? null;
+            $required = $f ? (float) $f['total_required'] : 0.0;
+            $paid = $f ? (float) $f['amount_paid'] : 0.0;
+            $monthStatus = MonthlySubscription::memberMonthStatus($m, $currentMonth);
+            $rows[] = [
+                $m['serial_no'] !== null ? (int) $m['serial_no'] : null,
+                $m['uid'] ?? null,
+                $m['name'],
+                $m['mobile'],
+                $m['email'],
+                $m['national_id'],
+                $m['birth_date'] ?: null,
+                $m['national_address'] ?: null,
+                $m['bank_name'] ?: null,
+                $m['iban'] ?: null,
+                $m['bank_account_number'] ?: null,
+                $shares,
+                round($shares * $shareValue, 2),
+                $accountLabels[$m['status']] ?? $m['status'],
+                $payLabels[$m['payment_status']] ?? $m['payment_status'],
+                $monthLabels[$monthStatus] ?? $monthStatus,
+                round($required, 2),
+                round($paid, 2),
+                round(max(0.0, $required - $paid), 2),
+                (int) ($loans[$id]['c'] ?? 0),
+                round((float) ($loans[$id]['r'] ?? 0), 2),
+                $m['created_at'] ?: null,
+            ];
+        }
+
+        $notes = [];
+        if ($q !== '') {
+            $notes[] = ($ar ? 'بحث: ' : 'Search: ') . $q;
+        }
+        if ($paymentStatus !== '') {
+            $notes[] = ($ar ? 'حالة السداد: ' : 'Payment: ') . ($payLabels[$paymentStatus] ?? ($paymentStatus === 'late' ? ($ar ? 'متأخر' : 'Late') : $paymentStatus));
+        }
+        if ($accountStatus !== '') {
+            $notes[] = ($ar ? 'حالة الحساب: ' : 'Account: ') . ($accountLabels[$accountStatus] ?? $accountStatus);
+        }
+        $titleLines = [
+            ($ar ? 'قائمة المشتركين - ' : 'Members - ') . site_name(),
+            ($ar ? 'تاريخ التقرير: ' : 'Report date: ') . date('d/m/Y H:i') . ' · ' . ($ar ? 'عدد المشتركين: ' : 'Members: ') . count($rows)
+                . ($notes ? ' · ' . implode(' · ', $notes) : ''),
+        ];
+        $filename = 'members-' . date('Y-m-d');
+
+        if (\App\Core\XlsxWriter::available() && (string) $this->input('format', '') !== 'csv') {
+            $x = new \App\Core\XlsxWriter($ar ? 'المشتركون' : 'Members', $columns, $ar);
+            $x->setTitleLines($titleLines);
+            foreach ($rows as $r) {
+                $x->addRow($r);
+            }
+            $x->download($filename . '.xlsx');
+        }
+
+        // CSV fallback: semicolon-separated (what Excel expects with an Arabic / European regional setting), UTF-8 with BOM
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename . '.csv');
+        echo "\xEF\xBB\xBF";
+        $out = fopen('php://output', 'w');
+        fputcsv($out, array_map('csv_cell', array_column($columns, 0)), ';');
+        foreach ($rows as $r) {
+            foreach ([6, 21] as $dateCol) {      // dates as dd/mm/yyyy
+                if (!empty($r[$dateCol])) {
+                    $r[$dateCol] = date('d/m/Y', strtotime(substr((string) $r[$dateCol], 0, 10)));
+                }
+            }
+            fputcsv($out, array_map('csv_cell', $r), ';');
+        }
+        fclose($out);
+        exit;
     }
 
     public function create(): void
