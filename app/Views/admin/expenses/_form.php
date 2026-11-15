@@ -1,6 +1,7 @@
 <?php
 /**
- * The name / cost / date / member / notes fields of the expenses log, shared by the "add" card and the edit page.
+ * The name / kind of transaction / amount / date / member / notes fields of the expenses log, shared by the "add" card
+ * and the edit page. The kind is a withdrawal (deducted from the fund's balance) or a deposit (added to it).
  *
  * @var string     $formAction where the form posts
  * @var array|null $expense    the expense being edited (null when adding)
@@ -8,6 +9,7 @@
  */
 $isEn = !is_rtl();
 $isEdit = !empty($expense);
+$curType = ($expense['type'] ?? 'withdraw') === 'deposit' ? 'deposit' : 'withdraw';
 $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون مشترك (مصروف عام)'];
 ?>
 <style>
@@ -15,9 +17,10 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     .exp-form > div { grid-column: span 12; min-width: 0; }
     @media (min-width: 992px) {
         .exp-form > .c-name { grid-column: span 6; }
+        .exp-form > .c-type { grid-column: span 3; }
         .exp-form > .c-cost { grid-column: span 3; }
         .exp-form > .c-date { grid-column: span 3; }
-        .exp-form > .c-member { grid-column: span 12; }
+        .exp-form > .c-member { grid-column: span 9; }
         .exp-form > .c-notes { grid-column: span 9; }
         .exp-form > .c-submit { grid-column: span 3; }
     }
@@ -27,7 +30,7 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     .exp-box { position: relative; }
     .exp-box .exp-ico { position: absolute; inset-inline-start: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 16px; pointer-events: none; z-index: 3; transition: color .2s ease; }
     .exp-box:focus-within .exp-ico { color: #0284c7; }
-    .exp-box .exp-suffix { position: absolute; inset-inline-end: 10px; top: 50%; transform: translateY(-50%); background: #e2e8f0; color: #475569; font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 9px; pointer-events: none; z-index: 3; }
+    .exp-box .exp-suffix { position: absolute; inset-inline-end: 10px; top: 50%; transform: translateY(-50%); background: #e2e8f0; color: #475569; font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 9px; pointer-events: none; z-index: 3; direction: ltr; unicode-bidi: isolate; }
     /* physical sides on purpose: the date picker's own input is always dir="ltr", so logical padding would flip there */
     html[dir="rtl"] .exp-box .form-control { padding-right: 44px !important; padding-left: 14px !important; }
     html[dir="ltr"] .exp-box .form-control { padding-left: 44px !important; padding-right: 14px !important; }
@@ -44,6 +47,16 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     .exp-form .form-label .exp-count { margin-inline-start: auto; color: #94a3b8; font-weight: 600; font-size: 11px; font-variant-numeric: tabular-nums; }
     .exp-submit { height: 48px; padding-inline: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; white-space: nowrap; }
     @media (max-width: 991px) { .exp-submit { width: 100%; } }
+
+    /* kind of transaction: a select tinted by its value (withdrawal = red, deposit = green) */
+    .exp-select { appearance: none; -webkit-appearance: none; -moz-appearance: none; cursor: pointer; font-weight: 700 !important; }
+    html[dir="rtl"] .exp-box.exp-select-box .form-control { padding-left: 40px !important; }
+    html[dir="ltr"] .exp-box.exp-select-box .form-control { padding-right: 40px !important; }
+    .exp-box.exp-select-box .exp-tools { pointer-events: none; }
+    .exp-box.is-withdraw .exp-ico, .exp-box.is-withdraw:focus-within .exp-ico { color: #e11d48; }
+    .exp-box.is-deposit .exp-ico, .exp-box.is-deposit:focus-within .exp-ico { color: #059669; }
+    .exp-box.is-withdraw select.form-control { background-color: #fff1f2 !important; border-color: #fecdd3 !important; color: #9f1239 !important; }
+    .exp-box.is-deposit select.form-control { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; color: #047857 !important; }
 
     /* member picker: a button that opens a searchable list */
     .exp-picker { display: block; width: 100%; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
@@ -107,26 +120,38 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     }
 </script>
 
-<form method="post" action="<?= e($formAction) ?>" class="exp-form" autocomplete="off">
+<form method="post" action="<?= e($formAction) ?>" class="exp-form" autocomplete="off" x-data="{ t: '<?= $curType ?>' }">
     <?= csrf_field() ?>
 
     <div class="c-name">
-        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Expense name' : 'اسم المصروف' ?> <span class="req">*</span></label>
+        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Transaction name' : 'اسم المعاملة' ?> <span class="req">*</span></label>
         <div class="exp-box">
             <i class="bi bi-tag exp-ico"></i>
             <input type="text" name="name" class="form-control" maxlength="150" required
                    value="<?= e($expense['name'] ?? '') ?>"
-                   placeholder="<?= $isEn ? 'e.g. Bank transfer fees' : 'مثال: رسوم تحويل بنكي' ?>">
+                   placeholder="<?= $isEn ? 'e.g. Bank transfer fees / Deposit from ...' : 'مثال: رسوم تحويل بنكي / إيداع من ...' ?>">
+        </div>
+    </div>
+
+    <div class="c-type">
+        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Transaction type' : 'نوع المعاملة' ?> <span class="req">*</span></label>
+        <div class="exp-box exp-select-box" :class="t === 'deposit' ? 'is-deposit' : 'is-withdraw'" data-testid="expense-type-box">
+            <i class="bi exp-ico" :class="t === 'deposit' ? 'bi-box-arrow-in-down' : 'bi-box-arrow-up'"></i>
+            <select name="type" class="form-control exp-select" x-model="t" required>
+                <option value="withdraw"><?= $isEn ? 'Withdrawal (deducted)' : 'صرف (خصم من الرصيد)' ?></option>
+                <option value="deposit"><?= $isEn ? 'Deposit (added)' : 'إيداع (إضافة للرصيد)' ?></option>
+            </select>
+            <span class="exp-tools"><i class="bi bi-chevron-down exp-chev"></i></span>
         </div>
     </div>
 
     <div class="c-cost">
-        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Cost' : 'تكلفة المصروف' ?> <span class="req">*</span></label>
+        <label class="form-label font-bold text-xs text-slate-700"><?= $isEn ? 'Amount' : 'المبلغ' ?> <span class="req">*</span></label>
         <div class="exp-box has-suffix">
             <i class="bi bi-cash-coin exp-ico"></i>
             <input type="number" name="amount" class="form-control font-numeric" step="0.01" min="0.01" inputmode="decimal" required
                    value="<?= e(isset($expense['amount']) ? (string) $expense['amount'] : '') ?>" placeholder="0.00">
-            <span class="exp-suffix"><?= __('currency') ?></span>
+            <span class="exp-suffix" x-text="(t === 'deposit' ? '+ ' : '− ') + '<?= e(__('currency')) ?>'"><?= __('currency') ?></span>
         </div>
     </div>
 
@@ -193,7 +218,11 @@ $pickerI18n = ['none' => $isEn ? 'No member (a general expense)' : 'بدون م�
     <div class="c-submit">
         <button type="submit" class="btn btn-primary exp-submit">
             <i class="bi bi-<?= $isEdit ? 'check2-circle' : 'plus-lg' ?>"></i>
-            <span><?= $isEdit ? ($isEn ? 'Save changes' : 'حفظ التعديلات') : ($isEn ? 'Add expense' : 'إضافة المصروف') ?></span>
+            <?php if ($isEdit): ?>
+                <span><?= $isEn ? 'Save changes' : 'حفظ التعديلات' ?></span>
+            <?php else: ?>
+                <span x-text="t === 'deposit' ? '<?= $isEn ? 'Add deposit' : 'إضافة الإيداع' ?>' : '<?= $isEn ? 'Add expense' : 'إضافة المصروف' ?>'"><?= $isEn ? 'Add expense' : 'إضافة المصروف' ?></span>
+            <?php endif; ?>
         </button>
     </div>
 </form>

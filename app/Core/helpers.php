@@ -128,6 +128,18 @@ function money(?float $amount, ?int $decimals = null): string
     return number_format($val, $decimals) . ' ' . $curr;
 }
 
+/**
+ * An amount with its sign (+ for a deposit / gain, − for a deduction), as HTML: the signed number is isolated so the sign
+ * stays on the number's left in right-to-left pages too ("−150.50", not "150.50−"), then the currency.
+ */
+function money_signed(float $amount): string
+{
+    $sign = $amount > 0 ? '+' : ($amount < 0 ? '−' : '');
+    $abs = abs($amount);
+    $decimals = (floor($abs) == $abs) ? 0 : 2;
+    return '<bdi dir="ltr">' . $sign . number_format($abs, $decimals) . '</bdi> ' . (is_rtl() ? 'ريال' : 'SAR');
+}
+
 function __(string $key, array $replace = []): string
 {
     return \App\Core\Lang::get($key, $replace);

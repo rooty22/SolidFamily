@@ -171,7 +171,27 @@ $in = (float) one("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE catego
 $out = (float) one("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE category = 'loan_disbursement'");
 $remaining = (float) one("SELECT COALESCE(SUM(amount_remaining),0) FROM loans WHERE status IN ('active','partial')");
 $due = $hasCol('loans', 'fee_status') ? (float) one("SELECT COALESCE(SUM(admin_fee_amount),0) FROM loans WHERE fee_status <> 'paid'") : 0.0;
-echo "  [INFO] money received (ledger): {$in}\n  [INFO] loans paid out: {$out}\n  [INFO] bank balance = " . ($in - $out) . "\n  [INFO] loans outstanding (principal) = {$remaining}\n  [INFO] commissions still due = {$due}\n  [INFO] total fund = " . round($in - $out + $remaining + $due, 2) . "\n";
+// the administrative / bank expenses log: its deposits are added to the balance, its withdrawals deducted
+$expW = $expD = 0.0;
+if ($hasTable('expenses') && $hasCol('expenses', 'type')) {
+    $expW = (float) one("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE type = 'withdraw'");
+    $expD = (float) one("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE type = 'deposit'");
+}
+$expNet = round($expD - $expW, 2);
+$bank = round($in - $out + $expNet, 2);
+echo "  [INFO] money received (ledger): {$in}\n  [INFO] loans paid out: {$out}\n  [INFO] expenses log: withdrawals {$expW}, deposits {$expD}  =>  net {$expNet}\n  [INFO] bank balance = {$bank}\n  [INFO] loans outstanding (principal) = {$remaining}\n  [INFO] commissions still due = {$due}\n  [INFO] total fund = " . round($bank + $remaining + $due, 2) . "\n";
+
+if ($hasTable('expenses')) {
+    section('Administrative / bank expenses log');
+    report('ERROR', 'an entry of the expenses log with an amount that is not positive',
+        q('SELECT id, name, amount FROM expenses WHERE amount <= 0'),
+        fn($r) => "entry #{$r['id']} \"{$r['name']}\": {$r['amount']}");
+    if ($hasCol('expenses', 'member_id')) {
+        report('ERROR', 'an entry of the expenses log that points to a member who does not exist',
+            q('SELECT e.id, e.name, e.member_id FROM expenses e LEFT JOIN members m ON m.id = e.member_id WHERE e.member_id IS NOT NULL AND m.id IS NULL'),
+            fn($r) => "entry #{$r['id']} \"{$r['name']}\" -> member #{$r['member_id']}");
+    }
+}
 
 echo "\n----------------------------------------\n";
 echo $errors ? "RESULT: {$errors} ERROR(S), {$warns} warning(s) - some stored figure disagrees with its rows.\n" : "RESULT: no errors, {$warns} warning(s) - every stored total agrees with the rows behind it.\n";

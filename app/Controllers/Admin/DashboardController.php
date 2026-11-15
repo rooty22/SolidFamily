@@ -128,8 +128,10 @@ class DashboardController extends Controller
         $collected = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category IN ('subscription','founding','loan_installment','loan_admin_fee')")->fetch()['s'];
         $disbursed = (float) $db->query("SELECT COALESCE(SUM(amount),0) as s FROM transactions WHERE category = 'loan_disbursement'")->fetch()['s'];
         
-        // 1. Bank Balance (actual liquidity in bank after loans disbursed and expenses)
-        $bankBalance = $collected - $disbursed;
+        // 1. Bank Balance (actual liquidity in bank): money received - loans paid out, plus the net of the administrative /
+        // bank expenses log (its deposits are added, its withdrawals deducted). The total fund balance below follows.
+        $expenseNet = \App\Models\Expense::net();
+        $bankBalance = $collected - $disbursed + $expenseNet;
         $fundBalance = $bankBalance; // preserved for backwards compatibility
 
         // 2. Remaining loans portfolio (receivables owed back to the fund)
@@ -230,7 +232,9 @@ class DashboardController extends Controller
             'المتأخرون في أقساط القروض' => $lateLoansCount,
         ];
         if ($expenses !== null) {
-            $export['إجمالي المصاريف الإدارية والبنكية'] = $expenses['total'];
+            $export['إجمالي المصاريف الإدارية والبنكية (صرف)'] = $expenses['withdrawals'];
+            $export['إجمالي الإيداعات الإدارية والبنكية'] = $expenses['deposits'];
+            $export['صافي أثر المصاريف والإيداعات على الرصيد'] = $expenses['net'];
         }
 
         return compact(
@@ -238,7 +242,7 @@ class DashboardController extends Controller
             'loanRequestsCount', 'shareRequestsCount', 'pendingLoanRequestsCount', 'pendingShareRequestsCount', 'fundBalance', 'bankBalance',
             'totalFundBalance', 'loansRemaining', 'loanAdminFees', 'loanAdminFeesPending', 'loanAdminFeesTotal', 'foundingShares', 'totalLoansAmount',
             'avgFeePercent', 'detailedFeeLoans', 'lateMembers', 'lateSubsCount',
-            'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'expenses', 'export'
+            'lateLoansCount', 'monthlyTrend', 'mergeSummary', 'expenses', 'expenseNet', 'export'
         );
     }
 

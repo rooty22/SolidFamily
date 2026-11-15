@@ -44,7 +44,8 @@
                 <div class="stat-label"><?= __('actual_bank_balance') ?></div>
                 <div class="stat-value font-num text-sky-800"><?= money($stats['bankBalance']) ?></div>
                 <div class="stat-sub text-emerald-600 font-bold">
-                    <?= is_rtl() ? 'السيولة المتاحة بعد خصم القروض المصروفة' : 'Available cash after loans paid out' ?>
+                    <?php $exHint = \App\Core\Auth::adminIsSuper() && (float) ($stats['expenseNet'] ?? 0) != 0.0; // only the main admin knows about the expenses log ?>
+                    <?= is_rtl() ? 'السيولة المتاحة بعد خصم القروض المصروفة' . ($exHint ? ' وصافي المصاريف الإدارية والبنكية' : '') : 'Available cash after loans paid out' . ($exHint ? ' and the net of the administrative / bank expenses' : '') ?>
                 </div>
             </div>
         </div>
@@ -146,18 +147,21 @@
         </a>
     </div>
 
-    <?php if ($stats['expenses'] !== null): ?>
-    <!-- 8. Administrative & bank expenses (main admin only) -->
+    <?php if ($stats['expenses'] !== null): $exNet = (float) $stats['expenses']['net']; ?>
+    <!-- 8. Administrative & bank expenses log (main admin only): the net counts in the balances above -->
     <div class="<?= $cardCol ?> col-md-6">
         <a href="<?= url('admin/expenses') ?>" class="stat-card text-decoration-none block transition-all hover:scale-[1.02] hover:shadow-lg" data-testid="dash-expenses">
-            <div class="stat-icon bg-grad-red">
+            <div class="stat-icon <?= $exNet > 0 ? 'bg-grad-green' : 'bg-grad-red' ?>">
                 <i class="bi bi-receipt-cutoff"></i>
             </div>
             <div>
-                <div class="stat-label"><?= is_rtl() ? 'المصاريف الإدارية والبنكية' : 'Administrative & bank expenses' ?></div>
-                <div class="stat-value font-num text-rose-700"><?= money($stats['expenses']['total']) ?></div>
-                <div class="stat-sub text-slate-500 font-medium">
-                    <?= is_rtl() ? number_format($stats['expenses']['count']) . ' مصروف مسجل · سجل المصاريف' : number_format($stats['expenses']['count']) . ' recorded · Expenses log' ?>
+                <div class="stat-label"><?= is_rtl() ? 'المصاريف الإدارية والبنكية (الصافي)' : 'Administrative & bank expenses (net)' ?></div>
+                <div class="stat-value font-num <?= $exNet > 0 ? 'text-emerald-700' : ($exNet < 0 ? 'text-rose-700' : 'text-slate-700') ?>"><?= money_signed($exNet) ?></div>
+                <div class="stat-sub font-medium">
+                    <span class="text-rose-600"><?= is_rtl() ? 'صرف ' : 'Out ' ?><?= money($stats['expenses']['withdrawals']) ?></span>
+                    <span class="text-slate-300"> · </span>
+                    <span class="text-emerald-600"><?= is_rtl() ? 'إيداع ' : 'In ' ?><?= money($stats['expenses']['deposits']) ?></span>
+                    <span class="text-slate-400"> · <?= number_format($stats['expenses']['count']) ?> <?= is_rtl() ? 'معاملة' : 'entries' ?></span>
                 </div>
             </div>
         </a>

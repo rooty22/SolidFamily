@@ -14,10 +14,11 @@
  *
  * What counts as his activity: monthly subscriptions, founding amount + payments (+ their share allocations), loans with
  * their installments, loan requests, share requests and the merge log, every ledger transaction (subscriptions,
- * founding, loans, installments, commissions), notifications sent to him, his contact messages, and the expenses of the
- * administrative / bank expenses log that were recorded FOR him (general expenses and other members' expenses stay).
+ * founding, loans, installments, commissions), notifications sent to him, his contact messages, and the entries of the
+ * administrative / bank expenses log that were recorded FOR him (general entries and other members' entries stay).
  * Deleting the ledger rows removes his money from the bank balance and from every dashboard total, because all totals
- * are computed from the rows; deleting his expenses lowers the total of the expenses log the same way. Run
+ * are computed from the rows; his expenses-log entries count in the balance too (withdrawals are deducted from it,
+ * deposits added), so deleting them changes the balance back: the dry run prints the effect. Run
  * database/audit_totals.php afterwards to confirm the totals still agree.
  * With --delete-account the leftovers that point at the account are cleaned too: his verification codes (otp_codes) and a
  * link from an administrator account (admins.member_id).
@@ -150,7 +151,18 @@ if ($has('transactions')) {
     }
 }
 $openLoans = $has('loans') ? (int) $pdo->query("SELECT COUNT(*) FROM loans WHERE member_id = $mid AND status IN ('active','partial')")->fetchColumn() : 0;
-$expenseTotal = $has('expenses') ? (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE member_id = $mid")->fetchColumn() : 0.0;
+// his entries of the expenses log: a withdrawal is deducted from the fund balance, a deposit added to it
+$expW = $expD = 0.0;
+$expTyped = false;
+if ($has('expenses')) {
+    $expTyped = in_array('type', $pdo->query('SHOW COLUMNS FROM expenses')->fetchAll(PDO::FETCH_COLUMN), true);
+    if ($expTyped) {
+        $expW = (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE member_id = $mid AND type = 'withdraw'")->fetchColumn();
+        $expD = (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE member_id = $mid AND type = 'deposit'")->fetchColumn();
+    } else {
+        $expW = (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE member_id = $mid")->fetchColumn();
+    }
+}
 
 // What only a full account deletion has to clean: his verification codes (they are keyed by mobile) and an administrator
 // account linked to him. Foreign-key actions (SET NULL) do not run while the checks are off below, so it is done by hand.
@@ -181,7 +193,12 @@ echo str_repeat('-', 58) . "\n";
 printf("Ledger effect: money in %s, money out %s  => bank balance changes by %s\n",
     number_format($money['in'], 2), number_format($money['out'], 2), number_format($money['out'] - $money['in'], 2));
 if (($plan['expenses']['count'] ?? 0) > 0) {
-    printf("Expenses log:  %d expense(s) recorded for him, %s in total, leave the log (the bank balance is not affected)\n", $plan['expenses']['count'], number_format($expenseTotal, 2));
+    if ($expTyped) {
+        printf("Expenses log:  %d entr(ies) recorded for him leave the log: withdrawals %s, deposits %s  => bank balance changes by %s\n",
+            $plan['expenses']['count'], number_format($expW, 2), number_format($expD, 2), number_format($expW - $expD, 2));
+    } else {
+        printf("Expenses log:  %d entr(ies) recorded for him, %s in total, leave the log (this database has no deposit / withdrawal types yet: the bank balance is not affected)\n", $plan['expenses']['count'], number_format($expW, 2));
+    }
 }
 if ($openLoans > 0) {
     echo "NOTE: he has $openLoans open loan(s); they disappear together with their installments.\n";

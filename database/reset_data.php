@@ -172,7 +172,12 @@ echo str_repeat('-', 58) . "\n";
 if (in_array('transactions', $existing, true)) {
     $in = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE category <> 'loan_disbursement'")->fetchColumn();
     $out = (float) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE category = 'loan_disbursement'")->fetchColumn();
-    printf("Ledger today: money in %s, money out %s  =>  bank balance %s becomes 0.00\n", number_format($in, 2), number_format($out, 2), number_format($in - $out, 2));
+    $expNet = 0.0;
+    if (in_array('expenses', $existing, true) && in_array('type', $pdo->query('SHOW COLUMNS FROM expenses')->fetchAll(PDO::FETCH_COLUMN), true)) {
+        $expNet = (float) $pdo->query("SELECT COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount ELSE -amount END), 0) FROM expenses")->fetchColumn();
+        printf("Expenses log: net %s (deposits added, withdrawals deducted) counts in the bank balance and is wiped too\n", number_format($expNet, 2));
+    }
+    printf("Ledger today: money in %s, money out %s  =>  bank balance %s becomes 0.00\n", number_format($in, 2), number_format($out, 2), number_format($in - $out + $expNet, 2));
 }
 echo "Take a normal dump first, e.g.:  mysqldump -u {$db['username']} -p {$db['database']} > before_reset.sql\n";
 

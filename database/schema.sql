@@ -290,6 +290,7 @@ CREATE TABLE expenses (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
+    type ENUM('withdraw','deposit') NOT NULL DEFAULT 'withdraw' COMMENT 'withdraw = deducted from the fund balance, deposit = added to it',
     expense_date DATE NOT NULL,
     member_id INT UNSIGNED NULL COMMENT 'optional: the member this expense belongs to',
     notes TEXT NULL COMMENT 'optional: free notes on this expense',

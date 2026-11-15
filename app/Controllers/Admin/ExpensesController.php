@@ -17,7 +17,9 @@ class ExpensesController extends Controller
     public function index(): void
     {
         $q = trim((string) $this->input('q', ''));
-        $all = Expense::search($q);
+        $type = (string) $this->input('type', '');
+        $type = in_array($type, Expense::TYPES, true) ? $type : '';
+        $all = Expense::search($q, $type);
         $pager = paginate($all);
 
         $this->view('admin/expenses/index', [
@@ -25,10 +27,11 @@ class ExpensesController extends Controller
             'expenses' => $pager['items'],
             'pager' => $pager,
             'q' => $q,
+            'type' => $type,
             'pickerMembers' => Expense::memberOptions(),
             'summary' => Expense::summary(),
-            // what the current search adds up to (the same as the summary when nothing is searched)
-            'foundTotal' => round(array_sum(array_map(fn($e) => (float) $e['amount'], $all)), 2),
+            // what the current search / filter adds up to, with the signs (deposits +, withdrawals -)
+            'foundNet' => round(array_sum(array_map(fn($e) => Expense::signed($e), $all)), 2),
         ], 'admin/layout');
     }
 
@@ -42,7 +45,7 @@ class ExpensesController extends Controller
         }
 
         Expense::create($data + ['created_by' => current_admin_id()]);
-        Session::flash('success', 'تمت إضافة المصروف إلى السجل.');
+        Session::flash('success', $data['type'] === Expense::DEPOSIT ? 'تمت إضافة الإيداع إلى السجل وأُضيف إلى الرصيد.' : 'تمت إضافة المصروف إلى السجل وخُصم من الرصيد.');
         $this->redirect('admin/expenses');
     }
 
@@ -91,12 +94,12 @@ class ExpensesController extends Controller
         }
 
         Expense::delete((int) $id);
-        Session::flash('success', 'تم حذف المصروف "' . $expense['name'] . '" من السجل.');
+        Session::flash('success', 'تم حذف ' . (($expense['type'] ?? '') === Expense::DEPOSIT ? 'الإيداع' : 'المصروف') . ' "' . $expense['name'] . '" من السجل.');
         $this->redirect('admin/expenses');
     }
 
     /**
-     * The posted name / cost / date / member / notes, checked. The date is optional (today); it may be in the past or up to
+     * The posted name / amount / kind of transaction (withdraw by default) / date / member / notes, checked. The date is optional (today); it may be in the past or up to
      * a year ahead. The member and the notes (up to 1000 characters) are optional too.
      *
      * @return array{0: ?array, 1: ?string} [row data, null] or [null, the error to show]
@@ -107,16 +110,21 @@ class ExpensesController extends Controller
             'name' => trim((string) $this->input('name', '')),
             'amount' => (string) $this->input('amount', ''),
             'expense_date' => trim((string) $this->input('expense_date', '')),
+            'type' => trim((string) $this->input('type', Expense::WITHDRAW)),
             'notes' => str_replace([chr(13) . chr(10), chr(13)], chr(10), (string) $this->input('notes', '')), // a browser posts line breaks as CRLF: one character each
         ];
         if ($in['expense_date'] === '') {
             $in['expense_date'] = date('Y-m-d');
+        }
+        if ($in['type'] === '') {
+            $in['type'] = Expense::WITHDRAW; // an old form / a request without the field: an expense, as it always was
         }
 
         $validator = Validator::make($in)
             ->required('name', 'اسم المصروف')->max('name', 150, 'اسم المصروف')
             ->required('amount', 'تكلفة المصروف')->decimal('amount', 'تكلفة المصروف', 0.01, 1000000000)
             ->date('expense_date', 'المصروف', 366)
+            ->in('type', Expense::TYPES, 'نوع المعاملة')
             ->max('notes', 1000, 'الملاحظات');
         if ($validator->fails()) {
             return [null, $validator->firstError()];
@@ -142,6 +150,6 @@ class ExpensesController extends Controller
             }
         }
 
-        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'expense_date' => $date ?? date('Y-m-d'), 'member_id' => $memberId, 'notes' => $in['notes'] !== '' ? $in['notes'] : null], null];
+        return [['name' => $in['name'], 'amount' => round((float) $in['amount'], 2), 'type' => $in['type'], 'expense_date' => $date ?? date('Y-m-d'), 'member_id' => $memberId, 'notes' => $in['notes'] !== '' ? $in['notes'] : null], null];
     }
 }

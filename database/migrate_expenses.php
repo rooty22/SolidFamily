@@ -5,11 +5,14 @@
  *
  *   php database/migrate_expenses.php
  *
- * Creates the `expenses` table: one row per expense (name, cost, date, and optionally the member it belongs to and free
- * notes). If the table already exists from an earlier version it only adds what is missing: the optional `member_id`
- * column (a member who is later deleted leaves the expense in the log, as a general one) and the optional `notes`
- * column. It is only a record: it does not touch the ledger (transactions) or
- * any other total. The total of the log is shown on the admin dashboard, to the main admin only.
+ * Creates the `expenses` table: one row per entry of the log (name, amount, date, the kind of transaction, and optionally
+ * the member it belongs to and free notes). The kind is a WITHDRAWAL (a deduction from the fund's balance: the old
+ * "expense") or a DEPOSIT (an addition to it). If the table already exists from an earlier version it only adds what is
+ * missing: the optional `member_id` column (a member who is later deleted leaves the entry in the log, as a general one),
+ * the optional `notes` column and the `type` column (every existing row becomes a withdrawal, which is what it was).
+ * Both kinds count in the bank balance and the total fund balance of the dashboard (a withdrawal lowers them, a deposit
+ * raises them); the ledger table (transactions) itself is not touched. The totals of the log are shown on the admin
+ * dashboard, to the main admin only.
  * Idempotent: running it again changes nothing.
  */
 
@@ -29,6 +32,7 @@ if (!$exists) {
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
         amount DECIMAL(12,2) NOT NULL,
+        type ENUM('withdraw','deposit') NOT NULL DEFAULT 'withdraw' COMMENT 'withdraw = deducted from the fund balance, deposit = added to it',
         expense_date DATE NOT NULL,
         member_id INT UNSIGNED NULL COMMENT 'optional: the member this expense belongs to',
         notes TEXT NULL COMMENT 'optional: free notes on this expense',
@@ -52,6 +56,12 @@ if (!$exists) {
         echo "- expenses.member_id added.\n";
     } else {
         echo "- expenses.member_id already exists, skipped.\n";
+    }
+    if (!in_array('type', $cols, true)) {
+        $pdo->exec("ALTER TABLE expenses ADD COLUMN type ENUM('withdraw','deposit') NOT NULL DEFAULT 'withdraw' COMMENT 'withdraw = deducted from the fund balance, deposit = added to it' AFTER amount");
+        echo "- expenses.type added (existing rows are withdrawals).\n";
+    } else {
+        echo "- expenses.type already exists, skipped.\n";
     }
     if (!in_array('notes', $cols, true)) {
         $pdo->exec("ALTER TABLE expenses ADD COLUMN notes TEXT NULL COMMENT 'optional: free notes on this expense' AFTER member_id");
