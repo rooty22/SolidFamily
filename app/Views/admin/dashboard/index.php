@@ -18,7 +18,7 @@
 
 <!-- Executive KPI Stat Cards (Financial & Operational Breakdown) -->
 <div class="row g-3 mb-4">
-    <!-- 1. Total Fund Balance = bank cash + loan principal still to come back + commissions still to be collected -->
+    <!-- 1. Total Fund Balance = actual bank balance + loans outstanding + loan commissions received + net of the expenses log -->
     <div class="col-xl-3 col-md-6">
         <div class="stat-card">
             <div class="stat-icon bg-grad-green">
@@ -28,7 +28,10 @@
                 <div class="stat-label"><?= __('total_fund_balance') ?></div>
                 <div class="stat-value font-num text-emerald-700"><?= money($stats['totalFundBalance']) ?></div>
                 <div class="stat-sub text-slate-500 font-medium">
-                    <?= is_rtl() ? 'سيولة البنك + متبقي القروض + العمولات المستحقة' : 'Bank cash + loans outstanding + commissions due' ?>
+                    <?php $exTotalHint = \App\Core\Auth::adminIsSuper() && (float) ($stats['expenseNet'] ?? 0) != 0.0; // only the main admin knows about the expenses log ?>
+                    <?= is_rtl()
+                        ? 'الرصيد الفعلي بالبنك + القروض القائمة + العمولات المسددة' . ($exTotalHint ? ' + صافي المصاريف' : '')
+                        : 'Actual bank balance + loans outstanding + commissions received' . ($exTotalHint ? ' + expenses net' : '') ?>
                 </div>
             </div>
         </div>

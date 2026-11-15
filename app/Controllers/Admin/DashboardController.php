@@ -143,8 +143,12 @@ class DashboardController extends Controller
         $loanAdminFeesPending = (float) ($loanRow['pending_fees'] ?? 0);      // not received yet
         $loanAdminFeesTotal = round($loanAdminFees + $loanAdminFeesPending, 2); // all commissions of all loans
 
-        // 4. Total Fund Assets / Net Worth = cash in bank + loan principal still to come back + commissions still to be collected
-        $totalFundBalance = $bankBalance + $loansRemaining + $loanAdminFeesPending;
+        // 4. Total fund balance = the actual bank balance + the loans outstanding + the loan commissions received + the net of the
+        // administrative / bank expenses log: the four figures of the boxes next to it, added up as the administration asked.
+        // NOTE: the bank balance already contains the commissions received and the expenses net (both are booked in the ledger /
+        // the log that feed it), so this definition counts those two amounts twice by design. The commissions still due are not part
+        // of it. database/audit_totals.sql shows the total without that overlap too.
+        $totalFundBalance = $bankBalance + $loansRemaining + $loanAdminFees + $expenseNet;
         $totalLoansAmount = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM loans")->fetchColumn();
         $avgFeePercent = (float) ($db->query("SELECT AVG(admin_fee_percent) FROM loans WHERE admin_fee_percent > 0")->fetchColumn() ?: 0);
 
@@ -190,12 +194,17 @@ class DashboardController extends Controller
             }
         }
 
+        // What the total fund is made of, named in its label. The expenses log belongs to the main admin alone, so its term is only
+        // spelled out for him (the number itself, like the bank balance, follows the same definition for everybody).
+        $totalFundLabel = 'الرصيد الإجمالي للصندوق (الرصيد الفعلي بالبنك + القروض القائمة + العمولات المسددة'
+            . (\App\Core\Auth::adminIsSuper() ? ' + صافي المصاريف' : '') . ')';
+
         $export = [
             'إجمالي عدد المشتركين المعتمدين' => $totalMembers,
             'طلبات التسجيل بانتظار الموافقة' => $pendingRegistrations,
             'إجمالي عدد الأسهم المسجلة' => $totalShares,
             'الرصيد الفعلي في البنك (السيولة المتاحة)' => $bankBalance,
-            'الرصيد الإجمالي للصندوق (سيولة + متبقي القروض + العمولات المستحقة)' => $totalFundBalance,
+            $totalFundLabel => $totalFundBalance,
             'مستحقات القروض القائمة والمتبقية (أصل القرض)' => $loansRemaining,
             'عدد القروض القائمة' => $loanRow['running_count'],
             'إجمالي قيمة الاشتراكات الشهرية (الشهر الحالي)' => $subRow['total_due'],

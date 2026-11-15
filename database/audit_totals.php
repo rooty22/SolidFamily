@@ -171,6 +171,7 @@ $in = (float) one("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE catego
 $out = (float) one("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE category = 'loan_disbursement'");
 $remaining = (float) one("SELECT COALESCE(SUM(amount_remaining),0) FROM loans WHERE status IN ('active','partial')");
 $due = $hasCol('loans', 'fee_status') ? (float) one("SELECT COALESCE(SUM(admin_fee_amount),0) FROM loans WHERE fee_status <> 'paid'") : 0.0;
+$feesPaid = $hasCol('loans', 'fee_status') ? (float) one("SELECT COALESCE(SUM(admin_fee_amount),0) FROM loans WHERE fee_status = 'paid'") : (float) one('SELECT COALESCE(SUM(admin_fee_amount),0) FROM loans');
 // the administrative / bank expenses log: its deposits are added to the balance, its withdrawals deducted
 $expW = $expD = 0.0;
 if ($hasTable('expenses') && $hasCol('expenses', 'type')) {
@@ -179,7 +180,7 @@ if ($hasTable('expenses') && $hasCol('expenses', 'type')) {
 }
 $expNet = round($expD - $expW, 2);
 $bank = round($in - $out + $expNet, 2);
-echo "  [INFO] money received (ledger): {$in}\n  [INFO] loans paid out: {$out}\n  [INFO] expenses log: withdrawals {$expW}, deposits {$expD}  =>  net {$expNet}\n  [INFO] bank balance = {$bank}\n  [INFO] loans outstanding (principal) = {$remaining}\n  [INFO] commissions still due = {$due}\n  [INFO] total fund = " . round($bank + $remaining + $due, 2) . "\n";
+echo "  [INFO] money received (ledger): {$in}\n  [INFO] loans paid out: {$out}\n  [INFO] expenses log: withdrawals {$expW}, deposits {$expD}  =>  net {$expNet}\n  [INFO] bank balance = {$bank}\n  [INFO] loans outstanding (principal) = {$remaining}\n  [INFO] commissions received = {$feesPaid}\n  [INFO] commissions still due = {$due}\n  [INFO] total fund = " . round($bank + $remaining + $feesPaid + $expNet, 2) . "  (bank + loans outstanding + commissions received + expenses net, as the dashboard adds them)\n  [INFO] of which counted twice by that definition (commissions received + expenses net are already inside the bank balance) = " . round($feesPaid + $expNet, 2) . "\n  [INFO] total fund without that overlap (bank + loans outstanding + commissions still due) = " . round($bank + $remaining + $due, 2) . "\n";
 
 if ($hasTable('expenses')) {
     section('Administrative / bank expenses log');
