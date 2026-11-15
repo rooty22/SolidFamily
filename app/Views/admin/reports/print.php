@@ -6,6 +6,8 @@
  * @var string $title
  * @var array<int,string> $headers
  * @var array<int,array<int,mixed>> $rows
+ * @var array|null $summary  optional totals box shown above the table (see reports/_summary.php)
+ * @var string|null $subtitle optional text added to the report-date line (e.g. the filters used)
  */
 $dir = is_rtl() ? 'rtl' : 'ltr';
 $align = is_rtl() ? 'right' : 'left';
@@ -43,7 +45,8 @@ $align = is_rtl() ? 'right' : 'left';
         <span class="hint"><?= is_rtl() ? 'في نافذة الطباعة اختر الوجهة "حفظ كملف PDF" (Save as PDF) وليس الطابعة.' : 'In the print window, choose "Save as PDF" as the destination, not a physical printer.' ?></span>
     </div>
     <h1><?= e(site_name()) ?> - <?= e($title) ?></h1>
-    <div class="meta"><?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <bdi dir="ltr"><?= date('d/m/Y H:i') ?></bdi> · <?= is_rtl() ? 'عدد السجلات:' : 'Records:' ?> <?= count($rows) ?></div>
+    <div class="meta"><?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <bdi dir="ltr"><?= date('d/m/Y H:i') ?></bdi> · <?= is_rtl() ? 'عدد السجلات:' : 'Records:' ?> <?= count($rows) ?><?php if (!empty($subtitle)): ?> · <?= e($subtitle) ?><?php endif; ?></div>
+    <?php if (!empty($summary)) { \App\Core\View::partial('admin/reports/_summary', ['summary' => $summary]); } ?>
     <table>
         <thead>
             <tr><?php foreach ($headers as $h): ?><th><?= e($h) ?></th><?php endforeach; ?></tr>

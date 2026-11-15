@@ -122,20 +122,25 @@
 </div>
 
 <?php
-// Paper only: the title, the date and what was filtered -- never the totals (those stay on the screen).
-$printFilters = [];
-if (trim((string) ($filters['search'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'بحث: ' : 'Search: ') . $filters['search']; }
-if (trim((string) ($filters['category'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'النوع: ' : 'Type: ') . ($categoryLabels[$filters['category']] ?? $filters['category']); }
-if (trim((string) ($filters['month'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'الشهر: ' : 'Month: ') . $filters['month']; }
-if (trim((string) ($filters['from'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'من: ' : 'From: ') . date_ar($filters['from']); }
-if (trim((string) ($filters['to'] ?? '')) !== '') { $printFilters[] = (is_rtl() ? 'إلى: ' : 'To: ') . date_ar($filters['to']); }
+// Paper only (Ctrl+P / "Save as PDF" of this page): the title, the date, what was filtered, and the totals box -- the dark
+// totals card above stays on the screen. The total covers every transaction of the result; the table prints the current page.
+$printTotals = $printTotals ?? null;
+$pagedOnPaper = !empty($pager) && (int) ($pager['pages'] ?? 1) > 1;
 ?>
 <div class="print-only" style="margin-bottom: 12px;">
     <div style="font-size: 20px; font-weight: 800; color: #0f172a;"><?= e(site_name()) ?> - <?= e(__('transactions')) ?></div>
-    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+    <div style="font-size: 12px; color: #64748b; margin: 4px 0 12px;">
         <?= is_rtl() ? 'تاريخ التقرير:' : 'Report date:' ?> <bdi dir="ltr"><?= date('d/m/Y H:i') ?></bdi>
-        <?php if ($printFilters): ?> · <?= e(implode(' · ', $printFilters)) ?><?php endif; ?>
+        <?php if (!empty($printFilters)): ?> · <?= e(implode(' · ', $printFilters)) ?><?php endif; ?>
     </div>
+    <?php if ($printTotals) { \App\Core\View::partial('admin/reports/_summary', ['summary' => $printTotals]); } ?>
+    <?php if ($pagedOnPaper): ?>
+        <div style="font-size: 11px; color: #64748b; margin-top: -8px;">
+            <?= is_rtl()
+                ? 'الجدول يعرض السجلات ' . (int) $pager['from'] . ' - ' . (int) $pager['to'] . ' من ' . (int) $pager['total'] . ' (الصفحة الحالية)، والإجمالي أعلاه لكل السجلات. للقائمة الكاملة استخدم زر PDF.'
+                : 'The table shows records ' . (int) $pager['from'] . ' - ' . (int) $pager['to'] . ' of ' . (int) $pager['total'] . ' (current page); the total above covers all of them. Use the PDF button for the full list.' ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div class="table-panel">

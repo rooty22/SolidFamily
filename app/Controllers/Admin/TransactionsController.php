@@ -34,6 +34,72 @@ class TransactionsController extends Controller
         return Transaction::withMember($filters);
     }
 
+    /**
+     * The total of every amount of a result, split into what came in and what went out as loans -- the same figures as the
+     * totals card of the page, so the page, the printed page and the PDF report always agree.
+     *
+     * @return array{total: float, incoming: float, disbursed: float, count: int}
+     */
+    private function totalsOf(array $transactions): array
+    {
+        $total = $incoming = $disbursed = 0.0;
+        foreach ($transactions as $t) {
+            $amount = (float) $t['amount'];
+            $total += $amount;
+            if ($t['category'] === 'loan_disbursement') {
+                $disbursed += $amount;
+            } else {
+                $incoming += $amount;
+            }
+        }
+        return ['total' => round($total, 2), 'incoming' => round($incoming, 2), 'disbursed' => round($disbursed, 2), 'count' => count($transactions)];
+    }
+
+    /** What the user filtered by, as short texts ("بحث: ...", "من: ..."), for the heading of a printed page / PDF. */
+    private function filterNotes(): array
+    {
+        $ar = is_rtl();
+        $labels = $this->getCategoryLabels();
+        $notes = [];
+        $search = trim((string) $this->input('search', ''));
+        if ($search !== '') {
+            $notes[] = ($ar ? 'بحث: ' : 'Search: ') . $search;
+        }
+        $category = trim((string) $this->input('category', ''));
+        if ($category !== '') {
+            $notes[] = ($ar ? 'النوع: ' : 'Type: ') . ($labels[$category] ?? $category);
+        }
+        $month = trim((string) $this->input('month', ''));
+        if ($month !== '') {
+            $notes[] = ($ar ? 'الشهر: ' : 'Month: ') . $month;
+        }
+        $from = trim((string) $this->input('from', ''));
+        if ($from !== '') {
+            $notes[] = ($ar ? 'من: ' : 'From: ') . date_ar($from);
+        }
+        $to = trim((string) $this->input('to', ''));
+        if ($to !== '') {
+            $notes[] = ($ar ? 'إلى: ' : 'To: ') . date_ar($to);
+        }
+        return $notes;
+    }
+
+    /** The totals box printed above the table: the total of all amounts, big, with the incoming / disbursed split. */
+    private function totalsBox(array $transactions): array
+    {
+        $ar = is_rtl();
+        $t = $this->totalsOf($transactions);
+        return [
+            'label' => $ar ? 'إجمالي المبالغ' : 'Total amount',
+            'value' => money($t['total']),
+            'note' => $ar ? 'مجموع كل المبالغ في ' . $t['count'] . ' معاملة' : 'Sum of every amount in ' . $t['count'] . ' transactions',
+            'items' => [
+                [$ar ? 'الوارد (اشتراكات وأقساط ورسوم)' : 'Incoming (subscriptions, installments, fees)', money($t['incoming'])],
+                [$ar ? 'المصروف (قروض)' : 'Disbursed (loans)', money($t['disbursed'])],
+            ],
+        ];
+    }
+
     public function index(): void
     {
         $transactions = $this->fetch();
@@ -56,15 +122,12 @@ class TransactionsController extends Controller
         foreach ($transactions as $t) {
             // Shares of the filtered result: each member appearing in it is counted once, with the shares they hold.
             $sharesByMember[(int) $t['member_id']] = (int) $t['member_shares_count'];
-            $amount = (float) $t['amount'];
-            $summary['total'] += $amount;
-            if ($t['category'] === 'loan_disbursement') {
-                $summary['disbursed'] += $amount;
-            } else {
-                $summary['incoming'] += $amount;
-            }
-            $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + $amount;
+            $summary['byCategory'][$t['category']] = ($summary['byCategory'][$t['category']] ?? 0) + (float) $t['amount'];
         }
+        $totals = $this->totalsOf($transactions);
+        $summary['total'] = $totals['total'];
+        $summary['incoming'] = $totals['incoming'];
+        $summary['disbursed'] = $totals['disbursed'];
         arsort($summary['byCategory']);
         $summary['shares'] = array_sum($sharesByMember);
         $summary['members'] = count($sharesByMember);
@@ -76,6 +139,8 @@ class TransactionsController extends Controller
             'transactions' => $pager['items'],
             'pager' => $pager,
             'summary' => $summary,
+            'printFilters' => $this->filterNotes(),
+            'printTotals' => $this->totalsBox($transactions),
             'categoryLabels' => $this->getCategoryLabels(),
             'filters' => $this->all(),
         ], 'admin/layout');
@@ -112,7 +177,8 @@ class TransactionsController extends Controller
     {
         $labels = $this->getCategoryLabels();
         $rows = [];
-        foreach ($this->fetch() as $t) {
+        $transactions = $this->fetch();
+        foreach ($transactions as $t) {
             $rows[] = [
                 date_ar($t['transaction_date']),
                 $labels[$t['category']] ?? $t['category'],
@@ -127,6 +193,8 @@ class TransactionsController extends Controller
             'title' => __('transactions'),
             'headers' => [__('date'), __('transaction_category'), is_rtl() ? 'البيان / التفاصيل' : 'Details', is_rtl() ? 'الرقم التسلسلي' : 'Serial', __('member'), __('amount'), __('admin_user')],
             'rows' => $rows,
+            'summary' => $this->totalsBox($transactions),
+            'subtitle' => implode(' · ', $this->filterNotes()),
         ]);
     }
 }
