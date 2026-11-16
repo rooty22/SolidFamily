@@ -7,7 +7,7 @@
         <form method="get" action="<?= url('admin/loan-requests') ?>" class="flex items-center gap-2">
             <div class="search-box" style="min-width:260px;">
                 <i class="bi bi-search"></i>
-                <input type="text" name="q" class="form-control" placeholder="<?= __('search_by_member_loan') ?>" value="<?= e($q ?? '') ?>">
+                <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= __('search_by_member_loan') ?>" value="<?= e($q ?? '') ?>"><?= member_names_datalist() ?>
             </div>
             <?php if ($status !== ''): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>
         </form>

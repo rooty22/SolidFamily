@@ -15,14 +15,22 @@ $hasSubFilters = ($status !== '' || $q !== '');
         <h1 class="text-xl font-bold text-slate-900"><?= __('subscriptions_index_title') ?></h1>
         <p class="text-xs text-slate-500 mt-0.5"><?= __('subscriptions_index_desc', ['month' => e(month_label($currentMonth))]) ?></p>
     </div>
-    <div class="flex items-center gap-3">
-        <form method="get" action="<?= url('admin/subscriptions') ?>" class="search-box" style="min-width:280px;">
+    <div class="flex items-center gap-3 flex-wrap">
+        <form method="get" action="<?= url('admin/subscriptions') ?>" class="search-box" style="min-width:260px;">
             <i class="bi bi-search"></i>
-            <input type="text" name="q" class="form-control" placeholder="<?= __('member_name_placeholder') ?>" value="<?= e($q) ?>">
+            <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= __('member_name_placeholder') ?>" value="<?= e($q) ?>"><?= member_names_datalist() ?>
             <?php if ($status !== ''): ?>
                 <input type="hidden" name="status" value="<?= e($status) ?>">
             <?php endif; ?>
         </form>
+        <?php
+        $subExportParams = array_filter(['q' => $q, 'status' => $status], fn($v) => $v !== '');
+        $subExportUrl = url('admin/subscriptions/export') . ($subExportParams ? '?' . http_build_query($subExportParams) : '');
+        ?>
+        <a href="<?= e($subExportUrl) ?>" class="btn btn-soft inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold">
+            <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+            <span><?= __('export_excel') ?></span>
+        </a>
     </div>
 </div>
 

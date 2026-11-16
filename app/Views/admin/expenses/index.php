@@ -45,7 +45,7 @@ $typeUrl = fn(string $t): string => url('admin/expenses') . (($q !== '' || $t !=
     <?php if ($type !== ''): ?><input type="hidden" name="type" value="<?= e($type) ?>"><?php endif; ?>
     <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" class="form-control" placeholder="<?= $isEn ? 'Search by name, member or notes...' : 'ابحث باسم المعاملة أو المشترك أو الملاحظات...' ?>" value="<?= e($q) ?>">
+        <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= $isEn ? 'Search by name, member or notes...' : 'ابحث باسم المعاملة أو المشترك أو الملاحظات...' ?>" value="<?= e($q) ?>"><?= member_names_datalist() ?>
     </div>
     <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= $isEn ? 'Search' : 'بحث' ?></button>
     <div class="inline-flex items-center gap-1.5 text-xs" data-testid="expense-type-filter">
@@ -57,6 +57,14 @@ $typeUrl = fn(string $t): string => url('admin/expenses') . (($q !== '' || $t !=
         <a href="<?= url('admin/expenses') ?>" class="btn btn-soft btn-sm inline-flex items-center gap-1.5"><i class="bi bi-x-circle"></i> <?= $isEn ? 'Clear' : 'إلغاء البحث' ?></a>
         <span class="text-xs text-slate-500 font-bold"><?= number_format($pager['total']) ?> <?= $isEn ? 'result(s)' : 'نتيجة' ?> · <?= $signMoney((float) $foundNet) ?></span>
     <?php endif; ?>
+    <?php
+    $expExportParams = array_filter(['q' => $q, 'type' => $type], fn($v) => $v !== '');
+    $expExportUrl = url('admin/expenses/export') . ($expExportParams ? '?' . http_build_query($expExportParams) : '');
+    ?>
+    <a href="<?= e($expExportUrl) ?>" class="btn btn-soft btn-sm ms-auto inline-flex items-center gap-1.5 font-bold whitespace-nowrap">
+        <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+        <span><?= __('export_excel') ?></span>
+    </a>
 </form>
 
 <div class="table-panel">

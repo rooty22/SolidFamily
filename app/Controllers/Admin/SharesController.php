@@ -10,7 +10,8 @@ use App\Models\Setting;
 
 class SharesController extends Controller
 {
-    public function index(): void
+    /** @return array{0:array,1:string,2:int} */
+    private function filteredHolders(): array
     {
         // Search by name, mobile or national ID (the same search the members / subscriptions pages use).
         $q = trim((string) $this->input('q', ''));
@@ -26,6 +27,12 @@ class SharesController extends Controller
             $noSharesCount = count(array_filter($registered, fn($m) => (int) $m['shares_count'] <= 0));
             $registered = array_values(array_filter($registered, fn($m) => (int) $m['shares_count'] > 0));
         }
+        return [$registered, $q, $noSharesCount];
+    }
+
+    public function index(): void
+    {
+        [$registered, $q, $noSharesCount] = $this->filteredHolders();
         $pager = paginate($registered);
         $members = $pager['items'];
         $shareValue = (float) Setting::get('share_value', 0);
@@ -43,6 +50,59 @@ class SharesController extends Controller
             'lotsByMember' => $lotsByMember,
             'noSharesCount' => $noSharesCount,
         ], 'admin/layout');
+    }
+
+    public function export(): void
+    {
+        [$registered, $q] = $this->filteredHolders();
+        $shareValue = (float) Setting::get('share_value', 0);
+        $ar = is_rtl();
+        $X = \App\Core\XlsxWriter::class;
+        $x = new \App\Core\XlsxWriter($ar ? 'الأسهم' : 'Shares', [
+            [$ar ? 'الرقم التسلسلي' : 'Serial', 13, $X::INT],
+            [$ar ? 'المشترك' : 'Member', 28, $X::TEXT],
+            [$ar ? 'رقم الجوال' : 'Mobile', 16, $X::ID],
+            [$ar ? 'عدد الأسهم' : 'Shares', 12, $X::INT],
+            [$ar ? 'قيمة السهم (ريال)' : 'Share value (SAR)', 17, $X::MONEY],
+            [$ar ? 'الاشتراك الشهري (ريال)' : 'Monthly due (SAR)', 19, $X::MONEY],
+            [$ar ? 'عدد الحصص النشطة' : 'Active lots', 15, $X::INT],
+            [$ar ? 'تفاصيل الحصص' : 'Lots breakdown', 42, $X::TEXT],
+        ], $ar);
+
+        $x->setTitleLines([
+            ($ar ? 'سجل الأسهم والحصص - ' : 'Shares & Lots Directory - ') . site_name(),
+            ($ar ? 'تاريخ التقرير: ' : 'Report date: ') . date('d/m/Y H:i')
+                . ' · ' . ($ar ? 'عدد المشتركين: ' : 'Members: ') . count($registered)
+                . ($q !== '' ? ' · ' . ($ar ? 'بحث: ' : 'Search: ') . $q : ''),
+        ]);
+
+        foreach ($registered as $m) {
+            $lots = \App\Models\ShareLot::activeFor((int) $m['id']);
+            $lotDesc = [];
+            foreach ($lots as $idx => $lot) {
+                $num = $idx + 1;
+                $dt = !empty($lot['created_at']) ? date('d/m/Y', strtotime((string) $lot['created_at'])) : '';
+                $note = \App\Models\ShareLot::note($lot);
+                $part = ($ar ? 'حصة ' : 'Lot ') . $num . ': ' . (int) $lot['shares_count'] . ($dt ? " ({$dt})" : '');
+                if ($note !== '') {
+                    $part .= ' - ' . $note;
+                }
+                $lotDesc[] = $part;
+            }
+            $shares = (int) $m['shares_count'];
+            $x->addRow([
+                $m['serial_no'] !== null ? (int) $m['serial_no'] : null,
+                $m['name'],
+                $m['mobile'],
+                $shares,
+                round($shareValue, 2),
+                round($shares * $shareValue, 2),
+                count($lots),
+                $lotDesc ? implode(' | ', $lotDesc) : '-',
+            ]);
+        }
+        $x->setSumTotals($ar ? 'الإجمالي' : 'Total', [3, 5, 6], 1, 0, count($registered) . ' ' . ($ar ? 'مشترك' : 'members'));
+        $x->download('shares-' . date('Y-m-d') . '.xlsx');
     }
 
     public function updateShareValue(): void

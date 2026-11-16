@@ -2,7 +2,7 @@
     <form method="get" action="<?= url('admin/payments') ?>" class="row g-3 align-items-end">
         <div class="col-md-3">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('search_by_member_name') ?></label>
-            <input type="text" name="search" class="form-control" placeholder="<?= __('member_name_placeholder') ?>" value="<?= e($filters['search'] ?? '') ?>">
+            <input type="text" name="search" list="member-names" autocomplete="off" class="form-control" placeholder="<?= __('member_name_placeholder') ?>" value="<?= e($filters['search'] ?? '') ?>"><?= member_names_datalist() ?>
         </div>
         <div class="col-md-3">
             <label class="form-label text-xs font-bold text-slate-700"><?= __('payment_type') ?></label>
@@ -31,9 +31,9 @@
 </div>
 
 <div class="d-flex justify-content-end gap-2 mb-3">
-    <a href="<?= url('admin/payments/export') ?>?<?= http_build_query($filters) ?>" class="btn-soft-primary text-xs">
-        <i class="bi bi-file-earmark-spreadsheet"></i>
-        <span><?= __('export_csv') ?></span>
+    <a href="<?= url('admin/payments/export') ?>?<?= http_build_query($filters) ?>" class="btn-soft-success text-xs">
+        <i class="bi bi-file-earmark-excel"></i>
+        <span><?= __('export_excel') ?></span>
     </a>
     <a href="<?= url('admin/payments/print') ?>?<?= http_build_query($filters) ?>" target="_blank" rel="noopener" class="btn-soft-primary text-xs">
         <i class="bi bi-printer"></i>

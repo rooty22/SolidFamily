@@ -7,7 +7,7 @@
         <form method="get" action="<?= url('admin/loans') ?>" class="flex items-center gap-2 flex-wrap">
             <div class="search-box" style="min-width:260px;">
                 <i class="bi bi-search"></i>
-                <input type="text" name="q" class="form-control" placeholder="<?= __('search_by_member_loan') ?>" value="<?= e($q) ?>">
+                <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= __('search_by_member_loan') ?>" value="<?= e($q) ?>"><?= member_names_datalist() ?>
             </div>
             <?php if (!empty($status)): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>
             <select name="fee" class="form-select form-select-sm" style="width:auto;min-width:150px" onchange="this.form.submit()" title="<?= is_rtl() ? 'حالة العمولة' : 'Commission status' ?>">
@@ -16,6 +16,14 @@
                 <option value="unpaid" <?= ($fee ?? '') === 'unpaid' ? 'selected' : '' ?>><?= is_rtl() ? 'العمولة غير مدفوعة' : 'Commission unpaid' ?></option>
             </select>
         </form>
+        <?php
+        $loanExportParams = array_filter(['q' => $q, 'status' => $status, 'fee' => $fee ?? ''], fn($v) => $v !== '');
+        $loanExportUrl = url('admin/loans/export') . ($loanExportParams ? '?' . http_build_query($loanExportParams) : '');
+        ?>
+        <a href="<?= e($loanExportUrl) ?>" class="btn btn-soft inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold">
+            <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+            <span><?= __('export_excel') ?></span>
+        </a>
         <a href="<?= url('admin/loans/create') ?>" class="btn btn-primary inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold">
             <i class="bi bi-plus-circle"></i>
             <span><?= __('add_loan') ?></span>

@@ -20,7 +20,7 @@ $hasFilters = ($paymentStatus !== '' || $accountStatus !== '' || $q !== '');
     <div class="members-actions">
         <form method="get" action="<?= url('admin/members') ?>" class="search-box">
             <i class="bi bi-search"></i>
-            <input type="text" name="q" class="form-control" placeholder="<?= __('search_members_full') ?>" value="<?= e($q) ?>">
+            <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= __('search_members_full') ?>" value="<?= e($q) ?>"><?= member_names_datalist(true) ?>
             <?php if ($paymentStatus !== ''): ?>
                 <input type="hidden" name="payment_status" value="<?= e($paymentStatus) ?>">
             <?php endif; ?>

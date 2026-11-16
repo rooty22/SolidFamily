@@ -3,13 +3,17 @@
         <h1 class="text-xl font-bold text-slate-900"><?= is_rtl() ? 'المبالغ التأسيسية ورأس مال الصندوق' : 'Founding Capital & Member Allocations' ?></h1>
         <p class="text-xs text-slate-500 mt-0.5"><?= is_rtl() ? 'متابعة سداد المبالغ التأسيسية وأسهم رأس المال التأسيسي للأعضاء' : 'Monitor founding share commitments, payments, and remaining balances' ?></p>
     </div>
+    <a href="<?= e(url('admin/founding/export') . (($q ?? '') !== '' ? '?' . http_build_query(['q' => $q]) : '')) ?>" class="btn btn-soft inline-flex items-center gap-2 whitespace-nowrap shrink-0 font-bold">
+        <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+        <span><?= __('export_excel') ?></span>
+    </a>
 </div>
 
 <!-- Search a member by name / mobile / national ID -->
 <form method="get" action="<?= url('admin/founding') ?>" class="flex flex-wrap items-center gap-2 mb-4">
     <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" class="form-control" placeholder="<?= is_rtl() ? 'ابحث باسم المشترك أو الجوال أو الهوية...' : 'Search by name, mobile or national ID...' ?>" value="<?= e($q ?? '') ?>">
+        <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= is_rtl() ? 'ابحث باسم المشترك أو الجوال أو الهوية...' : 'Search by name, mobile or national ID...' ?>" value="<?= e($q ?? '') ?>"><?= member_names_datalist() ?>
     </div>
     <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= is_rtl() ? 'بحث' : 'Search' ?></button>
     <?php if (($q ?? '') !== ''): ?>

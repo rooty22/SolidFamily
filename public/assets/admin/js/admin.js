@@ -278,33 +278,34 @@ document.addEventListener('DOMContentLoaded', function () {
         // Content that grows after load (tables, collapses) changes whether there is anything left to scroll.
         if (window.ResizeObserver) { new ResizeObserver(sync).observe(document.body); }
 
-        // The buttons stay out of the way: with a mouse they show only while the pointer is near the screen edge they
-        // sit on (left in Arabic, right in English) and slide away again when it leaves. On touch screens there is no
-        // pointer to hover with, so they stay visible.
-        var ZONE = 120; // px from that edge
-        var hideTimer = null;
-        var hasMouse = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+        // The buttons never sit on top of what is being read:
+        //  - wide screens (sidebar visible): admin.css keeps a strip at the screen edge free of content and the small buttons
+        //    live in it, so they can simply stay visible (translucent);
+        //  - narrow screens have no free strip: the buttons appear only while the page is being scrolled / touched and fade
+        //    away after a moment (they stay while pointed at or focused).
+        var wide = window.matchMedia ? window.matchMedia('(min-width: 993px)') : { matches: true };
+        var IDLE_MS = 1800;
+        var idleTimer = null;
         function setAway(away) { fab.classList.toggle('is-away', away); }
-        if (hasMouse) {
-            setAway(true);
-            document.addEventListener('mousemove', function (e) {
-                var rtl = document.documentElement.dir === 'rtl';
-                var near = rtl ? e.clientX <= ZONE : e.clientX >= window.innerWidth - ZONE;
-                if (near) {
-                    clearTimeout(hideTimer);
-                    hideTimer = null;
-                    setAway(false);
-                } else if (!hideTimer && !fab.classList.contains('is-away')) {
-                    hideTimer = setTimeout(function () {
-                        hideTimer = null;
-                        if (!fab.contains(document.activeElement)) { setAway(true); }
-                    }, 250);
-                }
-            }, { passive: true });
-            document.documentElement.addEventListener('mouseleave', function () { setAway(true); });
-            fab.addEventListener('focusin', function () { setAway(false); });
-            fab.addEventListener('focusout', function () { setAway(true); });
+        function busy() { return fab.matches(':hover') || fab.contains(document.activeElement); }
+        function wake() {
+            clearTimeout(idleTimer);
+            setAway(false);
+            if (wide.matches) { return; }
+            idleTimer = setTimeout(function () { if (!busy()) { setAway(true); } }, IDLE_MS);
         }
+        function settle() {
+            clearTimeout(idleTimer);
+            setAway(!wide.matches);
+        }
+        settle();
+        window.addEventListener('scroll', wake, { passive: true });
+        document.addEventListener('touchstart', wake, { passive: true });
+        fab.addEventListener('mouseenter', function () { clearTimeout(idleTimer); setAway(false); });
+        fab.addEventListener('mouseleave', function () { if (!wide.matches) { wake(); } });
+        fab.addEventListener('focusin', function () { clearTimeout(idleTimer); setAway(false); });
+        fab.addEventListener('focusout', function () { if (!wide.matches) { wake(); } });
+        if (wide.addEventListener) { wide.addEventListener('change', settle); }
     }
     if (document.body) { build(); } else { document.addEventListener('DOMContentLoaded', build); }
 })();

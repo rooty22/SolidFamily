@@ -145,6 +145,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/members/{id}/delete', [MembersController::class, 'destroy']);
 
     $router->get('/shares', [SharesController::class, 'index']);
+    $router->get('/shares/export', [SharesController::class, 'export']);
     $router->post('/shares/value', [SharesController::class, 'updateShareValue']);
     $router->post('/shares/{id}', [SharesController::class, 'updateMemberShares']);
     $router->post('/shares/{id}/merge', [SharesController::class, 'mergeShares']);
@@ -159,6 +160,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/share-requests/{id}/reject', [AdminShareRequestsController::class, 'reject']);
 
     $router->get('/subscriptions', [SubscriptionsController::class, 'index']);
+    $router->get('/subscriptions/export', [SubscriptionsController::class, 'export']);
     $router->get('/subscriptions/{memberId}', [SubscriptionsController::class, 'show']);
     $router->post('/subscriptions/{memberId}/pay', [SubscriptionsController::class, 'recordPayment']);
     $router->post('/subscriptions/{memberId}/lot/{lotId}/date', [SubscriptionsController::class, 'updateLotDate']);
@@ -166,6 +168,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/subscriptions/{memberId}/update-payment/{subId}', [SubscriptionsController::class, 'updatePayment']);
 
     $router->get('/founding', [AdminFoundingController::class, 'index']);
+    $router->get('/founding/export', [AdminFoundingController::class, 'export']);
     $router->get('/founding/{memberId}', [AdminFoundingController::class, 'show']);
     $router->post('/founding/{memberId}/pay', [AdminFoundingController::class, 'recordPayment']);
     $router->post('/founding/{memberId}/plan', [AdminFoundingController::class, 'setPlan']);
@@ -180,6 +183,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
     $router->post('/loan-requests/{id}/delete', [LoanRequestsController::class, 'destroy']);
 
     $router->get('/loans', [LoansController::class, 'index']);
+    $router->get('/loans/export', [LoansController::class, 'export']);
     $router->get('/loans/create', [LoansController::class, 'create']);
     $router->get('/loans/member-lots/{memberId}', [LoansController::class, 'memberLots']);
     $router->post('/loans', [LoansController::class, 'store']);
@@ -203,6 +207,7 @@ $router->group('/admin', [Middleware::adminAuth()], function ($router) {
 
     // Administrative and bank expenses log (main admins only: Admin::isSuperOnlyPath keeps sub-admins out)
     $router->get('/expenses', [ExpensesController::class, 'index']);
+    $router->get('/expenses/export', [ExpensesController::class, 'export']);
     $router->post('/expenses', [ExpensesController::class, 'store']);
     $router->get('/expenses/{id}/edit', [ExpensesController::class, 'edit']);
     $router->post('/expenses/{id}', [ExpensesController::class, 'update']);

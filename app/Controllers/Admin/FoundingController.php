@@ -16,7 +16,8 @@ use App\Models\Notification;
 
 class FoundingController extends Controller
 {
-    public function index(): void
+    /** @return array{0:array,1:string,2:int} */
+    private function filteredMembers(): array
     {
         // Search by name, mobile or national ID (the same search the members / subscriptions / shares pages use).
         $q = trim((string) $this->input('q', ''));
@@ -37,6 +38,12 @@ class FoundingController extends Controller
             $noFoundingCount = count($registered) - count($visible);
             $registered = $visible;
         }
+        return [$registered, $q, $noFoundingCount];
+    }
+
+    public function index(): void
+    {
+        [$registered, $q, $noFoundingCount] = $this->filteredMembers();
         $pager = paginate($registered);
         $members = $pager['items'];
         $rows = [];
@@ -53,6 +60,64 @@ class FoundingController extends Controller
             'pager' => $pager,
             'noFoundingCount' => $noFoundingCount,
         ], 'admin/layout');
+    }
+
+    public function export(): void
+    {
+        [$registered, $q] = $this->filteredMembers();
+        $ar = is_rtl();
+        $X = \App\Core\XlsxWriter::class;
+        $x = new \App\Core\XlsxWriter($ar ? 'مبالغ التأسيس' : 'Founding Amounts', [
+            [$ar ? 'الرقم التسلسلي' : 'Serial', 13, $X::INT],
+            [$ar ? 'المشترك' : 'Member', 28, $X::TEXT],
+            [$ar ? 'رقم الجوال' : 'Mobile', 16, $X::ID],
+            [$ar ? 'عدد الأسهم' : 'Shares', 12, $X::INT],
+            [$ar ? 'المطلوب (ريال)' : 'Required (SAR)', 17, $X::MONEY],
+            [$ar ? 'المسدد (ريال)' : 'Paid (SAR)', 17, $X::MONEY],
+            [$ar ? 'المتبقي (ريال)' : 'Remaining (SAR)', 17, $X::MONEY],
+            [$ar ? 'الزيادة (ريال)' : 'Surplus (SAR)', 16, $X::MONEY],
+            [$ar ? 'الحالة' : 'Status', 16, $X::TEXT],
+            [$ar ? 'الأسهم المسددة' : 'Shares paid', 14, $X::ID],
+            [$ar ? 'خطة السداد' : 'Payment plan', 18, $X::TEXT],
+        ], $ar);
+
+        $x->setTitleLines([
+            ($ar ? 'المبالغ التأسيسية ورأس مال الصندوق - ' : 'Founding Amounts - ') . site_name(),
+            ($ar ? 'تاريخ التقرير: ' : 'Report date: ') . date('d/m/Y H:i')
+                . ' · ' . ($ar ? 'عدد المشتركين: ' : 'Members: ') . count($registered)
+                . ($q !== '' ? ' · ' . ($ar ? 'بحث: ' : 'Search: ') . $q : ''),
+        ]);
+
+        foreach ($registered as $m) {
+            $f = FoundingAmount::ensureForMember((int) $m['id']);
+            $lots = FoundingAmount::lotBreakdown((int) $m['id'], $f);
+            $lotsTotal = count($lots);
+            $lotsMet = count(array_filter($lots, fn($b) => $b['met']));
+            $required = (float) $f['total_required'];
+            $paid = (float) $f['amount_paid'];
+            $remaining = max(0.0, round($required - $paid, 2));
+            $surplus = max(0.0, round($paid - $required, 2));
+            [$statusLbl] = status_badge($required > 0 ? $f['status'] : 'no_shares');
+            $planText = empty($f['plan_start'])
+                ? ($ar ? 'لم يختر' : 'Not chosen')
+                : (month_label($f['plan_start']) . ' (' . (int) ($f['plan_months'] ?? 1) . ($ar ? ' شهر' : ' mo') . ')');
+
+            $x->addRow([
+                $m['serial_no'] !== null ? (int) $m['serial_no'] : null,
+                $m['name'],
+                $m['mobile'],
+                (int) $f['shares_count_linked'],
+                round($required, 2),
+                round($paid, 2),
+                $remaining,
+                $surplus,
+                $statusLbl,
+                $lotsTotal > 0 ? ($lotsMet . ' / ' . $lotsTotal) : '-',
+                $planText,
+            ]);
+        }
+        $x->setSumTotals($ar ? 'الإجمالي' : 'Total', [3, 4, 5, 6, 7], 1, 0, count($registered) . ' ' . ($ar ? 'مشترك' : 'members'));
+        $x->download('founding-' . date('Y-m-d') . '.xlsx');
     }
 
     public function show(string $memberId): void

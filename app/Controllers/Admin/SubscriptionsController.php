@@ -14,7 +14,8 @@ use App\Models\Notification;
 
 class SubscriptionsController extends Controller
 {
-    public function index(): void
+    /** @return array{0:array,1:array,2:string,3:string,4:string,5:float} */
+    private function filteredRows(): array
     {
         $q = trim((string) $this->input('q', ''));
         $members = Member::withoutRegistrations($q !== '' ? Member::search($q) : Member::all('name ASC'));
@@ -111,6 +112,12 @@ class SubscriptionsController extends Controller
             }));
         }
 
+        return [$rows, $statusCounts, $q, $status, $currentMonth, $shareValue];
+    }
+
+    public function index(): void
+    {
+        [$rows, $statusCounts, $q, $status, $currentMonth] = $this->filteredRows();
         $pager = paginate($rows);
 
         $this->view('admin/subscriptions/index', [
@@ -122,6 +129,58 @@ class SubscriptionsController extends Controller
             'counts' => $statusCounts,
             'currentMonth' => $currentMonth,
         ], 'admin/layout');
+    }
+
+    public function export(): void
+    {
+        [$rows, , $q, $status, $currentMonth] = $this->filteredRows();
+        $ar = is_rtl();
+        $X = \App\Core\XlsxWriter::class;
+        $x = new \App\Core\XlsxWriter($ar ? 'الاشتراكات الشهرية' : 'Subscriptions', [
+            [$ar ? 'الرقم التسلسلي' : 'Serial', 13, $X::INT],
+            [$ar ? 'المشترك' : 'Member', 28, $X::TEXT],
+            [$ar ? 'رقم الجوال' : 'Mobile', 16, $X::ID],
+            [$ar ? 'عدد الأسهم' : 'Shares', 12, $X::INT],
+            [$ar ? 'قيمة السهم (ريال)' : 'Share value (SAR)', 17, $X::MONEY],
+            [$ar ? 'المطلوب شهرياً (ريال)' : 'Monthly due (SAR)', 19, $X::MONEY],
+            [$ar ? 'حالة الشهر (' . month_label($currentMonth) . ')' : 'Status (' . month_label($currentMonth) . ')', 20, $X::TEXT],
+            [$ar ? 'أشهر مسددة' : 'Paid months', 13, $X::INT],
+            [$ar ? 'أشهر متأخرة' : 'Late months', 13, $X::INT],
+        ], $ar);
+
+        $notes = [];
+        if ($q !== '') {
+            $notes[] = ($ar ? 'بحث: ' : 'Search: ') . $q;
+        }
+        if ($status !== '' && $status !== 'all') {
+            [$sLbl] = status_badge($status);
+            $notes[] = ($ar ? 'الحالة: ' : 'Status: ') . $sLbl;
+        }
+
+        $x->setTitleLines([
+            ($ar ? 'الاشتراكات الشهرية - ' : 'Monthly Subscriptions - ') . site_name(),
+            ($ar ? 'الشهر الحالي: ' : 'Current month: ') . month_label($currentMonth)
+                . ' · ' . ($ar ? 'عدد المشتركين: ' : 'Members: ') . count($rows)
+                . ($notes ? ' · ' . implode(' · ', $notes) : ''),
+        ]);
+
+        foreach ($rows as $row) {
+            [$statusLbl] = status_badge($row['current_status']);
+            $m = $row['member'];
+            $x->addRow([
+                $m['serial_no'] !== null ? (int) $m['serial_no'] : null,
+                $m['name'],
+                $m['mobile'],
+                (int) $m['shares_count'],
+                round((float) $row['share_value'], 2),
+                round((float) $row['amount'], 2),
+                $statusLbl,
+                (int) $row['paid_months'],
+                (int) $row['late_months'],
+            ]);
+        }
+        $x->setSumTotals($ar ? 'الإجمالي' : 'Total', [3, 5, 7, 8], 1, 0, count($rows) . ' ' . ($ar ? 'مشترك' : 'members'));
+        $x->download('subscriptions-' . date('Y-m-d') . '.xlsx');
     }
 
     public function show(string $memberId): void

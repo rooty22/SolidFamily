@@ -75,6 +75,9 @@
                                 · <span class="badge-status badge-info py-0 px-2" style="font-size:11px;"><?= e(\App\Models\ShareLot::label((int) $l['member_id'], (int) $l['lot_id'])) ?></span>
                             <?php endif; ?>
                         </div>
+                        <?php if (loan_fee_unpaid($l)): ?>
+                            <div class="loan-fee-note" data-testid="loan-fee-note"><i class="bi bi-exclamation-circle-fill"></i> <span><?= __('loan_fee_unpaid_note') ?></span></div>
+                        <?php endif; ?>
                     </div>
                     <span class="badge-status badge-<?= $v ?>"><?= $lb ?></span>
                 </div>

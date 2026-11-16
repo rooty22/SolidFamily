@@ -69,7 +69,8 @@
     <?php \App\Core\View::partial('admin/partials/sidebar'); ?>
     <div class="main-area flex-1 flex flex-col min-w-0">
         <?php \App\Core\View::partial('admin/partials/topbar', ['pageTitle' => $pageTitle ?? '']); ?>
-        <main class="page-content flex-1 p-4 sm:p-6 lg:p-8">
+        <?php // No p-4 / sm:p-6 / lg:p-8 here: Bootstrap's .p-4 (padding: 1.5rem !important) overrode every padding rule of .page-content ?>
+        <main class="page-content flex-1">
             <?php \App\Core\View::partial('admin/partials/flash'); ?>
             <?= $content ?>
         </main>

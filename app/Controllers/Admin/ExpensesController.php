@@ -35,6 +35,94 @@ class ExpensesController extends Controller
         ], 'admin/layout');
     }
 
+    public function export(): void
+    {
+        $q = trim((string) $this->input('q', ''));
+        $type = (string) $this->input('type', '');
+        $type = in_array($type, Expense::TYPES, true) ? $type : '';
+        try {
+            $all = Expense::search($q, $type);
+            $summary = Expense::summary();
+        } catch (\Throwable $e) {
+            try {
+                $all = Expense::raw('SELECT * FROM expenses ORDER BY expense_date DESC, id DESC');
+                if ($q !== '') {
+                    $all = array_values(array_filter($all, fn($r) => str_contains((string) ($r['name'] ?? ''), $q)));
+                }
+                if ($type === Expense::DEPOSIT) {
+                    $all = [];
+                }
+                $w = round(array_sum(array_map(fn($r) => (float) ($r['amount'] ?? 0), $all)), 2);
+                $summary = ['count' => count($all), 'total' => $w, 'withdrawals' => $w, 'deposits' => 0.0, 'net' => -$w, 'withdraw_count' => count($all), 'deposit_count' => 0];
+            } catch (\Throwable $e2) {
+                $all = [];
+                $summary = ['count' => 0, 'total' => 0.0, 'withdrawals' => 0.0, 'deposits' => 0.0, 'net' => 0.0, 'withdraw_count' => 0, 'deposit_count' => 0];
+            }
+        }
+        $ar = is_rtl();
+        $X = \App\Core\XlsxReport::class;
+        $report = new \App\Core\XlsxReport($ar);
+
+        $notes = [];
+        if ($q !== '') {
+            $notes[] = ($ar ? 'بحث: ' : 'Search: ') . $q;
+        }
+        if ($type !== '') {
+            $notes[] = ($ar ? 'النوع: ' : 'Type: ') . ($type === Expense::DEPOSIT ? ($ar ? 'إيداع' : 'Deposit') : ($ar ? 'صرف' : 'Withdrawal'));
+        }
+        $titleLines = [
+            ($ar ? 'سجل المصاريف الإدارية والبنكية - ' : 'Administrative & Bank Expenses Log - ') . site_name(),
+            ($ar ? 'تاريخ التقرير: ' : 'Report date: ') . date('d/m/Y H:i')
+                . ' · ' . ($ar ? 'عدد السجلات: ' : 'Entries: ') . count($all)
+                . ($notes ? ' · ' . implode(' · ', $notes) : ''),
+        ];
+
+        $report->sheet($ar ? 'سجل المصاريف' : 'Expenses Log', [
+            [$ar ? 'التاريخ' : 'Date', 15, $X::DATE],
+            [$ar ? 'اسم المعاملة' : 'Transaction name', 30, $X::TEXT],
+            [$ar ? 'النوع' : 'Type', 14, $X::ID],
+            [$ar ? 'المشترك' : 'Member', 26, $X::TEXT],
+            [$ar ? 'الأثر على الرصيد (ريال)' : 'Signed amount (SAR)', 20, $X::MONEY],
+            [$ar ? 'ملاحظات' : 'Notes', 40, $X::TEXT],
+        ], $titleLines, true);
+
+        foreach ($all as $x) {
+            $isDeposit = ($x['type'] ?? Expense::WITHDRAW) === Expense::DEPOSIT;
+            $memberLabel = (!empty($x['member_id']) && !empty($x['member_name']))
+                ? ((!empty($x['member_serial']) ? '#' . (int) $x['member_serial'] . ' · ' : '') . $x['member_name'])
+                : ($ar ? 'عام' : 'General');
+            $report->row([
+                $x['expense_date'],
+                $x['name'],
+                $isDeposit ? ($ar ? 'إيداع' : 'Deposit') : ($ar ? 'صرف' : 'Withdrawal'),
+                $memberLabel,
+                round(Expense::signed($x), 2),
+                trim((string) ($x['notes'] ?? '')) ?: '-',
+            ]);
+        }
+
+        if ($all) {
+            $report->sumTotals($ar ? 'الصافي' : 'Net', [4], 1, 0, count($all) . ' ' . ($ar ? 'معاملة' : 'entries'));
+        } else {
+            $report->note($ar ? 'لا توجد معاملات مصاريف مطابقة' : 'No matching expense entries.');
+        }
+
+        $report->sheet($ar ? 'ملخص المصاريف' : 'Expenses Summary', [
+            [$ar ? 'البند' : 'Item', 42, $X::TEXT],
+            [$ar ? 'القيمة (ريال)' : 'Amount (SAR)', 20, $X::MONEY],
+            [$ar ? 'العدد' : 'Count', 14, $X::INT],
+        ], [
+            ($ar ? 'ملخص المصاريف والإيداعات - ' : 'Expenses & Deposits Summary - ') . site_name(),
+            $titleLines[1],
+        ]);
+        $report->section($ar ? 'إجمالي السجل الكلي' : 'Overall Log Totals');
+        $report->row([$ar ? 'إجمالي المصاريف (صرف)' : 'Total withdrawals', $summary['withdrawals'], (int) $summary['withdraw_count']]);
+        $report->row([$ar ? 'إجمالي الإيداعات' : 'Total deposits', $summary['deposits'], (int) $summary['deposit_count']]);
+        $report->row([$ar ? 'صافي الأثر على رصيد الصندوق (إيداع − صرف)' : 'Net effect on balance', $summary['net'], (int) $summary['count']]);
+
+        $report->download('expenses-' . date('Y-m-d') . '.xlsx');
+    }
+
     public function store(): void
     {
         $this->verifyCsrf();

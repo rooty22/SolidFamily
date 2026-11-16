@@ -188,6 +188,37 @@ function loan_member_remaining(array $loan): float
     return round((float) ($loan['amount_remaining'] ?? 0) + $fee, 2);
 }
 
+/** True when the loan has a commission that the administration has not confirmed as paid yet. */
+function loan_fee_unpaid(array $loan): bool
+{
+    return \App\Models\Loan::hasFee($loan) && !\App\Models\Loan::feeIsPaid($loan);
+}
+
+/**
+ * The <datalist id="member-names"> of the member names, for the search boxes of the admin lists: the names are offered as the admin
+ * types (or clicks the box), whatever the browser remembers. An input uses it with list="member-names". Printed once per page;
+ * members whose registration is still pending / was refused are left out unless $includePending (the members page lists them).
+ */
+function member_names_datalist(bool $includePending = false): string
+{
+    static $done = false;
+    if ($done) {
+        return '';
+    }
+    $done = true;
+    try {
+        $status = $includePending ? "('rejected')" : "('pending', 'rejected')";
+        $rows = \App\Models\Member::raw("SELECT name, serial_no FROM members WHERE status NOT IN $status ORDER BY name");
+    } catch (\Throwable $e) {
+        return '';
+    }
+    $out = '<datalist id="member-names">';
+    foreach ($rows as $r) {
+        $out .= '<option value="' . e((string) $r['name']) . '">' . ($r['serial_no'] !== null ? '#' . (int) $r['serial_no'] : '') . '</option>';
+    }
+    return $out . '</datalist>';
+}
+
 function money_plain(?float $amount, int $decimals = 2): string
 {
     return number_format((float) $amount, $decimals);
@@ -1046,9 +1077,9 @@ function csv_cell($value)
     return $value;
 }
 
-function csv_put($handle, array $row): void
+function csv_put($handle, array $row, string $delimiter = ';'): void
 {
-    fputcsv($handle, array_map('csv_cell', $row));
+    fputcsv($handle, array_map('csv_cell', $row), $delimiter);
 }
 
 function site_menu_items(): array

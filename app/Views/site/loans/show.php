@@ -21,6 +21,10 @@ $daysLeft = $next ? (int) floor((strtotime($next['due_date']) - strtotime(date('
     <a href="<?= url('loans') ?>" class="btn btn-soft btn-sm"><i class="bi bi-arrow-<?= is_rtl() ? 'right' : 'left' ?>"></i> <?= __('back_to_loans') ?></a>
 </div>
 
+<?php if (loan_fee_unpaid($loan)): ?>
+<div class="loan-fee-alert" data-testid="loan-fee-alert"><i class="bi bi-exclamation-triangle-fill"></i> <span><?= __('loan_fee_unpaid_hint') ?></span></div>
+<?php endif; ?>
+
 <div class="kpi-grid">
     <div class="stat-card"><div class="stat-icon bg-grad-purple"><i class="bi bi-cash-stack"></i></div>
         <div><div class="stat-label"><?= __('loan_value') ?></div><div class="stat-value font-num"><?= money($totalWithFee) ?></div><div class="stat-sub"><?= is_rtl() ? 'شاملاً العمولة والمصاريف الإدارية' : 'Including commission and admin fees' ?></div></div></div>

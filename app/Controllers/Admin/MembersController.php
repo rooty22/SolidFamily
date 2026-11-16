@@ -252,22 +252,26 @@ class MembersController extends Controller
             foreach ($rows as $r) {
                 $x->addRow($r);
             }
+            $x->setSumTotals($ar ? 'الإجمالي' : 'Total', [11, 12, 16, 17, 18, 19, 20], 2, 0, count($rows) . ' ' . ($ar ? 'مشترك' : 'members'));
             $x->download($filename . '.xlsx');
         }
 
         // CSV fallback: semicolon-separated (what Excel expects with an Arabic / European regional setting), UTF-8 with BOM
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=' . $filename . '.csv');
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output', 'w');
-        fputcsv($out, array_map('csv_cell', array_column($columns, 0)), ';');
+        csv_put($out, array_column($columns, 0));
         foreach ($rows as $r) {
             foreach ([6, 21] as $dateCol) {      // dates as dd/mm/yyyy
                 if (!empty($r[$dateCol])) {
                     $r[$dateCol] = date('d/m/Y', strtotime(substr((string) $r[$dateCol], 0, 10)));
                 }
             }
-            fputcsv($out, array_map('csv_cell', $r), ';');
+            csv_put($out, $r);
         }
         fclose($out);
         exit;

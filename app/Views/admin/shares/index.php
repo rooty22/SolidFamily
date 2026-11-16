@@ -43,13 +43,17 @@
 <form method="get" action="<?= url('admin/shares') ?>" class="flex flex-wrap items-center gap-2 mb-4">
     <div class="search-box" style="min-width:300px; flex: 1 1 300px; max-width: 460px;">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" class="form-control" placeholder="<?= is_rtl() ? 'ابحث باسم المشترك أو الجوال أو الهوية...' : 'Search by name, mobile or national ID...' ?>" value="<?= e($q ?? '') ?>">
+        <input type="text" name="q" list="member-names" autocomplete="off" class="form-control" placeholder="<?= is_rtl() ? 'ابحث باسم المشترك أو الجوال أو الهوية...' : 'Search by name, mobile or national ID...' ?>" value="<?= e($q ?? '') ?>"><?= member_names_datalist() ?>
     </div>
     <button type="submit" class="btn btn-primary btn-sm font-bold inline-flex items-center gap-1.5"><i class="bi bi-search"></i> <?= is_rtl() ? 'بحث' : 'Search' ?></button>
     <?php if (($q ?? '') !== ''): ?>
         <a href="<?= url('admin/shares') ?>" class="btn btn-soft btn-sm inline-flex items-center gap-1.5"><i class="bi bi-x-circle"></i> <?= is_rtl() ? 'إلغاء البحث' : 'Clear' ?></a>
         <span class="text-xs text-slate-500 font-bold"><?= is_rtl() ? number_format($pager['total']) . ' نتيجة' : number_format($pager['total']) . ' result(s)' ?></span>
     <?php endif; ?>
+    <a href="<?= e(url('admin/shares/export') . (($q ?? '') !== '' ? '?' . http_build_query(['q' => $q]) : '')) ?>" class="btn btn-soft btn-sm ms-auto inline-flex items-center gap-1.5 font-bold whitespace-nowrap">
+        <i class="bi bi-file-earmark-excel text-emerald-600"></i>
+        <span><?= __('export_excel') ?></span>
+    </a>
 </form>
 
 <?php if (($q ?? '') === '' && (int) ($noSharesCount ?? 0) > 0): ?>

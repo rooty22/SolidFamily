@@ -49,12 +49,13 @@ class LoansController extends Controller
         return null;
     }
 
-    public function index(): void
+    /** @return array{0:array,1:array,2:string,3:string,4:string} */
+    private function filteredLoans(): array
     {
         $q = trim((string) $this->input('q', ''));
-        $status = $this->input('status', '');
+        $status = (string) $this->input('status', '');
         $conditions = [];
-        if ($status) {
+        if ($status !== '') {
             $conditions['loans.status'] = $status;
         }
         $loans = Loan::withMember($conditions);
@@ -83,6 +84,12 @@ class LoansController extends Controller
         }
         $totals = array_map(fn($v) => is_float($v) ? round($v, 2) : $v, $totals);
 
+        return [$loans, $totals, $q, $status, $fee];
+    }
+
+    public function index(): void
+    {
+        [$loans, $totals, $q, $status, $fee] = $this->filteredLoans();
         $pager = paginate($loans);
 
         $this->view('admin/loans/index', [
@@ -95,6 +102,92 @@ class LoansController extends Controller
             'fee' => $fee,
             'reasonLabels' => $this->reasonLabels,
         ], 'admin/layout');
+    }
+
+    public function export(): void
+    {
+        [$loans, $totals, $q, $status, $fee] = $this->filteredLoans();
+        $ar = is_rtl();
+        $X = \App\Core\XlsxReport::class;
+        $report = new \App\Core\XlsxReport($ar);
+
+        $notes = [];
+        if ($q !== '') {
+            $notes[] = ($ar ? 'بحث: ' : 'Search: ') . $q;
+        }
+        if ($status !== '') {
+            [$sLbl] = status_badge($status);
+            $notes[] = ($ar ? 'الحالة: ' : 'Status: ') . $sLbl;
+        }
+        if ($fee !== '') {
+            $notes[] = ($ar ? 'العمولة: ' : 'Commission: ') . ($fee === 'paid' ? ($ar ? 'مدفوعة' : 'Paid') : ($ar ? 'غير مدفوعة' : 'Unpaid'));
+        }
+
+        $report->sheet($ar ? 'القروض' : 'Loans', [
+            [$ar ? 'رقم القرض' : 'Loan #', 11, $X::INT],
+            [$ar ? 'الرقم التسلسلي' : 'Serial', 12, $X::INT],
+            [$ar ? 'المشترك' : 'Member', 28, $X::TEXT],
+            [$ar ? 'رقم الجوال' : 'Mobile', 16, $X::ID],
+            [$ar ? 'السهم' : 'Share', 14, $X::TEXT],
+            [$ar ? 'سبب القرض' : 'Reason', 20, $X::TEXT],
+            [$ar ? 'قيمة القرض (ريال)' : 'Loan amount (SAR)', 18, $X::MONEY],
+            [$ar ? 'تاريخ القرض' : 'Loan date', 14, $X::DATE],
+            [$ar ? 'عدد الأقساط' : 'Installments', 12, $X::INT],
+            [$ar ? 'قيمة القسط' : 'Installment value', 16, $X::MONEY],
+            [$ar ? 'المسدد (ريال)' : 'Paid (SAR)', 16, $X::MONEY],
+            [$ar ? 'المتبقي (ريال)' : 'Remaining (SAR)', 16, $X::MONEY],
+            [$ar ? 'نسبة السداد' : 'Repaid %', 13, $X::PCT],
+            [$ar ? 'نسبة العمولة' : 'Fee %', 13, $X::PCT],
+            [$ar ? 'العمولة (ريال)' : 'Commission (SAR)', 16, $X::MONEY],
+            [$ar ? 'حالة العمولة' : 'Fee status', 14, $X::ID],
+            [$ar ? 'تاريخ سداد العمولة' : 'Fee paid on', 16, $X::DATE],
+            [$ar ? 'حالة القرض' : 'Status', 14, $X::ID],
+        ], [
+            ($ar ? 'سجل القروض والأقساط - ' : 'Loans & Installments - ') . site_name(),
+            ($ar ? 'تاريخ التقرير: ' : 'Report date: ') . date('d/m/Y H:i') . ' · ' . ($ar ? 'عدد القروض: ' : 'Loans: ') . $totals['count']
+                . ($notes ? ' · ' . implode(' · ', $notes) : ''),
+        ], true);
+
+        foreach ($loans as $l) {
+            [$statusLbl] = status_badge($l['display_status']);
+            $amt = (float) $l['amount'];
+            $paid = (float) $l['amount_paid'];
+            $pct = $amt > 0 ? min(100.0, round($paid / $amt * 100, 2)) : 0.0;
+            $feeState = Loan::feeState($l);
+            $feeLbl = $feeState === 'none' ? '-' : ($feeState === 'paid' ? ($ar ? 'مدفوعة' : 'Paid') : ($ar ? 'غير مدفوعة' : 'Unpaid'));
+            $lotLabel = !empty($l['lot_id']) ? ShareLot::label((int) $l['member_id'], (int) $l['lot_id']) : '-';
+            $reasonText = ($this->reasonLabels[$l['reason']] ?? $l['reason'])
+                . (!empty($l['reason_other_text']) ? ' (' . $l['reason_other_text'] . ')' : '');
+
+            $report->row([
+                (int) $l['id'],
+                $l['member_serial'] !== null && $l['member_serial'] !== '' ? (int) $l['member_serial'] : null,
+                $l['member_name'],
+                $l['member_mobile'],
+                $lotLabel,
+                $reasonText,
+                round($amt, 2),
+                $l['loan_date'],
+                (int) $l['installments_count'],
+                round((float) $l['installment_value'], 2),
+                round($paid, 2),
+                round((float) $l['amount_remaining'], 2),
+                $pct,
+                round((float) ($l['admin_fee_percent'] ?? 0), 2),
+                round((float) ($l['admin_fee_amount'] ?? 0), 2),
+                $feeLbl,
+                $feeState === 'paid' ? ($l['fee_paid_at'] ?? null) : null,
+                $statusLbl,
+            ]);
+        }
+
+        if ($loans) {
+            $report->sumTotals($ar ? 'الإجمالي' : 'Total', [6, 10, 11, 14], 2, 0, count($loans) . ' ' . ($ar ? 'قرض' : 'loans'));
+        } else {
+            $report->note($ar ? 'لا توجد قروض مطابقة للفلاتر الحالية' : 'No loans match the current filters.');
+        }
+
+        $report->download('loans-' . date('Y-m-d') . '.xlsx');
     }
 
     public function create(): void
